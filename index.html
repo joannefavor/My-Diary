@@ -523,13 +523,6 @@
     </div>
   </header>
 
-  <div class="notice" id="sampleNotice" hidden>
-    <span><strong>예시 데이터로 채워져 있습니다.</strong> 지우고 내 기록부터 시작할 수 있어요.</span>
-    <span class="spacer"></span>
-    <button id="clearSample">예시 지우기</button>
-    <button class="ghost" id="keepSample">그대로 두기</button>
-  </div>
-
   <section class="tiles" id="tiles" aria-label="이번 주 요약"></section>
 
   <div class="columns">
@@ -587,6 +580,7 @@
   <footer class="foot">
     <span id="savedAt">기록은 이 브라우저에 저장됩니다.</span>
     <span class="spacer"></span>
+    <button class="ghost" id="clearAll">전체 지우기</button>
     <button class="ghost" id="exportBtn">JSON 내보내기</button>
     <button class="ghost" id="importBtn">가져오기</button>
     <input type="file" id="importFile" accept="application/json,.json" hidden>
@@ -598,7 +592,7 @@
 (function () {
   "use strict";
 
-  var STORE = "weekly-health-ledger-v2";
+  var STORE = "weekly-health-ledger-v3";
   var DOW = ["월", "화", "수", "목", "금", "토", "일"];
   var MEALS = [["b", "아침"], ["l", "점심"], ["d", "저녁"]];
 
@@ -675,7 +669,7 @@
 
   /* ============================ 상태 ============================ */
 
-  var state = { days: {}, seeded: false, noticeDismissed: false };
+  var state = { days: {} };
   var weekStart = mondayOf(new Date());
   var selected = TODAY;
 
@@ -701,7 +695,7 @@
       if (raw) {
         var p = JSON.parse(raw);
         if (p && typeof p === "object" && p.days) {
-          state = { days: p.days, seeded: !!p.seeded, noticeDismissed: !!p.noticeDismissed };
+          state = { days: p.days };
           return true;
         }
       }
@@ -718,39 +712,6 @@
   }
   function stamp(t) { document.getElementById("savedAt").textContent = t; }
 
-  function seed() {
-    var mon = mondayOf(parseISO(TODAY));
-    var sample = [
-      { sl: 7.2, s: 118, d: 76, g: 92,  w: 64.5, ex: [40, "달리기"],      wa: 8, me: [1,1,1], md: 1, mo: 4, ov: 4, note: "",
-        sch: [["09:30","팀 주간회의",1],["14:00","설계 리뷰",1],["19:00","한강 러닝",1]] },
-      { sl: 5.4, s: 124, d: 81, g: 98,  w: 64.7, ex: [0, ""],             wa: 4, me: [0,1,1], md: 1, mo: 3, ov: 2, note: "야근으로 운동 건너뜀. 오후에 두통.",
-        sch: [["10:00","고객 미팅",1],["21:00","배포 대기",1]] },
-      { sl: 6.1, s: 131, d: 86, g: 108, w: 65.1, ex: [25, "빠르게 걷기"], wa: 5, me: [1,1,0], md: 0, mo: 3, ov: 3, note: "약을 하루 건너뜀.",
-        sch: [["08:30","병원 정기검진",1],["15:00","1:1 면담",1]] },
-      { sl: 7.8, s: 122, d: 78, g: 95,  w: 64.6, ex: [55, "수영"],        wa: 9, me: [1,1,1], md: 1, mo: 4, ov: 4, note: "",
-        sch: [["11:00","스프린트 계획",1],["20:00","수영장",1]] },
-      { sl: 8.0, s: 117, d: 74, g: 89,  w: 64.2, ex: [45, "자전거"],      wa: 8, me: [1,1,1], md: 1, mo: 5, ov: 5, note: "컨디션 가장 좋았던 날.",
-        sch: [["09:30","주간 마감 정리",1],["18:30","자전거 20km",1]] },
-      { sl: 7.5, s: 120, d: 77, g: 91,  w: 64.0, ex: [30, "요가"],        wa: 6, me: [1,1,0], md: 1, mo: 4, ov: 4, note: "",
-        sch: [["10:00","아침 요가",0],["16:00","장보기",0]] },
-      { sl: null, s: null, d: null, g: null, w: null, ex: null, wa: null, me: [0,0,0], md: 0, mo: null, ov: null, note: "",
-        sch: [["11:00","가족 점심",0],["15:00","다음 주 계획 세우기",0]] }
-    ];
-    for (var i = 0; i < 7; i++) {
-      var x = sample[i];
-      state.days[iso(addDays(mon, i))] = {
-        schedule: x.sch.map(function (r) { return { time: r[0], title: r[1], done: !!r[2] }; }),
-        sleep: x.sl,
-        bp: x.s == null ? null : { s: x.s, d: x.d },
-        glucose: x.g, weight: x.w,
-        exercise: x.ex ? { min: x.ex[0], kind: x.ex[1] } : null,
-        water: x.wa,
-        meals: { b: !!x.me[0], l: !!x.me[1], d: !!x.me[2] },
-        meds: !!x.md, mood: x.mo, overall: x.ov, note: x.note
-      };
-    }
-    state.seeded = true;
-  }
 
   /* ============================ 유틸 ============================ */
 
@@ -851,8 +812,8 @@
       pill(bpStatus(avgSys == null ? null : Math.round(avgSys), avgDia == null ? null : Math.round(avgDia))));
     html += tile("공복혈당 평균", avgGlu == null ? "—" : Math.round(avgGlu), avgGlu == null ? "" : "mg/dL",
       pill(glucoseStatus(avgGlu == null ? null : Math.round(avgGlu))));
-    html += tile("운동 합계", exTotal, "분",
-      pill(exerciseStatus(exTotal)) + ' <span class="sub">' + exDays + "일 운동</span>");
+    html += tile("운동 합계", n ? exTotal : "—", n ? "분" : "",
+      pill(n ? exerciseStatus(exTotal) : null) + ' <span class="sub">' + exDays + "일 운동</span>");
     html += tile("기분 평균", avgMood == null ? "—" : r1(avgMood).toFixed(1), avgMood == null ? "" : "/ 5",
       '<span class="sub">' + moodWord(avgMood) + "</span>");
     html += tile("수분 평균", avgWater == null ? "—" : r1(avgWater).toFixed(1), avgWater == null ? "" : "잔",
@@ -1056,6 +1017,21 @@
 
   function makeSvg(cfg) {
     useWidth(cfg);
+
+    // 값이 하나도 없으면 눈금 대신 안내를 보여준다 (0~1 같은 엉뚱한 축을 피함)
+    var hasAny = cfg.series.some(function (s) {
+      return s.values.some(function (v) { return v != null; });
+    });
+    if (!hasAny) {
+      return '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="' +
+        esc(cfg.aria) + ' — 기록 없음">' +
+        '<line x1="' + PL + '" x2="' + (W - PR) + '" y1="' + (PT + IH) + '" y2="' + (PT + IH) +
+        '" stroke="var(--grid)" stroke-width="1" vector-effect="non-scaling-stroke"/>' +
+        '<text x="' + (W / 2) + '" y="' + (PT + IH / 2 + 3) + '" text-anchor="middle" ' +
+        'font-family="var(--sans)" font-size="10" fill="var(--muted)">아직 기록이 없습니다</text>' +
+        "</svg>";
+    }
+
     var banded = cfg.kind !== "line";
     var dom = cfg.domain || niceDomain(
       cfg.series.reduce(function (a, s) { return a.concat(s.values); }, []), cfg.domainOpts);
@@ -1522,7 +1498,6 @@
       (a.getMonth() + 1) + "월 " + a.getDate() + "일 – " +
       (a.getMonth() === b.getMonth() ? "" : (b.getMonth() + 1) + "월 ") + b.getDate() + "일";
 
-    document.getElementById("sampleNotice").hidden = !(state.seeded && !state.noticeDismissed);
 
     renderTiles();
     renderLedger();
@@ -1616,12 +1591,11 @@
     return pad(h) + ":" + pad(mi);
   }
 
-  document.getElementById("clearSample").addEventListener("click", function () {
-    state.days = {}; state.seeded = false; state.noticeDismissed = true;
+  document.getElementById("clearAll").addEventListener("click", function () {
+    if (!window.confirm("이 브라우저에 저장된 기록을 모두 지웁니다. 계속할까요?")) return;
+    state.days = {};
     persist();
-  });
-  document.getElementById("keepSample").addEventListener("click", function () {
-    state.noticeDismissed = true; persist();
+    stamp("모두 지웠습니다.");
   });
 
   document.getElementById("exportBtn").addEventListener("click", function () {
@@ -1643,7 +1617,7 @@
       try {
         var p = JSON.parse(String(reader.result));
         if (!p || !p.days) throw new Error("형식이 다릅니다");
-        state = { days: p.days, seeded: !!p.seeded, noticeDismissed: true };
+        state = { days: p.days };
         persist();
         stamp("가져왔습니다.");
       } catch (err) {
@@ -1659,7 +1633,7 @@
     if (open) open.classList.remove("show");
   });
 
-  if (!load()) { seed(); save(); }
+  load();
   render();
 })();
 </script>
