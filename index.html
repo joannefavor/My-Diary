@@ -801,16 +801,25 @@
     var avgOv = mean(s.overall), avgMood = mean(s.mood), avgSleep = mean(s.sleep);
     var avgSys = mean(s.sys), avgDia = mean(s.dia);
     var avgGlu = mean(s.glucose), avgWater = mean(s.water);
+    // 항목별로 "그 항목을 기록한 날"만 센다. 안 적은 날은 0이 아니라 없는 값이다.
+    var exRecorded = s.ex.filter(function (v) { return v != null; }).length;
     var exTotal = s.ex.reduce(function (p, c) { return p + (c || 0); }, 0);
     var exDays = s.ex.filter(function (v) { return v > 0; }).length;
 
-    var mealsEaten = logged.reduce(function (p, d) {
+    var mealDays = weekDates().filter(function (d) {
+      var x = peek(d);
+      return x && (x.meals.b || x.meals.l || x.meals.d);
+    });
+    var mealsEaten = mealDays.reduce(function (p, d) {
       var m = peek(d).meals;
       return p + (m.b ? 1 : 0) + (m.l ? 1 : 0) + (m.d ? 1 : 0);
     }, 0);
-    var mealRate = n ? mealsEaten / (n * 3) * 100 : null;
-    var medsTaken = logged.filter(function (d) { return peek(d).meds; }).length;
-    var medRate = n ? medsTaken / n * 100 : null;
+    var mealRate = mealDays.length ? mealsEaten / (mealDays.length * 3) * 100 : null;
+
+    var medsTaken = weekDates().filter(function (d) {
+      var x = peek(d);
+      return x && x.meds;
+    }).length;
 
     var wVals = s.weight.filter(function (v) { return v != null; });
     var wDelta = wVals.length > 1 ? r1(wVals[wVals.length - 1] - wVals[0]) : null;
@@ -844,16 +853,20 @@
       pill(bpStatus(avgSys == null ? null : Math.round(avgSys), avgDia == null ? null : Math.round(avgDia))));
     html += tile("공복혈당 평균", avgGlu == null ? "—" : Math.round(avgGlu), avgGlu == null ? "" : "mg/dL",
       pill(glucoseStatus(avgGlu == null ? null : Math.round(avgGlu))));
-    html += tile("운동 합계", n ? exTotal : "—", n ? "분" : "",
-      pill(n ? exerciseStatus(exTotal) : null) + ' <span class="sub">' + exDays + "일 운동</span>");
+    html += tile("운동 합계", exRecorded ? exTotal : "—", exRecorded ? "분" : "",
+      pill(exRecorded ? exerciseStatus(exTotal) : null) +
+      (exRecorded ? ' <span class="sub">' + exDays + "일 운동</span>" : ""));
     html += tile("기분 평균", avgMood == null ? "—" : r1(avgMood).toFixed(1), avgMood == null ? "" : "/ 5",
       '<span class="sub">' + moodWord(avgMood) + "</span>");
     html += tile("수분 평균", avgWater == null ? "—" : r1(avgWater).toFixed(1), avgWater == null ? "" : "잔",
       pill(waterStatus(avgWater)));
     html += tile("식사 규칙성", mealRate == null ? "—" : Math.round(mealRate), mealRate == null ? "" : "%",
-      pill(rateStatus(mealRate)) + ' <span class="sub">' + mealsEaten + "/" + (n * 3) + "끼</span>");
-    html += tile("복약 이행", medRate == null ? "—" : Math.round(medRate), medRate == null ? "" : "%",
-      pill(rateStatus(medRate)) + ' <span class="sub">' + medsTaken + "/" + n + "일</span>");
+      pill(rateStatus(mealRate)) +
+      (mealRate == null ? "" : ' <span class="sub">' + mealsEaten + "/" + (mealDays.length * 3) + "끼</span>"));
+    html += tile("복약", medsTaken ? medsTaken : "—", medsTaken ? "일" : "",
+      medsTaken
+        ? '<span class="pill good"><span class="glyph" aria-hidden="true">●</span>복용한 날</span>'
+        : pill(null));
     html += tile("체중 변화",
       wDelta == null ? "—" : (wDelta > 0 ? "+" : "") + wDelta.toFixed(1),
       wDelta == null ? "" : "kg",
