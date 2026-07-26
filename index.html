@@ -457,7 +457,8 @@
     font-family: var(--mono); font-size: 9.5px; letter-spacing: .12em;
     text-transform: uppercase; color: var(--muted);
   }
-  .field input[type="number"], .field input[type="text"], .field textarea {
+  .field input[type="number"], .field input[type="text"],
+  .field input[type="time"], .field textarea {
     font: inherit; font-size: 13.5px;
     background: var(--surface); color: var(--ink);
     border: 1px solid var(--hair); border-radius: 7px;
@@ -468,6 +469,8 @@
     outline: 2px solid var(--accent); outline-offset: -1px;
   }
   .pair { display: flex; align-items: center; gap: 7px; }
+  .pair input { min-width: 0; }
+  .pair input[type="time"] { flex: 1; }
   .pair span.sep { color: var(--muted); font-family: var(--mono); }
   .field .note { font-size: 11px; color: var(--muted); min-height: 17px; }
   .span-2 { grid-column: span 2; }
@@ -615,6 +618,35 @@
     if (g < 70)   return { key: "warning",  label: "낮음" };
     return { key: "good", label: "정상" };
   }
+  // 수면 — 취침·기상 시각에서 잔 시간을 계산한다. 자정을 넘기면 다음 날로 넘어간 것으로 본다.
+  function toMin(t) {
+    var m = /^(\d{1,2}):(\d{2})$/.exec(t || "");
+    if (!m) return null;
+    var h = +m[1], mi = +m[2];
+    if (h > 23 || mi > 59) return null;
+    return h * 60 + mi;
+  }
+  function sleepHours(x) {
+    if (!x || x.sleep == null) return null;
+    if (typeof x.sleep === "number") return x.sleep;      // 예전 형식(시간 숫자)도 그대로 읽는다
+    var a = toMin(x.sleep.from), b = toMin(x.sleep.to);
+    if (a == null || b == null) return null;
+    var diff = b - a;
+    if (diff < 0) diff += 1440;                           // 자정을 넘겨 잔 경우
+    if (diff === 0) return null;
+    return Math.round(diff / 60 * 100) / 100;
+  }
+  function sleepRange(x) {
+    if (!x || !x.sleep || typeof x.sleep === "number") return null;
+    return (x.sleep.from && x.sleep.to) ? x.sleep.from + "–" + x.sleep.to : null;
+  }
+  function fmtDur(h) {
+    if (h == null) return "—";
+    var mins = Math.round(h * 60);
+    var hh = Math.floor(mins / 60), mm = mins % 60;
+    return hh + "시간" + (mm ? " " + mm + "분" : "");
+  }
+
   // 수면 — 성인 권장 7~9시간
   function sleepStatus(h) {
     if (h == null) return null;
@@ -736,7 +768,7 @@
   function series() {
     return {
       dates: weekDates(),
-      sleep:   col(function (x) { return x ? x.sleep : null; }),
+      sleep:   col(function (x) { return sleepHours(x); }),
       sys:     col(function (x) { return x && x.bp ? x.bp.s : null; }),
       dia:     col(function (x) { return x && x.bp ? x.bp.d : null; }),
       glucose: col(function (x) { return x ? x.glucose : null; }),
@@ -753,7 +785,7 @@
     return weekDates().filter(function (d) {
       var x = peek(d);
       if (!x) return false;
-      return x.sleep != null || x.bp || x.glucose != null || x.overall != null ||
+      return sleepHours(x) != null || x.bp || x.glucose != null || x.overall != null ||
         x.water != null || x.exercise || x.mood != null ||
         x.meals.b || x.meals.l || x.meals.d || x.meds;
     });
@@ -1136,8 +1168,11 @@
         valueFmt: function (v) { return r1(v).toFixed(1); },
         tipFmt: function (i) {
           if (s.sleep[i] == null) return null;
-          return [{ color: S1, name: "수면", text: r1(s.sleep[i]).toFixed(1) + "시간" },
-                  { plain: sleepStatus(s.sleep[i]).label }];
+          var rg = sleepRange(peek(s.dates[i]));
+          var rows = [{ color: S1, name: "수면", text: fmtDur(s.sleep[i]) }];
+          if (rg) rows.push({ plain: rg });
+          rows.push({ plain: sleepStatus(s.sleep[i]).label });
+          return rows;
         } },
 
       { id: "bp", title: "혈압", scale: "MMHG", aria: "요일별 수축기·이완기 혈압", kind: "line",
@@ -1308,6 +1343,7 @@
       "<table><caption>같은 데이터를 표로 — 값을 그대로 읽거나 옮겨 적을 때 씁니다.</caption>" +
       "<thead><tr><th>항목</th>" + heads + "</tr></thead><tbody>" +
       row("수면 (시간)", s.sleep.map(function (v) { return v == null ? null : r1(v).toFixed(1); })) +
+      row("취침 – 기상", s.dates.map(function (d) { return sleepRange(peek(d)); })) +
       row("혈압 (mmHg)", bpVals) +
       row("공복혈당 (mg/dL)", s.glucose) +
       row("체중 (kg)", s.weight.map(function (v) { return v == null ? null : r1(v).toFixed(1); })) +
@@ -1346,13 +1382,22 @@
     var d = day(selected);
     var bp = d.bp || {};
     var ex = d.exercise || {};
+    var sl = (d.sleep && typeof d.sleep === "object") ? d.sleep : {};
+    var sf = sl.from || "", st = sl.to || "";
+    var sh = sleepHours(d);
     var host = document.getElementById("entryForm");
 
     host.innerHTML =
-      '<div class="field">' +
-        '<label for="sleep">수면 · 시간</label>' +
-        '<input type="number" id="sleep" min="0" max="16" step="0.5" placeholder="7.5" value="' + (d.sleep == null ? "" : d.sleep) + '">' +
-        '<span class="note">' + (d.sleep != null ? pill(sleepStatus(d.sleep)) : "0.5시간 단위") + "</span>" +
+      '<div class="field span-2">' +
+        '<span class="flabel">수면 · 취침 ~ 기상</span>' +
+        '<div class="pair">' +
+          '<input type="time" id="sleepFrom" value="' + esc(sf) + '" aria-label="취침 시각">' +
+          '<span class="sep">~</span>' +
+          '<input type="time" id="sleepTo" value="' + esc(st) + '" aria-label="기상 시각">' +
+        "</div>" +
+        '<span class="note">' + (sh != null
+          ? pill(sleepStatus(sh)) + " " + esc(fmtDur(sh))
+          : "그날 아침 일어난 잠을 적습니다") + "</span>" +
       "</div>" +
 
       '<div class="field">' +
@@ -1431,7 +1476,14 @@
       return el;
     }
 
-    onChange("sleep",  function (el) { day(selected).sleep = num(el); persist(); });
+    var slFrom = host.querySelector("#sleepFrom"), slTo = host.querySelector("#sleepTo");
+    function commitSleep() {
+      var f = slFrom.value, t = slTo.value;
+      day(selected).sleep = (!f && !t) ? null : { from: f, to: t };
+      persist();
+    }
+    slFrom.addEventListener("change", commitSleep);
+    slTo.addEventListener("change", commitSleep);
     onChange("glu",    function (el) { day(selected).glucose = num(el); persist(); });
     onChange("weight", function (el) { day(selected).weight = num(el); persist(); });
     onChange("water",  function (el) { day(selected).water = num(el); persist(); });
