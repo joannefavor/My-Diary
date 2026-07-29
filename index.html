@@ -789,12 +789,12 @@
     return { key: "good", label: "정상" };
   }
   // 수면 — 취침·기상 시각에서 잔 시간을 계산한다. 자정을 넘기면 다음 날로 넘어간 것으로 본다.
+  /* "HH:MM" → 자정부터의 분. 수면 계산과 일정 타임라인이 함께 쓴다. */
   function toMin(t) {
-    var m = /^(\d{1,2}):(\d{2})$/.exec(t || "");
+    var m = /^(\d{1,2}):(\d{2})$/.exec(String(t || ""));
     if (!m) return null;
     var h = +m[1], mi = +m[2];
-    if (h > 23 || mi > 59) return null;
-    return h * 60 + mi;
+    return h > 23 || mi > 59 ? null : h * 60 + mi;
   }
   function sleepHours(x) {
     if (!x || x.sleep == null) return null;
@@ -1152,12 +1152,6 @@
   function schedOf(date) {
     var d = peek(date);
     return d && d.schedule ? d.schedule : [];
-  }
-  function toMin(t) {
-    var m = /^(\d{1,2}):(\d{2})$/.exec(String(t || ""));
-    if (!m) return null;
-    var h = +m[1], mi = +m[2];
-    return h > 23 || mi > 59 ? null : h * 60 + mi;
   }
   function fromMin(v) {
     v = Math.max(0, Math.min(23 * 60 + 59, Math.round(v)));
