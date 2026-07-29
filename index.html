@@ -1928,28 +1928,28 @@
       '<div class="field">' +
         '<span class="flabel">혈압 · mmHg</span>' +
         '<div class="pair">' +
-          '<input type="number" id="bpS" min="60" max="250" step="1" placeholder="120" value="' + (bp.s == null ? "" : bp.s) + '" aria-label="수축기 혈압">' +
+          '<input type="number" id="bpS" min="60" max="250" step="1" value="' + (bp.s == null ? "" : bp.s) + '" aria-label="수축기 혈압">' +
           '<span class="sep">/</span>' +
-          '<input type="number" id="bpD" min="30" max="150" step="1" placeholder="80" value="' + (bp.d == null ? "" : bp.d) + '" aria-label="이완기 혈압">' +
+          '<input type="number" id="bpD" min="30" max="150" step="1" value="' + (bp.d == null ? "" : bp.d) + '" aria-label="이완기 혈압">' +
         "</div>" +
         '<span class="note" id="bpNote">' + bpNoteHtml(bp.s, bp.d) + "</span>" +
       "</div>" +
 
       '<div class="field">' +
         '<label for="glu">공복혈당 · mg/dL</label>' +
-        '<input type="number" id="glu" min="30" max="500" step="1" placeholder="95" value="' + (d.glucose == null ? "" : d.glucose) + '">' +
+        '<input type="number" id="glu" min="30" max="500" step="1" value="' + (d.glucose == null ? "" : d.glucose) + '">' +
         '<span class="note">' + (d.glucose != null ? pill(glucoseStatus(d.glucose)) : "아침 공복 기준") + "</span>" +
       "</div>" +
 
       '<div class="field">' +
         '<label for="weight">체중 · kg</label>' +
-        '<input type="number" id="weight" min="20" max="250" step="0.1" placeholder="64.5" value="' + (d.weight == null ? "" : d.weight) + '">' +
+        '<input type="number" id="weight" min="20" max="250" step="0.1" value="' + (d.weight == null ? "" : d.weight) + '">' +
         '<span class="note">같은 시간에 재면 흐름이 또렷해집니다</span>' +
       "</div>" +
 
       '<div class="field">' +
         '<label for="exMin">운동 · 분</label>' +
-        '<input type="number" id="exMin" min="0" max="600" step="5" placeholder="30" value="' + (ex.min == null ? "" : ex.min) + '">' +
+        '<input type="number" id="exMin" min="0" max="600" step="5" value="' + (ex.min == null ? "" : ex.min) + '">' +
         '<input type="text" id="exKind" placeholder="종목 (달리기, 요가…)" value="' + esc(ex.kind || "") + '" aria-label="운동 종목">' +
       "</div>" +
 
