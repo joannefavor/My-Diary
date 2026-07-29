@@ -637,9 +637,15 @@
     color: var(--on-accent); font-weight: 700;
   }
   .meal-rows { display: flex; flex-direction: column; gap: 6px; }
+  /* 끼니 버튼 · 먹은 것 · 먹은 약 */
   .meal-row {
-    display: grid; grid-template-columns: 64px minmax(0, 1fr);
+    display: grid; grid-template-columns: 64px minmax(0, 1.6fr) minmax(0, 1fr);
     gap: 7px; align-items: center;
+  }
+  @media (max-width: 720px) {
+    /* 좁으면 약 칸을 아랫줄로 내려 두 칸이 찌그러지지 않게 */
+    .meal-row { grid-template-columns: 64px minmax(0, 1fr); }
+    .meal-row .pill-in { grid-column: 2; }
   }
   .meal-row button {
     padding: 7px 0; font-size: 12.5px; background: var(--surface);
@@ -882,6 +888,7 @@
       exercise: null, water: null,
       meals: { b: false, l: false, d: false },
       menu: { b: "", l: "", d: "" },
+      pill: { b: "", l: "", d: "" },
       meds: false, medTaken: {}, mood: null, overall: null, note: ""
     };
   }
@@ -890,6 +897,7 @@
     var d = state.days[date];
     if (!d.meals) d.meals = { b: false, l: false, d: false };
     if (!d.menu) d.menu = { b: "", l: "", d: "" };
+    if (!d.pill) d.pill = { b: "", l: "", d: "" };
     if (!d.medTaken) d.medTaken = {};
     if (!d.schedule) d.schedule = [];
     return d;
@@ -898,6 +906,11 @@
 
   /* 식단은 나중에 생긴 항목이라 예전 기록에는 없다 */
   function menuOf(d, k) { return (d && d.menu && d.menu[k]) || ""; }
+  /* 끼니별로 적어둔 약. 나중에 생긴 항목이라 예전 기록에는 없다 */
+  function pillOf(d, k) { return (d && d.pill && d.pill[k]) || ""; }
+  function pillMeals(x) {
+    return MEALS.filter(function (m) { return pillOf(x, m[0]); });
+  }
 
   function medBoxMarkup(d) {
     var list = medList();
@@ -946,6 +959,7 @@
   }
   function medDone(x) {
     if (!x) return false;
+    if (pillMeals(x).length) return true;                 // 끼니별로 적어둔 약이 있으면 복용한 날
     return medList().length ? (medTakenCount(x) > 0 || !!x.meds) : !!x.meds;
   }
   function medAllTaken(x) {
@@ -1039,7 +1053,7 @@
       if (!x) return false;
       return sleepHours(x) != null || x.bp || x.glucose != null || x.overall != null ||
         x.water != null || x.exercise || x.mood != null ||
-        x.meals.b || x.meals.l || x.meals.d || x.meds;
+        x.meals.b || x.meals.l || x.meals.d || medDone(x);
     });
   }
 
@@ -1069,8 +1083,7 @@
     var mealRate = mealDays.length ? mealsEaten / (mealDays.length * 3) * 100 : null;
 
     var medsTaken = weekDates().filter(function (d) {
-      var x = peek(d);
-      return x && x.meds;
+      return medDone(peek(d));      // 끼니별 기록·약 목록 체크·예전 방식을 모두 센다
     }).length;
 
     var wVals = s.weight.filter(function (v) { return v != null; });
@@ -1397,12 +1410,17 @@
     html += '<span class="row-head">복약</span>';
     dates.forEach(function (date) {
       var x = peek(date);
-      var all = meds.length ? medAllTaken(x) : medDone(x);
+      var pm = pillMeals(x);                       // 끼니별로 적어둔 약
+      var all = pm.length ? pm.length === 3 : (meds.length ? medAllTaken(x) : medDone(x));
       var some = medDone(x);
-      var face = meds.length
-        ? (medTakenCount(x) || (x && x.meds) ? (all ? "✓" : medTakenCount(x) + "/" + meds.length) : "")
-        : (some ? "✓" : "");
-      var tag = date + " 복약" + (meds.length ? " " + medTakenCount(x) + "/" + meds.length + "개" : "");
+      var face = pm.length
+        ? pm.map(function (m) { return m[1].charAt(0); }).join("")
+        : (meds.length
+            ? (medTakenCount(x) || (x && x.meds) ? (medAllTaken(x) ? "✓" : medTakenCount(x) + "/" + meds.length) : "")
+            : (some ? "✓" : ""));
+      var tag = date + " 복약" + (pm.length
+        ? " " + pm.map(function (m) { return m[1] + " " + pillOf(x, m[0]); }).join(", ")
+        : (meds.length ? " " + medTakenCount(x) + "/" + meds.length + "개" : ""));
       html += '<button type="button" class="cell' + (all ? " on" : (some ? " part" : "")) +
         (date === TODAY ? " today-col" : "") +
         '" data-meds="1" data-date="' + date + '" aria-pressed="' + (!!all) +
@@ -1793,6 +1811,10 @@
     var medVals = s.dates.map(function (d) {
       var x = peek(d);
       if (!x) return null;
+      var pm = pillMeals(x);
+      if (pm.length) {
+        return pm.map(function (m) { return m[1] + " " + pillOf(x, m[0]); }).join(" · ");
+      }
       if (!medList().length) return x.meds ? "복용" : "—";
       var taken = medList().filter(function (m) { return x.medTaken && x.medTaken[m.id]; });
       if (!taken.length) return x.meds ? "복용" : "—";
@@ -1960,7 +1982,7 @@
       "</div>" +
 
       '<div class="field span-2 meals-field">' +
-        '<span class="flabel">식사 · 식단</span>' +
+        '<span class="flabel">식사 · 식단 · 복약</span>' +
         '<div class="meal-rows" id="mealRows">' +
           MEALS.map(function (m) {
             return '<div class="meal-row">' +
@@ -1969,10 +1991,14 @@
               '<input type="text" data-menu="' + m[0] + '" placeholder="' + m[1] +
                 '에 먹은 것 (예: 현미밥, 된장국, 나물)" value="' + esc(menuOf(d, m[0])) +
                 '" aria-label="' + m[1] + ' 식단">' +
+              '<input type="text" class="pill-in" data-pill="' + m[0] + '" placeholder="' + m[1] +
+                '에 먹은 약" value="' + esc(pillOf(d, m[0])) +
+                '" aria-label="' + m[1] + ' 복약">' +
             "</div>";
           }).join("") +
         "</div>" +
-        '<span class="note">끼니를 누르면 먹은 것으로 기록됩니다. 식단을 적으면 자동으로 체크됩니다</span>' +
+        '<span class="note">끼니를 누르면 먹은 것으로 기록됩니다. 식단을 적으면 자동으로 체크됩니다. ' +
+        '오른쪽 칸에는 그 끼니에 먹은 약을 적습니다</span>' +
       "</div>" +
 
       '<div class="field span-2 meds-field">' +
@@ -2056,15 +2082,23 @@
       persist();
     });
 
-    /* 무엇을 먹었는지 적었다면 그 끼니는 먹은 것이다 */
+    /* 무엇을 먹었는지 적었다면 그 끼니는 먹은 것이다.
+       약은 끼니를 걸러도 먹을 수 있으므로 식사 체크를 건드리지 않는다. */
     mealRows.addEventListener("change", function (e) {
-      var el = e.target.closest("input[data-menu]");
-      if (!el) return;
-      var k = el.getAttribute("data-menu");
-      var d0 = day(selected);
-      d0.menu[k] = el.value.trim();
-      if (d0.menu[k]) d0.meals[k] = true;
-      persist();
+      var menuEl = e.target.closest("input[data-menu]");
+      if (menuEl) {
+        var k = menuEl.getAttribute("data-menu");
+        var d0 = day(selected);
+        d0.menu[k] = menuEl.value.trim();
+        if (d0.menu[k]) d0.meals[k] = true;
+        return persist();
+      }
+      var pillEl = e.target.closest("input[data-pill]");
+      if (pillEl) {
+        var pk = pillEl.getAttribute("data-pill");
+        day(selected).pill[pk] = pillEl.value.trim();
+        return persist();
+      }
     });
 
     var medBox = host.querySelector("#medBox");
