@@ -626,6 +626,8 @@
   .pair span.sep { color: var(--muted); font-family: var(--mono); }
   .field .note { font-size: 11px; color: var(--muted); min-height: 17px; }
   .span-2 { grid-column: span 2; }
+  /* 끼니마다 먹은 것과 먹은 약을 나란히 적어야 해서 자리를 넓게 쓴다 */
+  .meals-field { grid-column: span 4; }
 
   .rating { display: flex; gap: 5px; }
   .rating button {
@@ -910,43 +912,6 @@
   function pillOf(d, k) { return (d && d.pill && d.pill[k]) || ""; }
   function pillMeals(x) {
     return MEALS.filter(function (m) { return pillOf(x, m[0]); });
-  }
-
-  function medBoxMarkup(d) {
-    var list = medList();
-
-    var rows = list.map(function (m) {
-      var on = !!d.medTaken[m.id];
-      return '<div class="med-row' + (on ? " on" : "") + '">' +
-        '<label><input type="checkbox" data-med="' + esc(m.id) + '"' + (on ? " checked" : "") + ">" +
-          '<span class="mname">' + esc(m.name) + "</span></label>" +
-        '<button type="button" class="med-del" data-medrm="' + esc(m.id) + '"' +
-          ' aria-label="' + esc(m.name) + ' 목록에서 빼기" title="목록에서 빼기">×</button>' +
-      "</div>";
-    }).join("");
-
-    var add = '<div class="med-add">' +
-      '<input type="text" id="medNew" placeholder="먹는 약 이름 (예: 혈압약 아침)" aria-label="추가할 약 이름">' +
-      '<button type="button" id="medAdd">약 추가</button>' +
-      "</div>";
-
-    if (!list.length) {
-      return '<p class="note">먹는 약을 등록하면 날마다 하나씩 체크할 수 있습니다.</p>' + add +
-        '<div class="toggles" id="medToggle">' +
-          '<button type="button" aria-pressed="' + (!!d.meds) + '">' +
-            (d.meds ? "복용함" : "아직") + "</button>" +
-        "</div>" +
-        '<span class="note">등록 전에는 하루 한 번으로 기록합니다</span>';
-    }
-
-    /* 목록이 생기기 전에 '복용함'으로 적어둔 날은 그 사실을 알려준다 */
-    var legacy = d.meds && medTakenCount(d) === 0
-      ? '<p class="note">이 날은 약을 등록하기 전에 <b>복용함</b>으로 적어둔 날입니다.</p>'
-      : "";
-
-    return '<div class="med-rows">' + rows + "</div>" + legacy + add +
-      '<span class="note">' + medTakenCount(d) + "/" + list.length + "개 복용" +
-      (medAllTaken(d) ? " · 오늘 몫을 다 먹었습니다" : "") + "</span>";
   }
 
   /* ---------- 복약 ----------
@@ -1981,7 +1946,7 @@
         '<span class="note">' + (d.water != null ? pill(waterStatus(d.water)) : "한 잔 = 약 200ml") + "</span>" +
       "</div>" +
 
-      '<div class="field span-2 meals-field">' +
+      '<div class="field meals-field">' +
         '<span class="flabel">식사 · 식단 · 복약</span>' +
         '<div class="meal-rows" id="mealRows">' +
           MEALS.map(function (m) {
@@ -1999,11 +1964,6 @@
         "</div>" +
         '<span class="note">끼니를 누르면 먹은 것으로 기록됩니다. 식단을 적으면 자동으로 체크됩니다. ' +
         '오른쪽 칸에는 그 끼니에 먹은 약을 적습니다</span>' +
-      "</div>" +
-
-      '<div class="field span-2 meds-field">' +
-        '<span class="flabel">복약</span>' +
-        '<div id="medBox">' + medBoxMarkup(d) + "</div>" +
       "</div>" +
 
       '<div class="field">' +
@@ -2100,52 +2060,6 @@
         return persist();
       }
     });
-
-    var medBox = host.querySelector("#medBox");
-
-    medBox.addEventListener("change", function (e) {
-      var c = e.target.closest("input[data-med]");
-      if (!c) return;
-      var d0 = day(selected), id = c.getAttribute("data-med");
-      if (c.checked) d0.medTaken[id] = true; else delete d0.medTaken[id];
-      d0.meds = medTakenCount(d0) > 0;
-      persist();
-    });
-
-    medBox.addEventListener("click", function (e) {
-      var legacy = e.target.closest("#medToggle button");
-      if (legacy) {
-        day(selected).meds = !day(selected).meds;
-        return persist();
-      }
-      if (e.target.closest("#medAdd")) return addMed();
-      var rm = e.target.closest("button[data-medrm]");
-      if (rm) {
-        var id = rm.getAttribute("data-medrm");
-        var m = medList().filter(function (x) { return x.id === id; })[0];
-        if (!window.confirm("‘" + (m ? m.name : "이 약") + "’을(를) 목록에서 뺍니다.\n" +
-          "지금까지 체크해 둔 기록은 그대로 두고, 앞으로만 보이지 않게 합니다.")) return;
-        state.meds = medList().filter(function (x) { return x.id !== id; });
-        persist();
-      }
-    });
-
-    medBox.addEventListener("keydown", function (e) {
-      if (e.key === "Enter" && e.target.closest("#medNew")) {
-        e.preventDefault();
-        addMed();
-      }
-    });
-
-    function addMed() {
-      var el = host.querySelector("#medNew");
-      var name = el.value.trim();
-      if (!name) { el.focus(); return; }
-      medList().push({ id: uid(), name: name });
-      persist();
-      var again = document.querySelector("#medNew");
-      if (again) again.focus();
-    }
 
     bindRate(host.querySelector("#moodRate"), "mood");
     bindRate(host.querySelector("#ovRate"), "overall");
