@@ -1879,6 +1879,16 @@
       "</div>";
   }
 
+  function bpNoteHtml(s, d) {
+    return (s != null && d != null) ? pill(bpStatus(s, d)) : "수축기 / 이완기";
+  }
+
+  function sleepNoteHtml(h) {
+    return h != null
+      ? pill(sleepStatus(h)) + " " + esc(fmtDur(h))
+      : "그날 아침 일어난 잠을 적습니다";
+  }
+
   function readTimeRow(host, id) {
     var ap = host.querySelector("#" + id + "Ap");
     var hh = host.querySelector("#" + id + "H");
@@ -1912,9 +1922,7 @@
         '<span class="flabel">수면 · 취침 ~ 기상</span>' +
         timeRow("취침", "sleepFrom", sf) +
         timeRow("기상", "sleepTo", st) +
-        '<span class="note">' + (sh != null
-          ? pill(sleepStatus(sh)) + " " + esc(fmtDur(sh))
-          : "그날 아침 일어난 잠을 적습니다") + "</span>" +
+        '<span class="note" id="sleepNote">' + sleepNoteHtml(sh) + "</span>" +
       "</div>" +
 
       '<div class="field">' +
@@ -1924,7 +1932,7 @@
           '<span class="sep">/</span>' +
           '<input type="number" id="bpD" min="30" max="150" step="1" placeholder="80" value="' + (bp.d == null ? "" : bp.d) + '" aria-label="이완기 혈압">' +
         "</div>" +
-        '<span class="note">' + (bp.s != null && bp.d != null ? pill(bpStatus(bp.s, bp.d)) : "수축기 / 이완기") + "</span>" +
+        '<span class="note" id="bpNote">' + bpNoteHtml(bp.s, bp.d) + "</span>" +
       "</div>" +
 
       '<div class="field">' +
@@ -1999,7 +2007,11 @@
     function commitSleep() {
       var f = readTimeRow(host, "sleepFrom"), t = readTimeRow(host, "sleepTo");
       day(selected).sleep = (!f && !t) ? null : { from: f, to: t };
-      persist();
+      save();
+      // 폼은 그대로 두고(고르던 중간 상태 보존) 요약 문구만 갱신
+      var note = host.querySelector("#sleepNote");
+      if (note) note.innerHTML = sleepNoteHtml(sleepHours(day(selected)));
+      renderExceptForm();
     }
     ["sleepFrom", "sleepTo"].forEach(function (id) {
       ["Ap", "H", "M"].forEach(function (part) {
@@ -2011,11 +2023,16 @@
     onChange("weight", function (el) { day(selected).weight = num(el); persist(); });
     onChange("water",  function (el) { day(selected).water = num(el); persist(); });
 
+    // 두 칸이 다 채워져야 저장되므로, 한 칸만 친 상태에서 폼을 다시 그리면 입력이 지워진다.
+    // 수면과 같은 이유로 여기서도 폼은 그대로 두고 나머지 화면만 갱신한다.
     var bpS = host.querySelector("#bpS"), bpD = host.querySelector("#bpD");
     function commitBP() {
       var a = num(bpS), b = num(bpD);
       day(selected).bp = (a == null || b == null) ? null : { s: a, d: b };
-      persist();
+      save();
+      var note = host.querySelector("#bpNote");
+      if (note) note.innerHTML = bpNoteHtml(a, b);
+      renderExceptForm();
     }
     bpS.addEventListener("change", commitBP);
     bpD.addEventListener("change", commitBP);
@@ -2120,12 +2137,14 @@
 
   function persist() { save(); render(); }
 
-  function render() {
+  /* 입력 폼을 제외한 나머지 화면만 갱신한다.
+     드롭다운처럼 여러 번에 나눠 고르는 입력은 폼을 다시 그리면
+     고르던 중간 상태가 지워지므로, 그럴 때 이 함수를 쓴다. */
+  function renderExceptForm() {
     var a = weekStart, b = addDays(weekStart, 6);
     document.getElementById("weekRange").textContent =
       (a.getMonth() + 1) + "월 " + a.getDate() + "일 – " +
       (a.getMonth() === b.getMonth() ? "" : (b.getMonth() + 1) + "월 ") + b.getDate() + "일";
-
 
     renderTiles();
     renderLedger();
@@ -2133,6 +2152,10 @@
     renderNotes();
     renderCharts();
     renderTabs();
+  }
+
+  function render() {
+    renderExceptForm();
     renderForm();
   }
 
