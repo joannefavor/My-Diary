@@ -626,8 +626,9 @@
   .pair span.sep { color: var(--muted); font-family: var(--mono); }
   .field .note { font-size: 11px; color: var(--muted); min-height: 17px; }
   .span-2 { grid-column: span 2; }
-  /* 끼니마다 먹은 것과 먹은 약을 나란히 적어야 해서 자리를 넓게 쓴다 */
-  .meals-field { grid-column: span 4; }
+  /* 끼니마다 먹은 것과 먹은 약을 나란히 적어야 해서 한 줄을 다 쓴다.
+     이렇게 해야 다음 줄이 기분 → 전체평가 순서로 깨끗하게 시작한다. */
+  .meals-field { grid-column: 1 / -1; }
 
   .rating { display: flex; gap: 5px; }
   .rating button {
