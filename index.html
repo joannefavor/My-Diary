@@ -601,6 +601,28 @@
   .pair { display: flex; align-items: center; gap: 7px; }
   .pair input { min-width: 0; }
   .pair input[type="time"] { flex: 1; }
+
+  /* 수면 시각 입력 — 오전/오후 · 시 · 분 */
+  .timerow {
+    display: flex; align-items: center; gap: 6px;
+    flex-wrap: wrap; margin-bottom: 6px;
+  }
+  .timerow .tlabel {
+    font-size: 12.5px; color: var(--ink-2);
+    flex: none; width: 30px;
+  }
+  .timerow .tunit {
+    font-size: 12px; color: var(--muted);
+    font-family: var(--mono); flex: none;
+  }
+  .timerow select {
+    font: inherit; font-size: 13.5px;
+    background: var(--surface); color: var(--ink);
+    border: 1px solid var(--hair); border-radius: 7px;
+    padding: 6px 6px; min-width: 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .timerow select:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
   .pair span.sep { color: var(--muted); font-family: var(--mono); }
   .field .note { font-size: 11px; color: var(--muted); min-height: 17px; }
   .span-2 { grid-column: span 2; }
@@ -849,7 +871,8 @@
 
   /* ============================ 상태 ============================ */
 
-  var state = { days: {} };
+  /* days는 날짜별 기록, meds는 "내가 먹는 약" 목록(설정) */
+  var state = { days: {}, meds: [] };
   var weekStart = mondayOf(new Date());
   var selected = TODAY;
 
@@ -859,7 +882,7 @@
       exercise: null, water: null,
       meals: { b: false, l: false, d: false },
       menu: { b: "", l: "", d: "" },
-      meds: false, mood: null, overall: null, note: ""
+      meds: false, medTaken: {}, mood: null, overall: null, note: ""
     };
   }
   function day(date) {
@@ -867,6 +890,7 @@
     var d = state.days[date];
     if (!d.meals) d.meals = { b: false, l: false, d: false };
     if (!d.menu) d.menu = { b: "", l: "", d: "" };
+    if (!d.medTaken) d.medTaken = {};
     if (!d.schedule) d.schedule = [];
     return d;
   }
@@ -874,6 +898,68 @@
 
   /* 식단은 나중에 생긴 항목이라 예전 기록에는 없다 */
   function menuOf(d, k) { return (d && d.menu && d.menu[k]) || ""; }
+
+  function medBoxMarkup(d) {
+    var list = medList();
+
+    var rows = list.map(function (m) {
+      var on = !!d.medTaken[m.id];
+      return '<div class="med-row' + (on ? " on" : "") + '">' +
+        '<label><input type="checkbox" data-med="' + esc(m.id) + '"' + (on ? " checked" : "") + ">" +
+          '<span class="mname">' + esc(m.name) + "</span></label>" +
+        '<button type="button" class="med-del" data-medrm="' + esc(m.id) + '"' +
+          ' aria-label="' + esc(m.name) + ' 목록에서 빼기" title="목록에서 빼기">×</button>' +
+      "</div>";
+    }).join("");
+
+    var add = '<div class="med-add">' +
+      '<input type="text" id="medNew" placeholder="먹는 약 이름 (예: 혈압약 아침)" aria-label="추가할 약 이름">' +
+      '<button type="button" id="medAdd">약 추가</button>' +
+      "</div>";
+
+    if (!list.length) {
+      return '<p class="note">먹는 약을 등록하면 날마다 하나씩 체크할 수 있습니다.</p>' + add +
+        '<div class="toggles" id="medToggle">' +
+          '<button type="button" aria-pressed="' + (!!d.meds) + '">' +
+            (d.meds ? "복용함" : "아직") + "</button>" +
+        "</div>" +
+        '<span class="note">등록 전에는 하루 한 번으로 기록합니다</span>';
+    }
+
+    /* 목록이 생기기 전에 '복용함'으로 적어둔 날은 그 사실을 알려준다 */
+    var legacy = d.meds && medTakenCount(d) === 0
+      ? '<p class="note">이 날은 약을 등록하기 전에 <b>복용함</b>으로 적어둔 날입니다.</p>'
+      : "";
+
+    return '<div class="med-rows">' + rows + "</div>" + legacy + add +
+      '<span class="note">' + medTakenCount(d) + "/" + list.length + "개 복용" +
+      (medAllTaken(d) ? " · 오늘 몫을 다 먹었습니다" : "") + "</span>";
+  }
+
+  /* ---------- 복약 ----------
+     약 목록을 만들기 전에는 하루 한 번 눌러 두는 방식이었다.
+     목록이 생긴 뒤에도 그때 '복용함'으로 적어둔 날은 복용한 날로 남긴다. */
+  function medList() { return state.meds || (state.meds = []); }
+  function medTakenCount(x) {
+    if (!x || !x.medTaken) return 0;
+    return medList().filter(function (m) { return x.medTaken[m.id]; }).length;
+  }
+  function medDone(x) {
+    if (!x) return false;
+    return medList().length ? (medTakenCount(x) > 0 || !!x.meds) : !!x.meds;
+  }
+  function medAllTaken(x) {
+    var n = medList().length;
+    return n > 0 && medTakenCount(x) === n;
+  }
+  /* 목록이 있을 때 격자에서 한 번에 켜고 끄기 */
+  function medSetAll(date, on) {
+    var d = day(date);
+    medList().forEach(function (m) {
+      if (on) d.medTaken[m.id] = true; else delete d.medTaken[m.id];
+    });
+    d.meds = on;
+  }
 
   /* 일정은 id로 식별한다. 예전 기록에는 id가 없으므로 읽을 때 채워 넣는다. */
   var uidSeq = 0;
@@ -892,7 +978,7 @@
       if (raw) {
         var p = JSON.parse(raw);
         if (p && typeof p === "object" && p.days) {
-          state = { days: p.days };
+          state = { days: p.days, meds: Array.isArray(p.meds) ? p.meds : [] };
           normalize();
           return true;
         }
@@ -1313,12 +1399,20 @@
       });
     });
 
+    var meds = medList();
     html += '<span class="row-head">복약</span>';
     dates.forEach(function (date) {
-      var on = peek(date) && peek(date).meds;
-      html += '<button type="button" class="cell' + (on ? " on" : "") + (date === TODAY ? " today-col" : "") +
-        '" data-meds="1" data-date="' + date + '" aria-pressed="' + (!!on) +
-        '" aria-label="' + date + ' 복약">' + (on ? "✓" : "") + "</button>";
+      var x = peek(date);
+      var all = meds.length ? medAllTaken(x) : medDone(x);
+      var some = medDone(x);
+      var face = meds.length
+        ? (medTakenCount(x) || (x && x.meds) ? (all ? "✓" : medTakenCount(x) + "/" + meds.length) : "")
+        : (some ? "✓" : "");
+      var tag = date + " 복약" + (meds.length ? " " + medTakenCount(x) + "/" + meds.length + "개" : "");
+      html += '<button type="button" class="cell' + (all ? " on" : (some ? " part" : "")) +
+        (date === TODAY ? " today-col" : "") +
+        '" data-meds="1" data-date="' + date + '" aria-pressed="' + (!!all) +
+        '" title="' + esc(tag) + '" aria-label="' + esc(tag) + '">' + face + "</button>";
     });
 
     html += '<span class="row-head">물 · 잔</span>';
@@ -1702,7 +1796,14 @@
       var on = MEALS.filter(function (m) { return x.meals[m[0]]; }).map(function (m) { return m[1]; });
       return on.length ? on.join("·") : null;
     });
-    var medVals = s.dates.map(function (d) { var x = peek(d); return x ? (x.meds ? "복용" : "—") : null; });
+    var medVals = s.dates.map(function (d) {
+      var x = peek(d);
+      if (!x) return null;
+      if (!medList().length) return x.meds ? "복용" : "—";
+      var taken = medList().filter(function (m) { return x.medTaken && x.medTaken[m.id]; });
+      if (!taken.length) return x.meds ? "복용" : "—";
+      return taken.length + "/" + medList().length + " " + taken.map(function (m) { return m.name; }).join("·");
+    });
     var schedVals = s.dates.map(function (d) {
       var x = peek(d);
       if (!x || !x.schedule.length) return null;
@@ -1745,6 +1846,56 @@
     }).join("");
   }
 
+  /* 시각 입력 한 줄 — 오전/오후, 시, 분(5분 단위)을 고른다.
+     내부 저장은 "HH:MM" 24시간 형식 그대로라 계산 로직은 손대지 않는다. */
+  var SLEEP_STEP = 5;
+
+  function timeRow(label, id, value) {
+    var m = /^(\d{1,2}):(\d{2})$/.exec(value || "");
+    var h24 = m ? +m[1] : null;
+    var min = m ? +m[2] : null;
+    var isPm = h24 != null && h24 >= 12;
+    var h12 = h24 == null ? null : (h24 % 12 === 0 ? 12 : h24 % 12);
+    // 5분 단위가 아닌 기존 값은 가장 가까운 눈금으로 맞춰 보여준다
+    var minSnap = min == null ? null : Math.min(55, Math.round(min / SLEEP_STEP) * SLEEP_STEP);
+
+    var ap = '<select id="' + id + 'Ap" aria-label="' + esc(label) + ' 오전/오후">' +
+      '<option value=""' + (h24 == null ? " selected" : "") + ">--</option>" +
+      '<option value="am"' + (h24 != null && !isPm ? " selected" : "") + ">오전</option>" +
+      '<option value="pm"' + (isPm ? " selected" : "") + ">오후</option>" +
+      "</select>";
+
+    var hh = '<select id="' + id + 'H" aria-label="' + esc(label) + ' 시">' +
+      '<option value=""' + (h12 == null ? " selected" : "") + ">--</option>";
+    for (var i = 1; i <= 12; i++) {
+      hh += '<option value="' + i + '"' + (h12 === i ? " selected" : "") + ">" + i + "</option>";
+    }
+    hh += "</select>";
+
+    var mm = '<select id="' + id + 'M" aria-label="' + esc(label) + ' 분">' +
+      '<option value=""' + (minSnap == null ? " selected" : "") + ">--</option>";
+    for (var k = 0; k < 60; k += SLEEP_STEP) {
+      mm += '<option value="' + k + '"' + (minSnap === k ? " selected" : "") + ">" + pad(k) + "</option>";
+    }
+    mm += "</select>";
+
+    return '<div class="timerow">' +
+      '<span class="tlabel">' + esc(label) + "</span>" +
+      ap + hh + '<span class="tunit">시</span>' + mm + '<span class="tunit">분</span>' +
+      "</div>";
+  }
+
+  function readTimeRow(host, id) {
+    var ap = host.querySelector("#" + id + "Ap");
+    var hh = host.querySelector("#" + id + "H");
+    var mm = host.querySelector("#" + id + "M");
+    if (!ap || !hh || !mm) return "";
+    if (!ap.value || !hh.value || mm.value === "") return "";
+    var h = +hh.value % 12;                 // 12시는 0시로 환산
+    if (ap.value === "pm") h += 12;         // 오후는 12시간을 더한다
+    return pad(h) + ":" + pad(+mm.value);
+  }
+
   function rateBtns(cur) {
     var out = "";
     for (var i = 1; i <= 5; i++) {
@@ -1765,11 +1916,8 @@
     host.innerHTML =
       '<div class="field span-2">' +
         '<span class="flabel">수면 · 취침 ~ 기상</span>' +
-        '<div class="pair">' +
-          '<input type="time" id="sleepFrom" value="' + esc(sf) + '" aria-label="취침 시각">' +
-          '<span class="sep">~</span>' +
-          '<input type="time" id="sleepTo" value="' + esc(st) + '" aria-label="기상 시각">' +
-        "</div>" +
+        timeRow("취침", "sleepFrom", sf) +
+        timeRow("기상", "sleepTo", st) +
         '<span class="note">' + (sh != null
           ? pill(sleepStatus(sh)) + " " + esc(fmtDur(sh))
           : "그날 아침 일어난 잠을 적습니다") + "</span>" +
@@ -1825,12 +1973,9 @@
         '<span class="note">끼니를 누르면 먹은 것으로 기록됩니다. 식단을 적으면 자동으로 체크됩니다</span>' +
       "</div>" +
 
-      '<div class="field">' +
+      '<div class="field span-2 meds-field">' +
         '<span class="flabel">복약</span>' +
-        '<div class="toggles" id="medToggle">' +
-          '<button type="button" aria-pressed="' + (!!d.meds) + '">' + (d.meds ? "복용함" : "아직") + "</button>" +
-        "</div>" +
-        '<span class="note">처방약·보충제 포함</span>' +
+        '<div id="medBox">' + medBoxMarkup(d) + "</div>" +
       "</div>" +
 
       '<div class="field">' +
@@ -1857,14 +2002,17 @@
       return el;
     }
 
-    var slFrom = host.querySelector("#sleepFrom"), slTo = host.querySelector("#sleepTo");
     function commitSleep() {
-      var f = slFrom.value, t = slTo.value;
+      var f = readTimeRow(host, "sleepFrom"), t = readTimeRow(host, "sleepTo");
       day(selected).sleep = (!f && !t) ? null : { from: f, to: t };
       persist();
     }
-    slFrom.addEventListener("change", commitSleep);
-    slTo.addEventListener("change", commitSleep);
+    ["sleepFrom", "sleepTo"].forEach(function (id) {
+      ["Ap", "H", "M"].forEach(function (part) {
+        var el = host.querySelector("#" + id + part);
+        if (el) el.addEventListener("change", commitSleep);
+      });
+    });
     onChange("glu",    function (el) { day(selected).glucose = num(el); persist(); });
     onChange("weight", function (el) { day(selected).weight = num(el); persist(); });
     onChange("water",  function (el) { day(selected).water = num(el); persist(); });
@@ -1908,11 +2056,51 @@
       persist();
     });
 
-    host.querySelector("#medToggle").addEventListener("click", function (e) {
-      if (!e.target.closest("button")) return;
-      day(selected).meds = !day(selected).meds;
+    var medBox = host.querySelector("#medBox");
+
+    medBox.addEventListener("change", function (e) {
+      var c = e.target.closest("input[data-med]");
+      if (!c) return;
+      var d0 = day(selected), id = c.getAttribute("data-med");
+      if (c.checked) d0.medTaken[id] = true; else delete d0.medTaken[id];
+      d0.meds = medTakenCount(d0) > 0;
       persist();
     });
+
+    medBox.addEventListener("click", function (e) {
+      var legacy = e.target.closest("#medToggle button");
+      if (legacy) {
+        day(selected).meds = !day(selected).meds;
+        return persist();
+      }
+      if (e.target.closest("#medAdd")) return addMed();
+      var rm = e.target.closest("button[data-medrm]");
+      if (rm) {
+        var id = rm.getAttribute("data-medrm");
+        var m = medList().filter(function (x) { return x.id === id; })[0];
+        if (!window.confirm("‘" + (m ? m.name : "이 약") + "’을(를) 목록에서 뺍니다.\n" +
+          "지금까지 체크해 둔 기록은 그대로 두고, 앞으로만 보이지 않게 합니다.")) return;
+        state.meds = medList().filter(function (x) { return x.id !== id; });
+        persist();
+      }
+    });
+
+    medBox.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && e.target.closest("#medNew")) {
+        e.preventDefault();
+        addMed();
+      }
+    });
+
+    function addMed() {
+      var el = host.querySelector("#medNew");
+      var name = el.value.trim();
+      if (!name) { el.focus(); return; }
+      medList().push({ id: uid(), name: name });
+      persist();
+      var again = document.querySelector("#medNew");
+      if (again) again.focus();
+    }
 
     bindRate(host.querySelector("#moodRate"), "mood");
     bindRate(host.querySelector("#ovRate"), "overall");
@@ -1979,7 +2167,9 @@
       var k = b.getAttribute("data-meal");
       day(date).meals[k] = !day(date).meals[k];
     } else if (b.hasAttribute("data-meds")) {
-      day(date).meds = !day(date).meds;
+      /* 약을 등록해 두었으면 그 날 몫을 통째로 켜고 끈다 */
+      if (medList().length) medSetAll(date, !medAllTaken(peek(date)));
+      else day(date).meds = !day(date).meds;
     } else return;
     persist();
   });
@@ -2131,7 +2321,7 @@
       try {
         var p = JSON.parse(String(reader.result));
         if (!p || !p.days) throw new Error("형식이 다릅니다");
-        state = { days: p.days };
+        state = { days: p.days, meds: Array.isArray(p.meds) ? p.meds : [] };
         normalize();
         persist();
         stamp("가져왔습니다.");
