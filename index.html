@@ -454,18 +454,8 @@
   }
   .cal-col {
     position: relative; border-left: 1px solid var(--hair);
-    /* 정시는 실선 */
     background-image: repeating-linear-gradient(
       to bottom, var(--hair) 0 1px, transparent 1px var(--hh));
-  }
-  /* 30분은 점선 — 가로 방향 마스크로 실선을 끊어 점선처럼 보이게 한다 */
-  .cal-col::after {
-    content: ""; position: absolute; inset: 0; pointer-events: none;
-    background-image: repeating-linear-gradient(
-      to bottom, var(--hair) 0 1px, transparent 1px var(--hh));
-    background-position: 0 calc(var(--hh) / 2);
-    -webkit-mask-image: repeating-linear-gradient(to right, #000 0 3px, transparent 3px 7px);
-    mask-image: repeating-linear-gradient(to right, #000 0 3px, transparent 3px 7px);
   }
   .cal-col.is-today { background-color: var(--surface-2); }
   .cal-col.is-open { cursor: cell; }
