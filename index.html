@@ -18,6 +18,8 @@
     --s1:           #2a78d6;
     --s2:           #eb6834;
     --s3:           #1baf7a;
+    --ev-1: #1d3a5f; --ev-2: #2a6fbf; --ev-3: #1f7a4d;
+    --ev-4: #a86a12; --ev-5: #a83a52; --ev-6: #5b3fa8;
     --good:         #0ca30c;
     --warning:      #fab219;
     --serious:      #ec835a;
@@ -50,6 +52,8 @@
       --s2:          #d95926;
     --s3:          #199e70;
       --s3:          #199e70;
+      --ev-1: #9dbfe8; --ev-2: #7fb3ea; --ev-3: #6fc79a;
+      --ev-4: #e0ab4e; --ev-5: #e88ba0; --ev-6: #a999ec;
       --w1: #184f95; --w2: #256abf; --w3: #3987e5; --w4: #6da7ec; --w5: #9ec5f4;
       --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
     }
@@ -70,6 +74,9 @@
     --accent-soft: #1e2b3c;
     --s1:          #3987e5;
     --s2:          #d95926;
+    --s3:          #199e70;
+    --ev-1: #9dbfe8; --ev-2: #7fb3ea; --ev-3: #6fc79a;
+    --ev-4: #e0ab4e; --ev-5: #e88ba0; --ev-6: #a999ec;
     --w1: #184f95; --w2: #256abf; --w3: #3987e5; --w4: #6da7ec; --w5: #9ec5f4;
     --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
   }
@@ -402,6 +409,42 @@
   .td-in:hover { background: var(--surface); }
   .td-in:focus-visible { outline: 1.5px solid var(--accent); outline-offset: 0; background: var(--surface); }
   .td-row.done .td-in { color: var(--muted); text-decoration: line-through; }
+
+  /* 시간을 누르면 그 자리에 뜨는 일정 입력 카드 */
+  .evpop {
+    position: fixed; z-index: 60; width: 268px;
+    background: var(--surface); color: var(--ink);
+    border: 1px solid var(--baseline); border-radius: 11px;
+    box-shadow: var(--shadow); padding: 13px 14px 12px;
+    display: flex; flex-direction: column; gap: 9px;
+  }
+  .evpop .pop-when {
+    display: flex; align-items: center; gap: 6px;
+    font-family: var(--mono); font-size: 12px; color: var(--ink-2);
+  }
+  .evpop .pop-when .d { flex: none; }
+  .evpop input[type="text"] {
+    font: inherit; font-size: 13px; width: 100%; min-width: 0;
+    background: var(--surface-2); color: var(--ink);
+    border: 1px solid var(--hair); border-radius: 7px; padding: 6px 8px;
+  }
+  .evpop input.tm { width: 62px; font-family: var(--mono); text-align: center; }
+  .evpop input:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .evpop .pop-colors { display: flex; gap: 6px; }
+  .evpop .pop-colors button {
+    width: 22px; height: 22px; border-radius: 50%; padding: 0;
+    border: 2px solid transparent; cursor: pointer;
+  }
+  .evpop .pop-colors button[aria-pressed="true"] { border-color: var(--ink); }
+  .evpop .pop-foot { display: flex; align-items: center; gap: 7px; margin-top: 1px; }
+  .evpop .pop-foot .spacer { flex: 1; }
+  .evpop .pop-foot button { font-size: 12.5px; padding: 5px 11px; }
+  .evpop .pop-save {
+    background: var(--accent); border-color: var(--accent); color: var(--on-accent);
+    font-weight: 600;
+  }
+  .evpop .pop-del { color: var(--critical); border-color: transparent; background: transparent; }
+  .evpop .pop-del:hover { border-color: var(--critical); background: transparent; }
 
   .cal-body { max-height: 400px; overflow-y: auto; }
   .cal-hr {
@@ -1252,14 +1295,22 @@
       '<span class="n">' + esc(it.title) + "</span>";
   }
 
+  var EV_COLORS = 6;
+  function evColorVar(it) {
+    var n = it && it.color;
+    return (n >= 1 && n <= EV_COLORS) ? "var(--ev-" + n + ")" : "var(--accent)";
+  }
+
   function evHTML(date, it, opts) {
     var cls = "ev" + (it.done ? " done" : "") + (opts.chip ? " chip" : "") +
       (opts.short ? " short" : "") + (opts.tight ? " tight" : "");
     var full = opts.chip
       ? "Event · " + it.title
       : it.time + "–" + fromMin(endMin(it)) + " " + it.title;
+    var style = (opts.style || "") + ";background:" + evColorVar(it);
     return '<div class="' + cls + '" title="' + esc(full) + '"' +
-      (opts.style ? ' style="' + opts.style + '"' : "") + ">" +
+      ' data-ev="' + esc(date) + '|' + esc(it.id) + '"' +
+      ' style="' + style + '">' +
       '<input class="tick" type="checkbox"' + (it.done ? " checked" : "") +
       ' data-toggle="' + esc(date) + '|' + esc(it.id) + '"' +
       ' aria-label="' + esc(it.title) + ' 완료">' +
@@ -2171,18 +2222,27 @@
     var add = e.target.closest("button[data-add]");
     if (add) return addItem(add.getAttribute("data-add"));
 
-    /* 빈 칸을 누르면 그 날짜·시각으로 아래 입력줄을 채운다 */
+    /* 기존 일정을 누르면 고치는 카드를 연다 (체크·삭제 버튼은 위에서 처리됨) */
+    var evBox = e.target.closest("[data-ev]");
+    if (evBox) {
+      var ek = evBox.getAttribute("data-ev").split("|");
+      var item = findItem(ek[0], ek[1]);
+      if (item) openPop({ date: ek[0], item: item, x: e.clientX, y: e.clientY });
+      return;
+    }
+
+    /* 빈 칸을 누르면 그 날짜·시각으로 새 일정 카드를 연다 */
     var slot = e.target.closest(".cal-col");
     if (slot && e.target === slot) {
       var r = calRange();
       var minutes = r.lo + Math.floor((e.offsetY / slot.offsetHeight) *
         (r.hi - r.lo) / 30) * 30;
-      var dayEl = document.getElementById("addDay");
-      if (!dayEl) return;
-      dayEl.value = slot.getAttribute("data-slot");
-      document.getElementById("addStart").value = fromMin(minutes);
-      document.getElementById("addEnd").value = fromMin(Math.min(24 * 60 - 1, minutes + 60));
-      document.getElementById("addTitle").focus();
+      openPop({
+        date: slot.getAttribute("data-slot"),
+        start: fromMin(minutes),
+        end: fromMin(Math.min(24 * 60 - 1, minutes + 60)),
+        x: e.clientX, y: e.clientY
+      });
     }
   });
 
@@ -2244,6 +2304,126 @@
     e.preventDefault();
     addItem(f.getAttribute("data-n") || f.getAttribute("data-t"));
   });
+
+  /* ---------- 일정 입력 카드 (구글 캘린더식) ----------
+     시간을 누르면 그 자리에서 바로 적고, 기존 일정을 누르면 고친다. */
+  var popEl = null;
+
+  function closePop() {
+    if (popEl && popEl.parentNode) popEl.parentNode.removeChild(popEl);
+    popEl = null;
+  }
+
+  function openPop(opts) {
+    closePop();
+    var it = opts.item || null;
+    var date = opts.date;
+    var start = it ? it.time : opts.start;
+    var end = it ? (it.end || "") : opts.end;
+    var color = (it && it.color) || 1;
+    var untimed = toMin(start) == null;
+    var dd = parseISO(date);
+
+    var swatches = "";
+    for (var c = 1; c <= EV_COLORS; c++) {
+      swatches += '<button type="button" data-color="' + c + '"' +
+        ' aria-pressed="' + (c === color) + '"' +
+        ' style="background:var(--ev-' + c + ')"' +
+        ' aria-label="색 ' + c + '"></button>';
+    }
+
+    var el = document.createElement("div");
+    el.className = "evpop";
+    el.setAttribute("role", "dialog");
+    el.setAttribute("aria-label", it ? "일정 고치기" : "일정 추가");
+    el.innerHTML =
+      '<div class="pop-when"><span class="d">' +
+        DOW[(dd.getDay() + 6) % 7] + " " + (dd.getMonth() + 1) + "/" + dd.getDate() + "</span>" +
+        (untimed
+          ? '<span>시간 없음</span>'
+          : '<input class="tm" id="popStart" type="text" inputmode="numeric" maxlength="5" value="' +
+            esc(start) + '" aria-label="시작 시간">' +
+            "<span>–</span>" +
+            '<input class="tm" id="popEnd" type="text" inputmode="numeric" maxlength="5" value="' +
+            esc(end) + '" aria-label="종료 시간">') +
+      "</div>" +
+      '<input type="text" id="popTitle" placeholder="일정 내용" value="' +
+        esc(it ? it.title : "") + '" aria-label="일정 내용">' +
+      '<div class="pop-colors" role="group" aria-label="일정 색">' + swatches + "</div>" +
+      '<div class="pop-foot">' +
+        (it ? '<button type="button" class="pop-del">삭제</button>' : "") +
+        '<span class="spacer"></span>' +
+        '<button type="button" class="pop-cancel">취소</button>' +
+        '<button type="button" class="pop-save">저장</button>' +
+      "</div>";
+
+    document.body.appendChild(el);
+    popEl = el;
+
+    /* 화면 밖으로 나가지 않게 클릭 지점 근처에 놓는다 */
+    var w = el.offsetWidth, h = el.offsetHeight;
+    var x = Math.min(Math.max(8, opts.x - w / 2), window.innerWidth - w - 8);
+    var y = opts.y + 12;
+    if (y + h > window.innerHeight - 8) y = Math.max(8, opts.y - h - 12);
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+
+    var titleEl = el.querySelector("#popTitle");
+    titleEl.focus();
+    titleEl.select();
+
+    var chosen = color;
+    el.querySelector(".pop-colors").addEventListener("click", function (e) {
+      var b = e.target.closest("button[data-color]");
+      if (!b) return;
+      chosen = +b.getAttribute("data-color");
+      Array.prototype.forEach.call(el.querySelectorAll("button[data-color]"), function (x2) {
+        x2.setAttribute("aria-pressed", String(+x2.getAttribute("data-color") === chosen));
+      });
+    });
+
+    function save() {
+      var title = titleEl.value.trim();
+      if (!title) { titleEl.focus(); return; }
+      var sEl = el.querySelector("#popStart"), eEl = el.querySelector("#popEnd");
+      var st = untimed ? "––:––" : normTime(sEl.value);
+      var en = untimed ? null : (eEl.value.trim() ? normTime(eEl.value) : null);
+      if (en === "––:––") en = null;
+
+      if (it) {
+        it.title = title; it.time = st; it.end = en; it.color = chosen;
+      } else {
+        day(date).schedule.push({
+          id: uid(), time: st, end: en, title: title, done: false, color: chosen
+        });
+      }
+      closePop();
+      keepScroll();
+      persist();
+    }
+
+    el.querySelector(".pop-save").addEventListener("click", save);
+    el.querySelector(".pop-cancel").addEventListener("click", closePop);
+    var delBtn = el.querySelector(".pop-del");
+    if (delBtn) delBtn.addEventListener("click", function () {
+      var d0 = day(date);
+      d0.schedule = d0.schedule.filter(function (x2) { return x2.id !== it.id; });
+      closePop();
+      keepScroll();
+      persist();
+    });
+
+    el.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); save(); }
+      else if (e.key === "Escape") { e.preventDefault(); closePop(); }
+    });
+  }
+
+  /* 카드 밖을 누르면 닫는다 */
+  document.addEventListener("mousedown", function (e) {
+    if (popEl && !e.target.closest(".evpop")) closePop();
+  });
+  window.addEventListener("resize", closePop);
 
   function keepScroll() {
     var body = ledger.querySelector(".cal-body");
