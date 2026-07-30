@@ -2279,7 +2279,7 @@
     if (evBox) {
       var ek = evBox.getAttribute("data-ev").split("|");
       var item = findItem(ek[0], ek[1]);
-      if (item) openPop({ date: ek[0], item: item, x: e.clientX, y: e.clientY });
+      if (item) openPop({ date: ek[0], item: item, evEl: evBox, x: e.clientX, y: e.clientY });
       return;
     }
 
@@ -2443,14 +2443,23 @@
     document.body.appendChild(el);
     popEl = el;
 
-    /* 화면 밖으로 나가지 않게 클릭 지점 근처에 놓는다 */
+    /* 일정 칸을 가리지 않도록 그 칸의 옆에 붙인다.
+       오른쪽에 자리가 없으면 왼쪽으로 넘긴다. */
     function place() {
-      var w = el.offsetWidth, h = el.offsetHeight;
-      var x = Math.min(Math.max(8, opts.x - w / 2), window.innerWidth - w - 8);
-      var y = opts.y + 12;
-      if (y + h > window.innerHeight - 8) y = Math.max(8, opts.y - h - 12);
-      el.style.left = Math.max(8, x) + "px";
-      el.style.top = Math.max(8, y) + "px";
+      var w = el.offsetWidth, h = el.offsetHeight, gap = 12;
+      var box = draftEl || opts.evEl;
+      var x, y;
+      if (box && box.getBoundingClientRect) {
+        var a = box.getBoundingClientRect();
+        x = a.right + gap;
+        if (x + w > window.innerWidth - 8) x = a.left - w - gap;   // 왼쪽에 붙인다
+        y = a.top - 6;
+      } else {
+        x = opts.x - w / 2;
+        y = opts.y + gap;
+      }
+      el.style.left = Math.min(Math.max(8, x), Math.max(8, window.innerWidth - w - 8)) + "px";
+      el.style.top = Math.min(Math.max(8, y), Math.max(8, window.innerHeight - h - 8)) + "px";
     }
     place();
     el.__place = place;
@@ -2490,6 +2499,7 @@
       var moveDraft = function () {
         showDraft(opts.col, normTime(sEl0.value),
           eEl0.value.trim() ? normTime(eEl0.value) : "", chosen, titleEl.value.trim());
+        place();
       };
       sEl0.addEventListener("change", moveDraft);
       eEl0.addEventListener("change", moveDraft);
