@@ -339,15 +339,30 @@
   .cal-dh.is-today .dnum { background: var(--accent); color: var(--on-accent); }
   .cal-dh.is-weekend .dow { color: var(--s2); }
 
-  .cal-allday { border-bottom: 1px solid var(--hair); min-height: 32px; }
+  /* Event 줄은 타임라인의 30분 칸과 같은 높이를 기준으로 삼는다 */
+  .cal-allday { border-bottom: 1px solid var(--hair); min-height: calc(var(--hh) / 2); }
+  .ad-in {
+    width: 100%; min-width: 0; font: inherit; font-size: 10.5px;
+    height: calc(var(--hh) / 2); line-height: 1;
+    border: 0; border-bottom: 1px solid var(--hair);
+    background: transparent; color: var(--ink); padding: 0 2px; border-radius: 0;
+  }
+  .ad-in::placeholder { color: var(--baseline); }
+  .ad-in:hover { background: var(--surface); }
+  .ad-in:focus-visible { outline: 1.5px solid var(--accent); background: var(--surface); }
   .cal-adlabel {
     display: flex; align-items: center; justify-content: flex-end;
     padding-right: 8px; font-family: var(--mono); font-size: 9.5px; color: var(--muted);
     white-space: nowrap;
   }
   .cal-ad {
-    border-left: 1px solid var(--hair); padding: 4px;
-    display: flex; flex-direction: column; gap: 3px; min-width: 0;
+    border-left: 1px solid var(--hair); padding: 1px 3px;
+    display: flex; flex-direction: column; gap: 1px; min-width: 0;
+  }
+  /* Event 칩도 30분 칸 높이에 맞춰 한 줄로 */
+  .cal-ad .ev.chip {
+    height: calc(var(--hh) / 2); padding: 0 4px;
+    align-items: center; font-size: 10px; line-height: 1;
   }
 
   /* 날짜별 할 일 다섯 칸 */
@@ -1265,7 +1280,10 @@
         return '<div class="cal-ad">' + schedOf(date)
           .filter(function (it) { return toMin(it.time) == null; })
           .map(function (it) { return evHTML(date, it, { chip: true }); })
-          .join("") + "</div>";
+          .join("") +
+          '<input type="text" class="ad-in" data-adnew="' + date + '" placeholder="·"' +
+          ' aria-label="' + esc(date) + ' 시간 없는 일정 추가">' +
+          "</div>";
       }).join("") + "</div>";
 
     var todoRow = '<div class="cal-todo"><div class="cal-adlabel">Todo</div>' +
@@ -2165,6 +2183,20 @@
   ledger.addEventListener("change", function (e) {
     /* 할 일은 요약이나 차트에 영향이 없으므로 화면을 다시 그리지 않는다.
        입력 중이던 칸의 초점과 스크롤 위치를 그대로 두기 위함이다. */
+    /* Event 칸에 적으면 시간 없는 일정으로 등록한다 */
+    var ad = e.target.closest("input[data-adnew]");
+    if (ad) {
+      var title = ad.value.trim();
+      ad.value = "";
+      if (!title) return;
+      var adDate = ad.getAttribute("data-adnew");
+      day(adDate).schedule.push({
+        id: uid(), time: "––:––", end: null, title: title, done: false
+      });
+      keepScroll();
+      return persist();
+    }
+
     var td = e.target.closest("input[data-todo], input[data-todotext]");
     if (td) {
       var isText = td.hasAttribute("data-todotext");
@@ -2194,6 +2226,12 @@
     if (e.target.closest("#addDay, #addStart, #addEnd, #addTitle")) {
       e.preventDefault();
       return addFromBar();
+    }
+    /* Event 칸은 엔터로도 바로 등록한다 */
+    if (e.target.closest("input[data-adnew]")) {
+      e.preventDefault();
+      e.target.dispatchEvent(new Event("change", { bubbles: true }));
+      return;
     }
     var f = e.target.closest("input[data-n], input[data-t]");
     if (!f) return;
