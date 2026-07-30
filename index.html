@@ -481,9 +481,10 @@
   /* ---------- 차트 ---------- */
 
   /* 두 열 — 지표 6개가 3행, 마지막 종합 차트가 한 행을 통째로 */
+  /* 일곱 항목을 한 줄에. 좁아지면 자동으로 접힌다 */
   .chart-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(142px, 1fr));
   }
   .chart-block {
     padding: 14px 16px 12px;
@@ -491,7 +492,6 @@
     border-right: 1px solid var(--hair);
     min-width: 0;
   }
-  .chart-block:last-child { grid-column: 1 / -1; border-right: 0; }
 
   /* 주간 메모 */
   .notes { display: flex; flex-direction: column; gap: 9px; padding: 14px 16px 16px; }
@@ -504,6 +504,23 @@
     font-variant-numeric: tabular-nums; padding-top: 2px;
   }
   .note-item .what { color: var(--ink-2); overflow-wrap: anywhere; }
+  .chart-latest {
+    font-family: var(--serif); font-size: 19px; font-weight: 600;
+    line-height: 1.1; letter-spacing: -.01em; margin: 1px 0 5px;
+    font-variant-numeric: tabular-nums;
+  }
+  .chart-latest .cunit {
+    font-family: var(--mono); font-size: 8.5px; font-weight: 500;
+    color: var(--muted); letter-spacing: .06em; margin-left: 3px;
+  }
+  .chart-grid .chart-block { padding: 11px 11px 10px; }
+  .chart-grid .chart-head h3 { font-size: 11.5px; }
+  .chart-grid .legend {
+    margin: 6px 0 0; gap: 3px 7px; flex-wrap: wrap;
+  }
+  .chart-grid .legend span { font-size: 9.5px; gap: 3px; }
+  .chart-grid .legend i { width: 7px; height: 7px; }
+
   .chart-head {
     display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px 12px;
     margin-bottom: 8px;
@@ -1448,6 +1465,9 @@
 
   /* ============================ 차트 ============================ */
 
+  /* 건강 추이는 일곱 항목을 한 줄에 나란히 두는 작은 차트다.
+     좁은 폭에서 눈금 글자가 뭉치므로 축 글자를 빼고 값은 제목 옆에 적는다. */
+  var COMPACT = true;
   var W = 320, H = 128, PL = 32, PR = 14, PT = 12, PB = 22;
   var IW = W - PL - PR, IH = H - PT - PB;
 
@@ -1479,6 +1499,15 @@
 
   function axes(cfg, y, lo, hi, banded) {
     var g = "";
+    if (COMPACT) {
+      /* 위 눈금선 하나와 밑변만 — 숫자와 요일은 제목·풍선에서 읽는다 */
+      g += '<line x1="' + PL + '" x2="' + (W - PR) + '" y1="' + y(hi).toFixed(1) +
+        '" y2="' + y(hi).toFixed(1) +
+        '" stroke="var(--grid)" stroke-width="1" vector-effect="non-scaling-stroke"/>' +
+        '<line x1="' + PL + '" x2="' + (W - PR) + '" y1="' + (PT + IH) + '" y2="' + (PT + IH) +
+        '" stroke="var(--baseline)" stroke-width="1" vector-effect="non-scaling-stroke"/>';
+      return g;
+    }
     var ticks = cfg.ticks || [lo, (lo + hi) / 2, hi];
     ticks.forEach(function (t) {
       var yy = y(t).toFixed(1);
@@ -1509,8 +1538,13 @@
 
   // 한 행을 통째로 쓰는 차트는 더 넓은 좌표계로 그린다 (글자·선 왜곡 없이)
   function useWidth(cfg) {
-    W = cfg.w || 320;
+    if (COMPACT) {
+      W = 150; H = 74; PL = 5; PR = 5; PT = 9; PB = 5;
+    } else {
+      W = cfg.w || 320; H = 128; PL = 32; PR = 14; PT = 12; PB = 22;
+    }
     IW = W - PL - PR;
+    IH = H - PT - PB;
   }
 
   function makeSvg(cfg) {
@@ -1559,10 +1593,14 @@
           '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>';
         pts.forEach(function (p, k) {
           var last = k === pts.length - 1;
-          marks += '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="' + (last ? 4.5 : 3.2) +
-            '" fill="' + s.color + '" stroke="var(--surface)" stroke-width="2"/>';
+          var r = COMPACT ? (last ? 2.6 : 0) : (last ? 4.5 : 3.2);
+          if (!r) return;
+          marks += '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="' + r +
+            '" fill="' + s.color + '" stroke="var(--surface)" stroke-width="' + (COMPACT ? 1.4 : 2) + '"/>';
         });
-        // 마지막 값만 직접 표기 — 모든 점에 숫자를 얹지 않는다
+        // 마지막 값만 직접 표기 — 모든 점에 숫자를 얹지 않는다.
+        // 컴팩트에서는 제목 옆에 크게 적으므로 그림 안에는 넣지 않는다.
+        if (COMPACT) return;
         var lp = pts[pts.length - 1];
         var up = lp[1] > PT + 18;
         marks += '<text x="' + (lp[0] - 7).toFixed(1) + '" y="' + (up ? lp[1] - 8 : lp[1] + 13).toFixed(1) +
@@ -1608,12 +1646,34 @@
       body + cross + marks + hitRects() + "</svg>";
   }
 
+  /* 계열의 마지막 기록값 */
+  function lastVal(vals) {
+    for (var i = vals.length - 1; i >= 0; i--) if (vals[i] != null) return vals[i];
+    return null;
+  }
+
   function chartBlock(cfg) {
     var legend = cfg.series.length > 1
       ? '<span class="legend">' + cfg.series.map(function (s) {
           return '<span><i style="background:' + s.color + '"></i>' + esc(s.name) + "</span>";
         }).join("") + "</span>"
       : "";
+
+    if (COMPACT) {
+      var lv = cfg.latestFmt ? cfg.latestFmt() : (function () {
+        var v = lastVal(cfg.series[0].values);
+        return v == null ? "—" : cfg.valueFmt(v);
+      })();
+      return '<div class="chart-block">' +
+        '<div class="chart-head"><h3>' + esc(cfg.title) + "</h3></div>" +
+        '<div class="chart-latest">' + esc(lv) +
+        '<span class="cunit">' + esc(cfg.scale) + "</span></div>" +
+        '<div class="plot" data-chart="' + esc(cfg.id) + '">' + makeSvg(cfg) +
+        '<div class="tip" role="status"></div></div>' +
+        legend +
+      "</div>";
+    }
+
     return '<div class="chart-block">' +
       '<div class="chart-head"><h3>' + esc(cfg.title) + "</h3>" +
       '<span class="scale">' + esc(cfg.scale) + "</span>" + legend + "</div>" +
@@ -1646,6 +1706,10 @@
         series: [{ name: "수축기", color: S1, values: s.sys }, { name: "이완기", color: S2, values: s.dia }],
         domain: [50, 160], ticks: [60, 90, 120, 150],
         valueFmt: one,
+        latestFmt: function () {
+          var a = lastVal(s.sys), b = lastVal(s.dia);
+          return (a == null || b == null) ? "—" : a + "/" + b;
+        },
         tipFmt: function (i) {
           if (s.sys[i] == null) return null;
           return [{ color: S1, name: "수축기", text: s.sys[i] + " mmHg" },
@@ -1692,12 +1756,19 @@
         } },
 
       { id: "mood", title: "기분 · 컨디션 · 전체평가", scale: "5점 척도",
-        aria: "요일별 기분, 컨디션, 전체평가", kind: "grouped", w: 700,
+        aria: "요일별 기분, 컨디션, 전체평가",
+        // 좁은 칸에서 막대 21개는 뭉쳐 보이므로 선으로 그린다
+        kind: COMPACT ? "line" : "grouped", w: 700,
         series: [{ name: "기분", color: S1, values: s.mood },
                  { name: "컨디션", color: S3, values: s.condition },
                  { name: "전체평가", color: S2, values: s.overall }],
         domain: [0, 5], ticks: [0, 5],
         valueFmt: one,
+        latestFmt: function () {
+          var m = lastVal(s.mood), c = lastVal(s.condition), v = lastVal(s.overall);
+          var f = function (x) { return x == null ? "–" : x; };
+          return (m == null && c == null && v == null) ? "—" : f(m) + "·" + f(c) + "·" + f(v);
+        },
         tipFmt: function (i) {
           if (s.mood[i] == null && s.condition[i] == null && s.overall[i] == null) return null;
           return [{ color: S1, name: "기분", text: s.mood[i] == null ? "—" : s.mood[i] + " / 5" },
