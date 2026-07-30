@@ -18,8 +18,31 @@
     --s1:           #2a78d6;
     --s2:           #eb6834;
     --s3:           #1baf7a;
-    --ev-1: #1d3a5f; --ev-2: #2a6fbf; --ev-3: #1f7a4d;
-    --ev-4: #a86a12; --ev-5: #a83a52; --ev-6: #5b3fa8;
+    /* 일정 색 — 구글 캘린더 팔레트. 색마다 대비가 높은 쪽으로 글자색을 정함 */
+    --ev-1: #ad1357; --ev-1-fg: #ffffff;
+    --ev-2: #d91a60; --ev-2-fg: #ffffff;
+    --ev-3: #e67c73; --ev-3-fg: #000000;
+    --ev-4: #d50000; --ev-4-fg: #ffffff;
+    --ev-5: #f4511e; --ev-5-fg: #000000;
+    --ev-6: #ef6c02; --ev-6-fg: #000000;
+    --ev-7: #f09400; --ev-7-fg: #000000;
+    --ev-8: #f6bf26; --ev-8-fg: #000000;
+    --ev-9: #e4c442; --ev-9-fg: #000000;
+    --ev-10: #c0ca33; --ev-10-fg: #000000;
+    --ev-11: #7cb442; --ev-11-fg: #000000;
+    --ev-12: #0b8043; --ev-12-fg: #ffffff;
+    --ev-13: #33b679; --ev-13-fg: #000000;
+    --ev-14: #009688; --ev-14-fg: #000000;
+    --ev-15: #039be5; --ev-15-fg: #000000;
+    --ev-16: #4286f5; --ev-16-fg: #000000;
+    --ev-17: #7986cb; --ev-17-fg: #000000;
+    --ev-18: #3f51b5; --ev-18-fg: #ffffff;
+    --ev-19: #b49ddb; --ev-19-fg: #000000;
+    --ev-20: #9f6aaf; --ev-20-fg: #000000;
+    --ev-21: #8e24aa; --ev-21-fg: #ffffff;
+    --ev-22: #795648; --ev-22-fg: #ffffff;
+    --ev-23: #616161; --ev-23-fg: #ffffff;
+    --ev-24: #a79c8f; --ev-24-fg: #000000;
     --good:         #0ca30c;
     --warning:      #fab219;
     --serious:      #ec835a;
@@ -52,8 +75,6 @@
       --s2:          #d95926;
     --s3:          #199e70;
       --s3:          #199e70;
-      --ev-1: #9dbfe8; --ev-2: #7fb3ea; --ev-3: #6fc79a;
-      --ev-4: #e0ab4e; --ev-5: #e88ba0; --ev-6: #a999ec;
       --w1: #184f95; --w2: #256abf; --w3: #3987e5; --w4: #6da7ec; --w5: #9ec5f4;
       --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
     }
@@ -75,8 +96,6 @@
     --s1:          #3987e5;
     --s2:          #d95926;
     --s3:          #199e70;
-    --ev-1: #9dbfe8; --ev-2: #7fb3ea; --ev-3: #6fc79a;
-    --ev-4: #e0ab4e; --ev-5: #e88ba0; --ev-6: #a999ec;
     --w1: #184f95; --w2: #256abf; --w3: #3987e5; --w4: #6da7ec; --w5: #9ec5f4;
     --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
   }
@@ -412,7 +431,7 @@
 
   /* 시간을 누르면 그 자리에 뜨는 일정 입력 카드 */
   .evpop {
-    position: fixed; z-index: 60; width: 268px;
+    position: fixed; z-index: 60; width: 302px;
     background: var(--surface); color: var(--ink);
     border: 1px solid var(--baseline); border-radius: 11px;
     box-shadow: var(--shadow); padding: 13px 14px 12px;
@@ -430,12 +449,18 @@
   }
   .evpop input.tm { width: 62px; font-family: var(--mono); text-align: center; }
   .evpop input:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
-  .evpop .pop-colors { display: flex; gap: 6px; }
-  .evpop .pop-colors button {
-    width: 22px; height: 22px; border-radius: 50%; padding: 0;
-    border: 2px solid transparent; cursor: pointer;
+  /* 24색을 두 줄로 */
+  .evpop .pop-colors {
+    display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px;
   }
-  .evpop .pop-colors button[aria-pressed="true"] { border-color: var(--ink); }
+  .evpop .pop-colors button {
+    width: 100%; aspect-ratio: 1; border-radius: 50%; padding: 0;
+    border: 2px solid transparent; cursor: pointer; min-width: 0;
+  }
+  .evpop .pop-colors button[aria-pressed="true"] {
+    border-color: var(--ink);
+    box-shadow: 0 0 0 1px var(--surface) inset;
+  }
   .evpop .pop-foot { display: flex; align-items: center; gap: 7px; margin-top: 1px; }
   .evpop .pop-foot .spacer { flex: 1; }
   .evpop .pop-foot button { font-size: 12.5px; padding: 5px 11px; }
@@ -995,7 +1020,13 @@
     Object.keys(state.days).forEach(function (date) {
       var d = state.days[date];
       if (!d || !d.schedule) return;
-      d.schedule.forEach(function (it) { if (!it.id) it.id = uid(); });
+      d.schedule.forEach(function (it) {
+        if (!it.id) it.id = uid();
+        if (it.color && it.color <= 6 && !it.colorMapped) {
+          it.color = EV_LEGACY[it.color] || EV_DEFAULT;
+          it.colorMapped = true;
+        }
+      });
     });
   }
 
@@ -1296,10 +1327,17 @@
       '<span class="n">' + esc(it.title) + "</span>";
   }
 
-  var EV_COLORS = 6;
-  function evColorVar(it) {
+  var EV_COLORS = 24;
+  var EV_DEFAULT = 16;            // 구글 기본색과 같은 파랑
+  /* 6색 시절 기록을 새 팔레트의 가까운 색으로 옮긴다 */
+  var EV_LEGACY = { 1: 18, 2: 16, 3: 12, 4: 7, 5: 1, 6: 21 };
+  function evColorIdx(it) {
     var n = it && it.color;
-    return (n >= 1 && n <= EV_COLORS) ? "var(--ev-" + n + ")" : "var(--accent)";
+    return (n >= 1 && n <= EV_COLORS) ? n : EV_DEFAULT;
+  }
+  function evColorCss(it) {
+    var n = evColorIdx(it);
+    return "background:var(--ev-" + n + ");color:var(--ev-" + n + "-fg)";
   }
 
   function evHTML(date, it, opts) {
@@ -1308,7 +1346,7 @@
     var full = opts.chip
       ? "Event · " + it.title
       : it.time + "–" + fromMin(endMin(it)) + " " + it.title;
-    var style = (opts.style || "") + ";background:" + evColorVar(it);
+    var style = (opts.style || "") + ";" + evColorCss(it);
     return '<div class="' + cls + '" title="' + esc(full) + '"' +
       ' data-ev="' + esc(date) + '|' + esc(it.id) + '"' +
       ' style="' + style + '">' +
@@ -2321,7 +2359,7 @@
     var date = opts.date;
     var start = it ? it.time : opts.start;
     var end = it ? (it.end || "") : opts.end;
-    var color = (it && it.color) || 1;
+    var color = evColorIdx(it);
     var untimed = toMin(start) == null;
     var dd = parseISO(date);
 
