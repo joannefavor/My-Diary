@@ -343,12 +343,13 @@
   }
 
   /* 한 화면에 한 주가 들어오도록 시간당 높이를 낮게 잡는다 */
-  .cal { --hh: 24px; --gut: 44px; }
+  .cal { --hh: 24px; --gut: 44px; --cols: 7; }
   .cal-scroll { overflow-x: auto; }
   .cal-inner { min-width: 680px; }
+  .cal.is-day .cal-inner { min-width: 0; }
 
   .cal-head, .cal-allday, .cal-body {
-    display: grid; grid-template-columns: var(--gut) repeat(7, minmax(0, 1fr));
+    display: grid; grid-template-columns: var(--gut) repeat(var(--cols), minmax(0, 1fr));
   }
   .cal-head { border-bottom: 1px solid var(--hair); }
   .cal-dh { padding: 7px 6px 8px; text-align: center; border-left: 1px solid var(--hair); }
@@ -399,7 +400,7 @@
 
   /* 날짜별 할 일 다섯 칸 */
   .cal-todo {
-    display: grid; grid-template-columns: var(--gut) repeat(7, minmax(0, 1fr));
+    display: grid; grid-template-columns: var(--gut) repeat(var(--cols), minmax(0, 1fr));
     border-bottom: 1px solid var(--hair); background: var(--surface-2);
   }
   .cal-td {
@@ -428,6 +429,73 @@
   .td-in:hover { background: var(--surface); }
   .td-in:focus-visible { outline: 1.5px solid var(--accent); outline-offset: 0; background: var(--surface); }
   .td-row.done .td-in { color: var(--muted); text-decoration: line-through; }
+
+  /* 월 보기 — 6주 × 7일 격자 */
+  .mon-head, .mon-grid {
+    display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+  .mon-head { border-bottom: 1px solid var(--hair); }
+  .mon-dh {
+    padding: 7px 4px; text-align: center;
+    font-family: var(--mono); font-size: 10px; letter-spacing: .08em; color: var(--muted);
+    border-left: 1px solid var(--hair);
+  }
+  .mon-dh.is-weekend { color: var(--s2); }
+  .mon-cell {
+    border-left: 1px solid var(--hair); border-bottom: 1px solid var(--hair);
+    min-height: 92px; padding: 4px 5px 5px;
+    display: flex; flex-direction: column; gap: 2px; min-width: 0;
+    cursor: cell;
+  }
+  .mon-cell.is-out { background: var(--surface-2); }
+  .mon-cell.is-today .mon-num {
+    background: var(--accent); color: var(--on-accent);
+  }
+  .mon-num {
+    align-self: flex-start; min-width: 20px; height: 20px; padding: 0 5px;
+    display: grid; place-items: center; border-radius: 999px;
+    font-family: var(--serif); font-size: 12.5px; font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .mon-cell.is-out .mon-num { color: var(--muted); }
+  .mon-ev {
+    font-size: 10px; line-height: 1.25; border-radius: 4px;
+    padding: 1px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .mon-ev.done { opacity: .55; text-decoration: line-through; }
+  .mon-more { font-size: 9.5px; color: var(--muted); padding-left: 4px; }
+  .mon-todo { font-size: 9.5px; color: var(--ink-2); padding-left: 2px; }
+
+  /* 년 보기 — 작은 달력 12개 */
+  .yr-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+    gap: 16px 18px; padding: 16px;
+  }
+  .yr-m { min-width: 0; }
+  .yr-mt {
+    font-family: var(--serif); font-size: 13px; font-weight: 600;
+    margin-bottom: 5px; padding-left: 2px;
+  }
+  .yr-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
+  .yr-dh {
+    font-family: var(--mono); font-size: 8.5px; color: var(--muted);
+    text-align: center; padding-bottom: 2px; min-width: 0;
+  }
+  .yr-d {
+    aspect-ratio: 1; display: grid; place-items: center; position: relative;
+    font-size: 10px; font-variant-numeric: tabular-nums;
+    border-radius: 50%; cursor: pointer; color: var(--ink-2);
+    min-width: 0; padding: 0; border: 0; background: none;
+  }
+  .yr-d.is-out { color: transparent; pointer-events: none; }
+  .yr-d.has-ev { font-weight: 700; color: var(--ink); }
+  .yr-d.has-ev::after {
+    content: ""; position: absolute; bottom: 1px; left: 50%; transform: translateX(-50%);
+    width: 3px; height: 3px; border-radius: 50%; background: var(--accent);
+  }
+  .yr-d.is-today { background: var(--accent); color: var(--on-accent); font-weight: 700; }
+  .yr-d.is-today::after { background: var(--on-accent); }
+  .yr-d:hover:not(.is-out):not(.is-today) { background: var(--surface-2); }
 
   /* 시간을 누르면 그 자리에 먼저 채워지는 미리보기 칸 */
   .ev.draft {
@@ -825,9 +893,12 @@
 
   <section class="panel">
     <header>
-      <h2>이번 주 일정</h2>
+      <h2 id="ledgerTitle">이번 주 일정</h2>
       <div class="viewtoggle" id="viewToggle" role="group" aria-label="일정 보기 방식">
-        <button type="button" data-view="cal" aria-pressed="true">캘린더</button>
+        <button type="button" data-view="day" aria-pressed="false">일</button>
+        <button type="button" data-view="cal" aria-pressed="true">주</button>
+        <button type="button" data-view="month" aria-pressed="false">월</button>
+        <button type="button" data-view="year" aria-pressed="false">년</button>
         <button type="button" data-view="list" aria-pressed="false">목록</button>
       </div>
     </header>
@@ -1081,6 +1152,14 @@
   }
   function r1(n) { return Math.round(n * 10) / 10; }
 
+  /* 캘린더가 보여줄 날짜. 건강 요약은 늘 weekStart 주를 따른다. */
+  function calDates() {
+    if (view === "day") return [selected];
+    return weekDates();
+  }
+  function dowOf(date) { return DOW[(parseISO(date).getDay() + 6) % 7]; }
+  function isWeekendDate(date) { var g = parseISO(date).getDay(); return g === 0 || g === 6; }
+
   function weekDates() {
     var out = [];
     for (var i = 0; i < 7; i++) out.push(iso(addDays(weekStart, i)));
@@ -1276,9 +1355,15 @@
 
   function renderLedger() {
     var host = document.getElementById("ledger");
-    host.className = view === "cal" ? "cal" : "ledger";
-    host.innerHTML = view === "cal" ? calMarkup() : listMarkup();
-    if (view === "cal") {
+    var isCal = view === "cal" || view === "day";
+    host.className = isCal ? ("cal" + (view === "day" ? " is-day" : "")) : "ledger";
+    if (isCal) host.style.setProperty("--cols", String(calDates().length));
+    else host.style.removeProperty("--cols");
+    host.innerHTML = isCal ? calMarkup()
+      : view === "month" ? monthMarkup()
+      : view === "year" ? yearMarkup()
+      : listMarkup();
+    if (isCal) {
       var body = host.querySelector(".cal-body");
       if (body) body.scrollTop = calScroll;
     }
@@ -1373,14 +1458,14 @@
   }
 
   function calMarkup() {
-    var r = calRange(), dates = weekDates();
+    var r = calRange(), dates = calDates();
     var nowMin = new Date().getHours() * 60 + new Date().getMinutes();
 
     var head = '<div class="cal-head"><div></div>' + dates.map(function (date, i) {
       var dd = parseISO(date);
       return '<div class="cal-dh' + (date === TODAY ? " is-today" : "") +
-        (i >= 5 ? " is-weekend" : "") + '">' +
-        '<span class="dow">' + DOW[i] + "</span>" +
+        (isWeekendDate(date) ? " is-weekend" : "") + '">' +
+        '<span class="dow">' + dowOf(date) + "</span>" +
         '<span class="dnum">' + dd.getDate() + "</span></div>";
     }).join("") + "</div>";
 
@@ -1456,6 +1541,84 @@
   }
 
   /* ---------- 목록 ---------- */
+
+  /* ---------- 년 ---------- */
+
+  function yearMarkup() {
+    var y = parseISO(selected).getFullYear();
+    var out = "";
+    for (var m = 0; m < 12; m++) {
+      var first = new Date(y, m, 1);
+      var start = mondayOf(first);
+      var cells = "";
+      for (var i = 0; i < 42; i++) {
+        var date = iso(addDays(start, i));
+        var dd = parseISO(date);
+        if (dd.getMonth() !== m) { cells += '<span class="yr-d is-out">·</span>'; continue; }
+        var has = schedOf(date).length > 0;
+        cells += '<button type="button" class="yr-d' + (has ? " has-ev" : "") +
+          (date === TODAY ? " is-today" : "") + '" data-goday="' + date + '"' +
+          ' aria-label="' + esc(date) + (has ? " 일정 있음" : "") + '">' +
+          dd.getDate() + "</button>";
+      }
+      out += '<div class="yr-m"><div class="yr-mt">' + (m + 1) + '월</div>' +
+        '<div class="yr-days">' +
+        DOW.map(function (d) { return '<span class="yr-dh">' + d + "</span>"; }).join("") +
+        cells + "</div></div>";
+    }
+    return '<div class="yr-grid">' + out + "</div>";
+  }
+
+  /* ---------- 월 ---------- */
+
+  function monthDates() {
+    var base = parseISO(selected);
+    var first = new Date(base.getFullYear(), base.getMonth(), 1);
+    var start = mondayOf(first);
+    var out = [];
+    for (var i = 0; i < 42; i++) out.push(iso(addDays(start, i)));
+    return out;
+  }
+
+  function monthMarkup() {
+    var base = parseISO(selected), mon = base.getMonth();
+    var dates = monthDates();
+
+    var head = '<div class="mon-head">' + DOW.map(function (d, i) {
+      return '<div class="mon-dh' + (i >= 5 ? " is-weekend" : "") + '">' + d + "</div>";
+    }).join("") + "</div>";
+
+    var cells = dates.map(function (date) {
+      var dd = parseISO(date);
+      var items = schedOf(date).slice().sort(function (a, b) {
+        var x = toMin(a.time), y = toMin(b.time);
+        if (x == null) return -1;
+        if (y == null) return 1;
+        return x - y;
+      });
+      var shown = items.slice(0, 3).map(function (it) {
+        var t = toMin(it.time) == null ? "" : it.time + " ";
+        return '<div class="mon-ev' + (it.done ? " done" : "") + '"' +
+          ' data-ev="' + esc(date) + "|" + esc(it.id) + '"' +
+          ' style="' + evColorCss(it) + '" title="' + esc(t + it.title) + '">' +
+          esc(t + it.title) + "</div>";
+      }).join("");
+      var more = items.length > 3
+        ? '<div class="mon-more">+' + (items.length - 3) + "건</div>" : "";
+      var todo = todosOf(date).filter(function (t) { return t.text; });
+      var todoLine = todo.length
+        ? '<div class="mon-todo">☑ ' + todo.filter(function (t) { return t.done; }).length +
+          "/" + todo.length + "</div>"
+        : "";
+
+      return '<div class="mon-cell' + (dd.getMonth() === mon ? "" : " is-out") +
+        (date === TODAY ? " is-today" : "") + '" data-monday="' + date + '">' +
+        '<span class="mon-num">' + dd.getDate() + "</span>" +
+        shown + more + todoLine + "</div>";
+    }).join("");
+
+    return head + '<div class="mon-grid">' + cells + "</div>";
+  }
 
   function listMarkup() {
     return weekDates().map(function (date, i) {
@@ -2213,10 +2376,27 @@
      드롭다운처럼 여러 번에 나눠 고르는 입력은 폼을 다시 그리면
      고르던 중간 상태가 지워지므로, 그럴 때 이 함수를 쓴다. */
   function renderExceptForm() {
-    var a = weekStart, b = addDays(weekStart, 6);
-    document.getElementById("weekRange").textContent =
-      (a.getMonth() + 1) + "월 " + a.getDate() + "일 – " +
-      (a.getMonth() === b.getMonth() ? "" : (b.getMonth() + 1) + "월 ") + b.getDate() + "일";
+    var lab = document.getElementById("weekRange");
+    if (view === "day") {
+      var d0 = parseISO(selected);
+      lab.textContent = (d0.getMonth() + 1) + "월 " + d0.getDate() + "일 (" + dowOf(selected) + ")";
+    } else if (view === "month") {
+      var m0 = parseISO(selected);
+      lab.textContent = m0.getFullYear() + "년 " + (m0.getMonth() + 1) + "월";
+    } else if (view === "year") {
+      lab.textContent = parseISO(selected).getFullYear() + "년";
+    } else {
+      var a = weekStart, b = addDays(weekStart, 6);
+      lab.textContent =
+        (a.getMonth() + 1) + "월 " + a.getDate() + "일 – " +
+        (a.getMonth() === b.getMonth() ? "" : (b.getMonth() + 1) + "월 ") + b.getDate() + "일";
+    }
+    var title = document.getElementById("ledgerTitle");
+    if (title) title.textContent =
+      view === "day" ? "이 날 일정"
+      : view === "month" ? "이 달 일정"
+      : view === "year" ? "올해 일정"
+      : "이번 주 일정";
 
     renderTiles();
     renderLedger();
@@ -2229,12 +2409,24 @@
     renderForm();
   }
 
-  document.getElementById("prevWeek").addEventListener("click", function () {
-    weekStart = addDays(weekStart, -7); selected = iso(weekStart); render();
-  });
-  document.getElementById("nextWeek").addEventListener("click", function () {
-    weekStart = addDays(weekStart, 7); selected = iso(weekStart); render();
-  });
+  /* 보기에 맞춰 하루·한 주·한 달씩 움직인다.
+     건강 요약은 늘 선택한 날이 속한 주를 따라간다. */
+  function step(dir) {
+    var d = parseISO(selected);
+    if (view === "day") {
+      selected = iso(addDays(d, dir));
+    } else if (view === "month") {
+      selected = iso(new Date(d.getFullYear(), d.getMonth() + dir, 1));
+    } else if (view === "year") {
+      selected = iso(new Date(d.getFullYear() + dir, 0, 1));
+    } else {
+      selected = iso(addDays(mondayOf(d), dir * 7));
+    }
+    weekStart = mondayOf(parseISO(selected));
+    render();
+  }
+  document.getElementById("prevWeek").addEventListener("click", function () { step(-1); });
+  document.getElementById("nextWeek").addEventListener("click", function () { step(1); });
   document.getElementById("thisWeek").addEventListener("click", function () {
     weekStart = mondayOf(new Date()); selected = TODAY; render();
   });
@@ -2248,16 +2440,21 @@
 
   var ledger = document.getElementById("ledger");
 
+  function syncViewButtons() {
+    Array.prototype.forEach.call(
+      document.querySelectorAll("#viewToggle button[data-view]"), function (x) {
+        x.setAttribute("aria-pressed", String(x.getAttribute("data-view") === view));
+      });
+  }
+
   document.getElementById("viewToggle").addEventListener("click", function (e) {
     var b = e.target.closest("button[data-view]");
     if (!b) return;
     view = b.getAttribute("data-view");
     calScroll = 0;
-    Array.prototype.forEach.call(this.querySelectorAll("button[data-view]"), function (x) {
-      x.setAttribute("aria-pressed", String(x.getAttribute("data-view") === view));
-    });
+    syncViewButtons();
     try { localStorage.setItem(VIEW_STORE, view); } catch (err) { /* 저장 못 해도 화면은 바뀐다 */ }
-    renderLedger();
+    renderExceptForm();
   });
 
   ledger.addEventListener("click", function (e) {
@@ -2273,6 +2470,26 @@
     if (e.target.closest("button#addBtn")) return addFromBar();
     var add = e.target.closest("button[data-add]");
     if (add) return addItem(add.getAttribute("data-add"));
+
+    /* 년 보기에서 날짜를 누르면 그 날로 간다 */
+    var goDay = e.target.closest("button[data-goday]");
+    if (goDay) {
+      selected = goDay.getAttribute("data-goday");
+      weekStart = mondayOf(parseISO(selected));
+      view = "day";
+      syncViewButtons();
+      return render();
+    }
+
+    /* 월 보기에서 빈 곳을 누르면 그 날로 간다 */
+    var monCell = e.target.closest(".mon-cell");
+    if (monCell && !e.target.closest("[data-ev]")) {
+      selected = monCell.getAttribute("data-monday");
+      weekStart = mondayOf(parseISO(selected));
+      view = "day";
+      syncViewButtons();
+      return render();
+    }
 
     /* 기존 일정을 누르면 고치는 카드를 연다 (체크·삭제 버튼은 위에서 처리됨) */
     var evBox = e.target.closest("[data-ev]");
