@@ -317,7 +317,7 @@
   }
 
   /* 한 화면에 한 주가 들어오도록 시간당 높이를 낮게 잡는다 */
-  .cal { --hh: 30px; --gut: 46px; }
+  .cal { --hh: 24px; --gut: 44px; }
   .cal-scroll { overflow-x: auto; }
   .cal-inner { min-width: 680px; }
 
@@ -350,7 +350,39 @@
     display: flex; flex-direction: column; gap: 3px; min-width: 0;
   }
 
-  .cal-body { max-height: 460px; overflow-y: auto; }
+  /* 날짜별 할 일 다섯 칸 */
+  .cal-todo {
+    display: grid; grid-template-columns: var(--gut) repeat(7, minmax(0, 1fr));
+    border-bottom: 1px solid var(--hair); background: var(--surface-2);
+  }
+  .cal-td {
+    border-left: 1px solid var(--hair); padding: 3px 4px;
+    display: flex; flex-direction: column; gap: 1px; min-width: 0;
+  }
+  .td-row { display: flex; align-items: center; gap: 4px; min-width: 0; }
+  .td-row input[type="checkbox"] {
+    appearance: none; -webkit-appearance: none; flex: none; margin: 0;
+    width: 11px; height: 11px; border: 1.4px solid var(--baseline);
+    border-radius: 3px; background: transparent; cursor: pointer; position: relative;
+  }
+  .td-row input[type="checkbox"]:checked { background: var(--accent); border-color: var(--accent); }
+  .td-row input[type="checkbox"]:checked::after {
+    content: "✓"; position: absolute; inset: 0; display: grid; place-items: center;
+    font-size: 8px; line-height: 1; color: var(--on-accent);
+  }
+  .td-row input[type="checkbox"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .td-in {
+    flex: 1; min-width: 0; font: inherit; font-size: 10.5px; line-height: 1.3;
+    border: 0; border-bottom: 1px solid var(--hair);
+    background: transparent; color: var(--ink); padding: 0 2px 1px;
+    border-radius: 0;
+  }
+  .td-in::placeholder { color: var(--baseline); }
+  .td-in:hover { background: var(--surface); }
+  .td-in:focus-visible { outline: 1.5px solid var(--accent); outline-offset: 0; background: var(--surface); }
+  .td-row.done .td-in { color: var(--muted); text-decoration: line-through; }
+
+  .cal-body { max-height: 400px; overflow-y: auto; }
   .cal-hr {
     height: var(--hh); padding-right: 8px; text-align: right;
     font-family: var(--mono); font-size: 10px; color: var(--muted);
@@ -667,8 +699,8 @@
     .span-2 { grid-column: auto; }
     /* 식단은 적을 자리가 필요해 좁은 화면에서도 한 줄을 다 쓴다 */
     .meals-field { grid-column: 1 / -1; }
-    .cal { --hh: 26px; --gut: 42px; }
-    .cal-body { max-height: 330px; }
+    .cal { --hh: 22px; --gut: 40px; }
+    .cal-body { max-height: 300px; }
   }
 </style>
 
@@ -850,7 +882,7 @@
 
   function blank() {
     return {
-      schedule: [], sleep: null, bp: null, glucose: null, weight: null,
+      schedule: [], todos: [], sleep: null, bp: null, glucose: null, weight: null,
       exercise: null, water: null,
       meals: { b: false, l: false, d: false },
       menu: { b: "", l: "", d: "" },
@@ -866,6 +898,7 @@
     if (!d.pill) d.pill = { b: "", l: "", d: "" };
     if (!d.medTaken) d.medTaken = {};
     if (!d.schedule) d.schedule = [];
+    if (!d.todos) d.todos = [];
     return d;
   }
   function peek(date) { return state.days[date] || null; }
@@ -1092,6 +1125,25 @@
     if (localStorage.getItem(VIEW_STORE) === "list") view = "list";
   } catch (e) { /* 저장소를 못 읽으면 기본값 */ }
 
+  var TODO_SLOTS = 5;
+  /* 날짜별 할 일. 항상 다섯 칸을 보여주고 빈 칸은 그대로 둔다. */
+  function todosOf(date) {
+    var d = peek(date);
+    var t = (d && d.todos) ? d.todos : [];
+    var out = [];
+    for (var i = 0; i < TODO_SLOTS; i++) {
+      out.push(t[i] || { text: "", done: false });
+    }
+    return out;
+  }
+
+  /* 저장용 칸 하나를 꺼낸다. 없으면 그 자리까지 채워 만든다. */
+  function todoSlot(date, i) {
+    var d = day(date);
+    while (d.todos.length <= i) d.todos.push({ text: "", done: false });
+    return d.todos[i];
+  }
+
   function schedOf(date) {
     var d = peek(date);
     return d && d.schedule ? d.schedule : [];
@@ -1183,7 +1235,7 @@
     var cls = "ev" + (it.done ? " done" : "") + (opts.chip ? " chip" : "") +
       (opts.short ? " short" : "") + (opts.tight ? " tight" : "");
     var full = opts.chip
-      ? "시간 미정 · " + it.title
+      ? "Event · " + it.title
       : it.time + "–" + fromMin(endMin(it)) + " " + it.title;
     return '<div class="' + cls + '" title="' + esc(full) + '"' +
       (opts.style ? ' style="' + opts.style + '"' : "") + ">" +
@@ -1208,12 +1260,24 @@
         '<span class="dnum">' + dd.getDate() + "</span></div>";
     }).join("") + "</div>";
 
-    var allday = '<div class="cal-allday"><div class="cal-adlabel">시간 미정</div>' +
+    var allday = '<div class="cal-allday"><div class="cal-adlabel">Event</div>' +
       dates.map(function (date) {
         return '<div class="cal-ad">' + schedOf(date)
           .filter(function (it) { return toMin(it.time) == null; })
           .map(function (it) { return evHTML(date, it, { chip: true }); })
           .join("") + "</div>";
+      }).join("") + "</div>";
+
+    var todoRow = '<div class="cal-todo"><div class="cal-adlabel">Todo</div>' +
+      dates.map(function (date) {
+        return '<div class="cal-td">' + todosOf(date).map(function (t, i) {
+          return '<div class="td-row' + (t.done ? " done" : "") + '">' +
+            '<input type="checkbox" data-todo="' + date + '|' + i + '"' +
+              (t.done ? " checked" : "") + ' aria-label="' + esc(date) + " 할 일 " + (i + 1) + '">' +
+            '<input type="text" class="td-in" data-todotext="' + date + '|' + i + '"' +
+              ' value="' + esc(t.text) + '" placeholder="·" aria-label="' + esc(date) + " 할 일 " + (i + 1) + ' 내용">' +
+          "</div>";
+        }).join("") + "</div>";
       }).join("") + "</div>";
 
     var gutter = '<div class="cal-gutter">';
@@ -1260,7 +1324,7 @@
       '<button type="button" id="addBtn">추가</button>' +
       "</div>";
 
-    return '<div class="cal-scroll"><div class="cal-inner">' + head + allday +
+    return '<div class="cal-scroll"><div class="cal-inner">' + head + allday + todoRow +
       '<div class="cal-body">' + gutter + cols + "</div></div></div>" + add;
   }
 
@@ -2099,6 +2163,22 @@
   });
 
   ledger.addEventListener("change", function (e) {
+    /* 할 일은 요약이나 차트에 영향이 없으므로 화면을 다시 그리지 않는다.
+       입력 중이던 칸의 초점과 스크롤 위치를 그대로 두기 위함이다. */
+    var td = e.target.closest("input[data-todo], input[data-todotext]");
+    if (td) {
+      var isText = td.hasAttribute("data-todotext");
+      var kk = (td.getAttribute(isText ? "data-todotext" : "data-todo")).split("|");
+      var slot = todoSlot(kk[0], +kk[1]);
+      if (isText) slot.text = td.value.trim();
+      else {
+        slot.done = td.checked;
+        var row = td.closest(".td-row");
+        if (row) row.classList.toggle("done", td.checked);
+      }
+      return save();
+    }
+
     var t = e.target.closest("input[data-toggle]");
     if (!t) return;
     var k = t.getAttribute("data-toggle").split("|");
