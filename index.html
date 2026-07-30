@@ -446,7 +446,7 @@
   .evpop .pop-del { color: var(--critical); border-color: transparent; background: transparent; }
   .evpop .pop-del:hover { border-color: var(--critical); background: transparent; }
 
-  .cal-body { max-height: 400px; overflow-y: auto; }
+  .cal-body { max-height: 470px; overflow-y: auto; }
   .cal-hr {
     height: var(--hh); padding-right: 8px; text-align: right;
     font-family: var(--mono); font-size: 10px; color: var(--muted);
@@ -454,8 +454,18 @@
   }
   .cal-col {
     position: relative; border-left: 1px solid var(--hair);
+    /* 정시는 실선 */
     background-image: repeating-linear-gradient(
       to bottom, var(--hair) 0 1px, transparent 1px var(--hh));
+  }
+  /* 30분은 점선 — 가로 방향 마스크로 실선을 끊어 점선처럼 보이게 한다 */
+  .cal-col::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background-image: repeating-linear-gradient(
+      to bottom, var(--hair) 0 1px, transparent 1px var(--hh));
+    background-position: 0 calc(var(--hh) / 2);
+    -webkit-mask-image: repeating-linear-gradient(to right, #000 0 3px, transparent 3px 7px);
+    mask-image: repeating-linear-gradient(to right, #000 0 3px, transparent 3px 7px);
   }
   .cal-col.is-today { background-color: var(--surface-2); }
   .cal-col.is-open { cursor: cell; }
@@ -764,7 +774,7 @@
     /* 식단은 적을 자리가 필요해 좁은 화면에서도 한 줄을 다 쓴다 */
     .meals-field { grid-column: 1 / -1; }
     .cal { --hh: 22px; --gut: 40px; }
-    .cal-body { max-height: 300px; }
+    .cal-body { max-height: 340px; }
   }
 </style>
 
@@ -1246,7 +1256,8 @@
 
   /* 기본 08–21시를 두되, 그 밖의 일정이 있으면 그만큼 넓힌다 */
   function calRange() {
-    var lo = 8 * 60, hi = 21 * 60;
+    /* 아침 5시부터 자정까지 항상 보여준다. 그보다 이른 일정이 있으면 그만큼만 넓힌다. */
+    var lo = 5 * 60, hi = 24 * 60;
     weekDates().forEach(function (date) {
       schedOf(date).forEach(function (it) {
         var s = toMin(it.time);
