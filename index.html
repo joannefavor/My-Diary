@@ -435,48 +435,12 @@
 
   /* ---------- 생활 체크 격자 ---------- */
 
-  .matrix { padding: 14px 16px 16px; overflow-x: auto; }
-  .mgrid {
-    display: grid;
-    grid-template-columns: 62px repeat(7, minmax(30px, 1fr));
-    gap: 4px; min-width: 330px;
-  }
-  .mgrid .col-head, .mgrid .row-head {
-    font-family: var(--mono); font-size: 10px; color: var(--muted);
-    display: flex; align-items: center;
-  }
-  .mgrid .col-head { justify-content: center; font-size: 11px; color: var(--ink-2); }
-  .mgrid .row-head { letter-spacing: .06em; }
-  .cell {
-    height: 26px; border-radius: 5px;
-    background: var(--grid);
-    border: 1px solid transparent;
-    display: grid; place-items: center;
-    font-family: var(--mono); font-size: 10.5px;
-    color: var(--muted); padding: 0;
-    font-variant-numeric: tabular-nums;
-  }
-  button.cell { cursor: pointer; }
-  button.cell:hover { border-color: var(--baseline); }
-  .cell.on { background: var(--accent); color: var(--on-accent); font-weight: 700; }
-  .cell.w1 { background: var(--w1); color: #fff; }
-  .cell.w2 { background: var(--w2); color: #fff; }
-  .cell.w3 { background: var(--w3); color: #fff; }
-  .cell.w4 { background: var(--w4); color: #fff; }
-  .cell.w5 { background: var(--w5); color: #fff; }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) .cell.w4,
     :root:not([data-theme="light"]) .cell.w5 { color: #0d1014; }
   }
   :root[data-theme="dark"] .cell.w4,
   :root[data-theme="dark"] .cell.w5 { color: #0d1014; }
-  .cell.today-col { box-shadow: inset 0 0 0 1px var(--baseline); }
-  .mlegend {
-    display: flex; flex-wrap: wrap; gap: 6px 14px;
-    margin-top: 12px; font-size: 11px; color: var(--muted);
-  }
-  .mlegend span { display: inline-flex; align-items: center; gap: 5px; }
-  .mlegend i { width: 11px; height: 11px; border-radius: 3px; flex: none; }
 
   /* ---------- 차트 ---------- */
 
@@ -494,16 +458,6 @@
   }
 
   /* 주간 메모 */
-  .notes { display: flex; flex-direction: column; gap: 9px; padding: 14px 16px 16px; }
-  .note-item {
-    display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: 10px;
-    font-size: 12.5px; line-height: 1.5;
-  }
-  .note-item .when {
-    font-family: var(--mono); font-size: 10.5px; color: var(--muted);
-    font-variant-numeric: tabular-nums; padding-top: 2px;
-  }
-  .note-item .what { color: var(--ink-2); overflow-wrap: anywhere; }
   .chart-latest {
     font-family: var(--serif); font-size: 19px; font-weight: 600;
     line-height: 1.1; letter-spacing: -.01em; margin: 1px 0 5px;
@@ -745,25 +699,6 @@
     <div id="ledger"></div>
   </section>
 
-  <div class="columns">
-
-    <section class="panel">
-      <header>
-        <h2>생활 습관</h2>
-        <span class="hint">칸을 눌러 바로 체크하세요</span>
-      </header>
-      <div class="matrix" id="matrix"></div>
-    </section>
-
-    <section class="panel">
-      <header>
-        <h2>이번 주 증상 · 메모</h2>
-        <span class="hint" id="noteCount"></span>
-      </header>
-      <div id="notes"></div>
-    </section>
-
-  </div>
 
   <section class="panel">
     <header>
@@ -955,19 +890,6 @@
     if (pillMeals(x).length) return true;                 // 끼니별로 적어둔 약이 있으면 복용한 날
     return medList().length ? (medTakenCount(x) > 0 || !!x.meds) : !!x.meds;
   }
-  function medAllTaken(x) {
-    var n = medList().length;
-    return n > 0 && medTakenCount(x) === n;
-  }
-  /* 목록이 있을 때 격자에서 한 번에 켜고 끄기 */
-  function medSetAll(date, on) {
-    var d = day(date);
-    medList().forEach(function (m) {
-      if (on) d.medTaken[m.id] = true; else delete d.medTaken[m.id];
-    });
-    d.meds = on;
-  }
-
   /* 일정은 id로 식별한다. 예전 기록에는 id가 없으므로 읽을 때 채워 넣는다. */
   var uidSeq = 0;
   function uid() { return "e" + Date.now().toString(36) + (uidSeq++).toString(36); }
@@ -1380,88 +1302,7 @@
     }).join("");
   }
 
-  /* ============================ 생활 습관 격자 ============================ */
 
-  function waterClass(v) {
-    if (v == null || v <= 0) return "";
-    if (v <= 2) return "w1";
-    if (v <= 4) return "w2";
-    if (v <= 6) return "w3";
-    if (v <= 8) return "w4";
-    return "w5";
-  }
-
-  function renderMatrix() {
-    var dates = weekDates();
-    var html = '<div class="mgrid">';
-
-    html += '<span class="row-head"></span>';
-    dates.forEach(function (d, i) {
-      html += '<span class="col-head">' + DOW[i] + "</span>";
-    });
-
-    MEALS.forEach(function (m) {
-      html += '<span class="row-head">' + m[1] + "</span>";
-      dates.forEach(function (date) {
-        var x = peek(date);
-        var on = x && x.meals[m[0]];
-        var what = menuOf(x, m[0]);
-        var tag = date + " " + m[1] + (what ? " — " + what : "");
-        html += '<button type="button" class="cell' + (on ? " on" : "") + (date === TODAY ? " today-col" : "") +
-          '" data-meal="' + m[0] + '" data-date="' + date + '" aria-pressed="' + (!!on) +
-          '" title="' + esc(tag) + '" aria-label="' + esc(tag) + '">' + (on ? "✓" : "") + "</button>";
-      });
-    });
-
-    var meds = medList();
-    html += '<span class="row-head">복약</span>';
-    dates.forEach(function (date) {
-      var x = peek(date);
-      var pm = pillMeals(x);                       // 끼니별로 적어둔 약
-      var all = pm.length ? pm.length === 3 : (meds.length ? medAllTaken(x) : medDone(x));
-      var some = medDone(x);
-      var face = pm.length
-        ? pm.map(function (m) { return m[1].charAt(0); }).join("")
-        : (meds.length
-            ? (medTakenCount(x) || (x && x.meds) ? (medAllTaken(x) ? "✓" : medTakenCount(x) + "/" + meds.length) : "")
-            : (some ? "✓" : ""));
-      var tag = date + " 복약" + (pm.length
-        ? " " + pm.map(function (m) { return m[1] + " " + pillOf(x, m[0]); }).join(", ")
-        : (meds.length ? " " + medTakenCount(x) + "/" + meds.length + "개" : ""));
-      html += '<button type="button" class="cell' + (all ? " on" : (some ? " part" : "")) +
-        (date === TODAY ? " today-col" : "") +
-        '" data-meds="1" data-date="' + date + '" aria-pressed="' + (!!all) +
-        '" title="' + esc(tag) + '" aria-label="' + esc(tag) + '">' + face + "</button>";
-    });
-
-    html += '<span class="row-head">물 · 잔</span>';
-    dates.forEach(function (date) {
-      var v = peek(date) ? peek(date).water : null;
-      html += '<span class="cell ' + waterClass(v) + (date === TODAY ? " today-col" : "") +
-        '" title="' + date + " 물 " + (v == null ? "기록 없음" : v + "잔") + '">' +
-        (v == null ? "·" : v) + "</span>";
-    });
-
-    html += '<span class="row-head">운동 · 분</span>';
-    dates.forEach(function (date) {
-      var x = peek(date);
-      var v = x && x.exercise ? (x.exercise.min || 0) : null;
-      html += '<span class="cell' + (v ? " on" : "") + (date === TODAY ? " today-col" : "") +
-        '" title="' + date + " 운동 " + (v == null ? "기록 없음" : v + "분" + (x.exercise.kind ? " " + x.exercise.kind : "")) + '">' +
-        (v == null ? "·" : v) + "</span>";
-    });
-
-    html += "</div>";
-
-    html += '<div class="mlegend">' +
-      '<span><i style="background:var(--accent)"></i>체크됨</span>' +
-      '<span><i style="background:var(--grid)"></i>없음</span>' +
-      '<span><i style="background:var(--w1)"></i><i style="background:var(--w3)"></i><i style="background:var(--w5)"></i>물 1잔 → 9잔 이상</span>' +
-      "<span>물·운동 값은 아래 ‘하루 기록하기’에서 입력합니다</span>" +
-      "</div>";
-
-    document.getElementById("matrix").innerHTML = html;
-  }
 
   /* ============================ 차트 ============================ */
 
@@ -1783,24 +1624,6 @@
   }
 
   // 그 주에 남긴 증상·메모를 한자리에 모아 본다
-  function renderNotes() {
-    var written = weekDates().map(function (d, i) {
-      var x = peek(d);
-      return x && x.note && x.note.trim() ? { i: i, date: d, text: x.note.trim() } : null;
-    }).filter(Boolean);
-
-    document.getElementById("noteCount").textContent =
-      written.length ? written.length + "일에 기록" : "";
-
-    document.getElementById("notes").innerHTML = written.length
-      ? '<div class="notes">' + written.map(function (n) {
-          var dd = parseISO(n.date);
-          return '<div class="note-item"><span class="when">' + DOW[n.i] + " " +
-            (dd.getMonth() + 1) + "/" + dd.getDate() + "</span>" +
-            '<span class="what">' + esc(n.text) + "</span></div>";
-        }).join("") + "</div>"
-      : '<div class="notes"><p class="empty">아직 메모가 없습니다. 아래 ‘하루 기록하기’의 증상·메모 칸에 적으면 여기 모입니다.</p></div>';
-  }
 
   function bindHover(cfg) {
     var plot = document.querySelector('.plot[data-chart="' + cfg.id + '"]');
@@ -2205,8 +2028,6 @@
 
     renderTiles();
     renderLedger();
-    renderMatrix();
-    renderNotes();
     renderCharts();
     renderTabs();
   }
@@ -2231,21 +2052,6 @@
     if (!b) return;
     selected = b.getAttribute("data-tab");
     renderTabs(); renderForm();
-  });
-
-  document.getElementById("matrix").addEventListener("click", function (e) {
-    var b = e.target.closest("button.cell");
-    if (!b) return;
-    var date = b.getAttribute("data-date");
-    if (b.hasAttribute("data-meal")) {
-      var k = b.getAttribute("data-meal");
-      day(date).meals[k] = !day(date).meals[k];
-    } else if (b.hasAttribute("data-meds")) {
-      /* 약을 등록해 두었으면 그 날 몫을 통째로 켜고 끈다 */
-      if (medList().length) medSetAll(date, !medAllTaken(peek(date)));
-      else day(date).meds = !day(date).meds;
-    } else return;
-    persist();
   });
 
   var ledger = document.getElementById("ledger");
