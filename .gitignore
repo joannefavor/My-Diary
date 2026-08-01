@@ -1,4 +1,17 @@
-.DS_Store
+# 비밀 열쇠 — 절대 올라가면 안 된다
+.env*
 .vercel
+
+# 도구가 만드는 로컬 파일 — 옮길 필요 없다
+.DS_Store
 .omc
 screenshots/
+
+# 창고(Upstash) 연결 때 딸려 온 사용 설명서 — 웹사이트와 무관하다
+.agents/
+.claude/
+skills-lock.json
+
+# 이 프로젝트는 설치할 꾸러미가 없지만, 나중에 생기더라도 올라가지 않게 막아 둔다
+node_modules/
+.next/

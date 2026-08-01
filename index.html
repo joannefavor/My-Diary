@@ -851,6 +851,31 @@
     color: var(--on-accent); font-weight: 600;
   }
 
+  /* ---------- 기기 간 동기화 ---------- */
+
+  .sync-body {
+    padding: 14px 16px 16px;
+    display: flex; flex-direction: column; gap: 13px;
+  }
+  .sync-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 9px; }
+  .sync-row .field { flex: 1 1 240px; }
+  .sync-row .field input[type="text"] { font-family: var(--mono); letter-spacing: .06em; }
+  .sync-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+  .sync-status {
+    font-size: 12.5px; color: var(--ink-2); min-height: 18px; line-height: 1.5;
+  }
+  .sync-status[data-tone="ok"]   { color: var(--good); }
+  .sync-status[data-tone="bad"]  { color: var(--critical); }
+  .sync-status[data-tone="warn"] { color: var(--serious); }
+  .sync-note {
+    margin: 0; font-size: 11.5px; color: var(--muted); line-height: 1.65;
+  }
+  .sync-note strong { color: var(--ink-2); font-weight: 600; }
+  .sync-note code {
+    font-family: var(--mono); font-size: 11px;
+    background: var(--surface-2); padding: 1px 4px; border-radius: 4px;
+  }
+
   footer.foot {
     display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px;
     font-size: 12px; color: var(--muted); padding-top: 6px;
@@ -932,9 +957,40 @@
     <div class="form-grid" id="entryForm"></div>
   </section>
 
+  <section class="panel" id="syncPanel" hidden>
+    <header>
+      <h2>기기 간 동기화</h2>
+      <span class="hint">같은 비밀 코드를 넣은 기기끼리 기록을 맞춥니다</span>
+    </header>
+    <div class="sync-body">
+      <div class="sync-row">
+        <div class="field">
+          <label for="syncCode">비밀 코드</label>
+          <input type="text" id="syncCode" autocomplete="off" autocapitalize="off"
+                 spellcheck="false" placeholder="예: k7m2-9xqp-4vwz">
+        </div>
+        <div class="sync-actions">
+          <button type="button" id="syncMake">새로 만들기</button>
+          <button type="button" id="syncOn">연결</button>
+          <button type="button" id="syncOff" hidden>연결 끊기</button>
+          <button type="button" id="syncNow" hidden>지금 맞추기</button>
+        </div>
+      </div>
+      <div class="sync-status" id="syncStatus" role="status" aria-live="polite"></div>
+      <p class="sync-note">
+        기록은 이 코드로 <strong>이 기기 안에서 암호로 잠근 뒤</strong> 올라갑니다.
+        코드는 전송되지 않으므로 서버도, 저장소 회사도 내용을 열어볼 수 없습니다.
+        그래서 <strong>코드를 잃어버리면 올려둔 기록도 되살릴 수 없습니다.</strong> 적어 두세요.
+        다른 기기에서는 같은 코드를 넣기만 하면 됩니다.
+        동기화는 배포된 주소에서만 되고, <code>file://</code>로 연 파일에서는 동작하지 않습니다.
+      </p>
+    </div>
+  </section>
+
   <footer class="foot">
     <span id="savedAt">기록은 이 브라우저에 저장됩니다.</span>
     <span class="spacer"></span>
+    <button class="ghost" id="syncBtn" aria-expanded="false" aria-controls="syncPanel">기기 간 동기화</button>
     <button class="ghost" id="clearAll">전체 지우기</button>
     <button class="ghost" id="exportBtn">JSON 내보내기</button>
     <button class="ghost" id="importBtn">가져오기</button>
@@ -1140,6 +1196,9 @@
     } catch (e) {
       stamp("이 브라우저에 저장할 수 없어 화면에만 남습니다.");
     }
+    /* 기록이 바뀌는 길은 모두 save()를 지나므로 올릴 예약도 여기서 건다.
+       수면·혈압처럼 persist() 대신 save()만 부르는 곳까지 한 번에 덮인다. */
+    queueSync();
   }
   function stamp(t) { document.getElementById("savedAt").textContent = t; }
 
@@ -2838,8 +2897,374 @@
     return pad(h) + ":" + pad(mi);
   }
 
+  /* ============================ 기기 간 동기화 ============================
+
+     설계 원칙 — 서버는 기록의 내용을 모른다.
+     비밀 코드에서 PBKDF2로 두 가지를 뽑는다.
+       앞 32바이트 → 기록을 잠그는 AES-GCM 열쇠 (이 기기 밖으로 나가지 않는다)
+       뒤 32바이트 → 저장소에서 내 자리를 찾는 id (이것만 서버로 간다)
+     PBKDF2 블록은 서로 독립이라, id를 알아도 열쇠는 알 수 없다.
+
+     합치기 — 마지막으로 맞춘 시점(base)을 함께 들고 있다가 3-way로 합친다.
+     그래야 A기기에서 월요일, B기기에서 화요일을 적었을 때 둘 다 남는다.
+     한 날짜를 양쪽에서 고쳤으면 합칠 방법이 없으므로 이 기기 것을 남기고 몇 건인지 알린다.
+
+     자동으로 내려받지는 않는다. 받아서 폼을 다시 그리면 적던 내용이 날아가기 때문이다
+     (renderExceptForm 주석 참고). 내려받기는 연결할 때·페이지를 열 때·직접 누를 때만 한다. */
+
+  var SYNC_STORE = "weekly-health-ledger-sync";
+  var SYNC_BASE_STORE = "weekly-health-ledger-sync-base";
+  var SYNC_SALT = "my-diary-sync-v1";
+  var SYNC_ITER = 310000;          // OWASP 권고치. 휴대폰에서 1초 안팎 걸린다
+  var SYNC_DEBOUNCE = 3000;
+  var CODE_ALPHABET = "23456789abcdefghjkmnpqrstuvwxyz";   // 0/O, 1/l/I 처럼 헷갈리는 글자는 뺐다
+
+  var sync = { code: "", id: "", key: null, rev: 0, busy: false, timer: null };
+
+  var syncEls = {
+    panel: document.getElementById("syncPanel"),
+    toggle: document.getElementById("syncBtn"),
+    code: document.getElementById("syncCode"),
+    make: document.getElementById("syncMake"),
+    on: document.getElementById("syncOn"),
+    off: document.getElementById("syncOff"),
+    now: document.getElementById("syncNow"),
+    status: document.getElementById("syncStatus")
+  };
+
+  function syncSay(msg, tone) {
+    syncEls.status.textContent = msg || "";
+    if (tone) syncEls.status.setAttribute("data-tone", tone);
+    else syncEls.status.removeAttribute("data-tone");
+  }
+  function syncOnline() { return !!sync.key; }
+  function syncUsable() {
+    return location.protocol === "http:" || location.protocol === "https:";
+  }
+  function normCode(s) { return String(s || "").trim().toLowerCase().replace(/\s+/g, ""); }
+
+  function syncPaint() {
+    var on = syncOnline();
+    syncEls.on.hidden = on;
+    syncEls.make.hidden = on;
+    syncEls.off.hidden = !on;
+    syncEls.now.hidden = !on;
+    syncEls.code.readOnly = on;
+  }
+
+  /* ---------- 바이트 다루기 ---------- */
+
+  function toHex(buf) {
+    return Array.prototype.map.call(new Uint8Array(buf), function (x) {
+      return (x < 16 ? "0" : "") + x.toString(16);
+    }).join("");
+  }
+  function toB64(bytes) {
+    var s = "", CH = 8192;   // 한 번에 넘기면 큰 기록에서 스택이 넘친다
+    for (var i = 0; i < bytes.length; i += CH) {
+      s += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
+    }
+    return btoa(s);
+  }
+  function fromB64(s) {
+    var raw = atob(s), b = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) b[i] = raw.charCodeAt(i);
+    return b;
+  }
+
+  /* ---------- 비밀 코드 → 열쇠 + id ---------- */
+
+  function makeCode() {
+    var r = crypto.getRandomValues(new Uint8Array(12)), out = [];
+    for (var i = 0; i < 12; i++) {
+      out.push(CODE_ALPHABET[r[i] % CODE_ALPHABET.length]);
+      if (i === 3 || i === 7) out.push("-");
+    }
+    return out.join("");
+  }
+
+  function deriveSync(code) {
+    var enc = new TextEncoder();
+    return crypto.subtle
+      .importKey("raw", enc.encode(code), "PBKDF2", false, ["deriveBits"])
+      .then(function (base) {
+        return crypto.subtle.deriveBits({
+          name: "PBKDF2", salt: enc.encode(SYNC_SALT),
+          iterations: SYNC_ITER, hash: "SHA-256"
+        }, base, 512);
+      })
+      .then(function (bits) {
+        var all = new Uint8Array(bits);
+        return crypto.subtle
+          .importKey("raw", all.slice(0, 32), { name: "AES-GCM" }, false, ["encrypt", "decrypt"])
+          .then(function (key) { return { key: key, id: toHex(all.slice(32, 64)) }; });
+      });
+  }
+
+  function seal(key, obj) {
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    var data = new TextEncoder().encode(JSON.stringify(obj));
+    return crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, data).then(function (ct) {
+      var out = new Uint8Array(12 + ct.byteLength);
+      out.set(iv, 0);
+      out.set(new Uint8Array(ct), 12);
+      return toB64(out);
+    });
+  }
+  function unseal(key, b64) {
+    var raw = fromB64(b64);
+    return crypto.subtle
+      .decrypt({ name: "AES-GCM", iv: raw.slice(0, 12) }, key, raw.slice(12))
+      .then(function (pt) { return JSON.parse(new TextDecoder().decode(pt)); });
+  }
+
+  /* ---------- 합치기 ---------- */
+
+  /* 키 순서에 흔들리지 않게 비교하려고 정렬해서 문자열로 만든다.
+     없는 값과 null은 다르므로 구분한다. */
+  function stable(v) {
+    if (v === undefined) return "\u0000";
+    if (v === null || typeof v !== "object") return JSON.stringify(v);
+    if (Array.isArray(v)) return "[" + v.map(stable).join(",") + "]";
+    return "{" + Object.keys(v).sort().map(function (k) {
+      return JSON.stringify(k) + ":" + stable(v[k]);
+    }).join(",") + "}";
+  }
+
+  function loadBase() {
+    try {
+      var raw = localStorage.getItem(SYNC_BASE_STORE);
+      var p = raw ? JSON.parse(raw) : null;
+      if (p && p.days) return { days: p.days, meds: Array.isArray(p.meds) ? p.meds : [] };
+    } catch (e) { /* 못 읽으면 base 없이 합친다 (양쪽 것을 모두 남기는 쪽으로 기운다) */ }
+    return { days: {}, meds: [] };
+  }
+  function saveBase(s) {
+    try { localStorage.setItem(SYNC_BASE_STORE, JSON.stringify(s)); } catch (e) { /* 자리 없으면 다음에 */ }
+  }
+
+  /* base 기준 3-way. 한쪽만 바뀌었으면 바뀐 쪽, 양쪽 다 바뀌었으면 이 기기 것. */
+  function pick3(b, l, r) {
+    var sb = stable(b), sl = stable(l), sr = stable(r);
+    if (sl === sr) return { v: l, conflict: false };
+    if (sl === sb) return { v: r, conflict: false };
+    if (sr === sb) return { v: l, conflict: false };
+    return { v: l, conflict: true };
+  }
+
+  function mergeDays(base, local, remote) {
+    var out = {}, conflicts = [], seen = {};
+    [base, local, remote].forEach(function (s) {
+      Object.keys((s && s.days) || {}).forEach(function (d) { seen[d] = 1; });
+    });
+    Object.keys(seen).sort().forEach(function (d) {
+      var got = pick3(base.days[d], local.days[d], remote.days[d]);
+      if (got.v) out[d] = got.v;
+      if (got.conflict) conflicts.push(d);
+    });
+    return { days: out, conflicts: conflicts };
+  }
+
+  function mergeMeds(base, local, remote) {
+    function byId(list) {
+      var m = {};
+      (list || []).forEach(function (x) { if (x && x.id) m[x.id] = x; });
+      return m;
+    }
+    var B = byId(base.meds), L = byId(local.meds), R = byId(remote.meds);
+    var order = [], seen = {};
+    /* 이 기기의 순서를 지키고, 저쪽에만 있는 약을 뒤에 붙인다 */
+    (local.meds || []).concat(remote.meds || []).forEach(function (x) {
+      if (x && x.id && !seen[x.id]) { seen[x.id] = 1; order.push(x.id); }
+    });
+    Object.keys(B).forEach(function (id) { if (!seen[id]) { seen[id] = 1; order.push(id); } });
+    var out = [];
+    order.forEach(function (id) {
+      var got = pick3(B[id], L[id], R[id]);
+      if (got.v) out.push(got.v);
+    });
+    return out;
+  }
+
+  function mergeInto(remote) {
+    var base = loadBase();
+    var local = { days: state.days, meds: medList() };
+    var safe = { days: (remote && remote.days) || {}, meds: (remote && remote.meds) || [] };
+    var d = mergeDays(base, local, safe);
+    state = { days: d.days, meds: mergeMeds(base, local, safe) };
+    normalize();
+    return d.conflicts;
+  }
+
+  /* ---------- 서버 주고받기 ---------- */
+
+  function syncApi(method, body) {
+    var opt = { method: method, cache: "no-store" };
+    if (body) {
+      opt.headers = { "Content-Type": "application/json" };
+      opt.body = JSON.stringify(body);
+    }
+    return fetch("/api/sync?id=" + sync.id, opt).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        return { ok: r.ok, status: r.status, body: j };
+      });
+    });
+  }
+
+  function saveSyncConfig() {
+    try {
+      localStorage.setItem(SYNC_STORE, JSON.stringify({ code: sync.code, rev: sync.rev }));
+    } catch (e) { /* 자리 없으면 이번 세션에만 연결된다 */ }
+  }
+
+  /* 내려받아 합친다. 선택한 날이 바뀌었을 때만 입력 폼까지 다시 그린다. */
+  function syncPull() {
+    return syncApi("GET").then(function (r) {
+      if (!r.ok) throw new Error(r.body.error || "받지 못했습니다.");
+      sync.rev = r.body.rev || 0;
+      if (!r.body.blob) return { conflicts: [], changed: false };
+      return unseal(sync.key, r.body.blob).then(function (remote) {
+        var before = stable(state.days[selected]);
+        var conflicts = mergeInto(remote);
+        var changed = stable(state.days[selected]) !== before;
+        save();
+        if (changed) render(); else renderExceptForm();
+        return { conflicts: conflicts, changed: changed };
+      }, function () {
+        throw new Error("코드가 다릅니다 — 올려둔 기록을 열지 못했습니다.");
+      });
+    });
+  }
+
+  function syncPush() {
+    var snapshot = { days: state.days, meds: medList() };
+    return seal(sync.key, snapshot).then(function (blob) {
+      return syncApi("PUT", { blob: blob, rev: sync.rev });
+    }).then(function (r) {
+      if (r.status === 409) return { stale: true };
+      if (!r.ok) throw new Error(r.body.error || "올리지 못했습니다.");
+      sync.rev = r.body.rev;
+      saveBase(snapshot);
+      saveSyncConfig();
+      return { stale: false };
+    });
+  }
+
+  /* 올리기 전에 저쪽이 앞서 있으면 먼저 받아 합친 뒤 한 번 더 시도한다 */
+  function syncRun(label) {
+    if (!syncOnline() || sync.busy) return Promise.resolve();
+    sync.busy = true;
+    syncSay(label || "맞추는 중…");
+    return syncPull()
+      .then(function (res) {
+        return syncPush().then(function (p) {
+          if (!p.stale) return res;
+          return syncPull().then(function (res2) {
+            return syncPush().then(function () {
+              return { conflicts: res.conflicts.concat(res2.conflicts) };
+            });
+          });
+        });
+      })
+      .then(function (res) {
+        var t = new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+        if (res && res.conflicts && res.conflicts.length) {
+          syncSay("맞췄습니다 · " + t + " — 다만 " + res.conflicts.length +
+            "일치는 두 기기에서 다르게 적혀 있어 이 기기 것을 남겼습니다 (" +
+            res.conflicts.slice(0, 3).join(", ") +
+            (res.conflicts.length > 3 ? " 외" : "") + ")", "warn");
+        } else {
+          syncSay("맞췄습니다 · " + t, "ok");
+        }
+      })
+      .catch(function (e) {
+        syncSay(e.message || "동기화하지 못했습니다.", "bad");
+      })
+      .then(function () { sync.busy = false; });
+  }
+
+  /* 적을 때마다 올리면 요청이 너무 잦으므로 잠시 모았다 올린다 */
+  function queueSync() {
+    /* 맞추는 도중에도 save()를 지나므로, 그때 걸린 예약은 무시한다 */
+    if (!syncOnline() || sync.busy) return;
+    clearTimeout(sync.timer);
+    sync.timer = setTimeout(function () { syncRun("올리는 중…"); }, SYNC_DEBOUNCE);
+  }
+
+  function syncConnect(code, quiet) {
+    if (!syncUsable()) {
+      syncSay("이 페이지는 파일로 열려 있어 동기화할 수 없습니다. 배포된 주소에서 열어주세요.", "bad");
+      return Promise.resolve();
+    }
+    if (code.length < 8) {
+      syncSay("비밀 코드는 8자 이상이어야 합니다. ‘새로 만들기’를 쓰면 안전한 코드를 만들어 드립니다.", "bad");
+      return Promise.resolve();
+    }
+    syncSay(quiet ? "연결하는 중…" : "코드를 확인하는 중… (몇 초 걸립니다)");
+    return deriveSync(code).then(function (d) {
+      sync.code = code;
+      sync.key = d.key;
+      sync.id = d.id;
+      syncEls.code.value = code;
+      syncPaint();
+      saveSyncConfig();
+      return syncRun("맞추는 중…");
+    }, function () {
+      syncSay("이 브라우저에서는 암호화를 쓸 수 없어 동기화할 수 없습니다.", "bad");
+    });
+  }
+
+  function syncDisconnect() {
+    clearTimeout(sync.timer);
+    sync = { code: "", id: "", key: null, rev: 0, busy: false, timer: null };
+    try {
+      localStorage.removeItem(SYNC_STORE);
+      localStorage.removeItem(SYNC_BASE_STORE);
+    } catch (e) { /* 지우지 못해도 열쇠는 이미 메모리에서 사라졌다 */ }
+    syncEls.code.value = "";
+    syncPaint();
+    syncSay("연결을 끊었습니다. 이 기기의 기록은 그대로 있습니다.");
+  }
+
+  syncEls.toggle.addEventListener("click", function () {
+    var show = syncEls.panel.hidden;
+    syncEls.panel.hidden = !show;
+    this.setAttribute("aria-expanded", String(show));
+    if (show) syncEls.code.focus();
+  });
+  syncEls.make.addEventListener("click", function () {
+    syncEls.code.value = makeCode();
+    syncEls.code.focus();
+    syncEls.code.select();
+    syncSay("이 코드를 적어 두고 ‘연결’을 누르세요. 다른 기기에도 같은 코드를 넣으면 됩니다.");
+  });
+  syncEls.on.addEventListener("click", function () { syncConnect(normCode(syncEls.code.value)); });
+  syncEls.code.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !syncOnline()) { e.preventDefault(); syncConnect(normCode(this.value)); }
+  });
+  syncEls.off.addEventListener("click", function () {
+    if (window.confirm("이 기기에서 연결을 끊습니다. 올려둔 기록은 지워지지 않고, 같은 코드로 다시 연결할 수 있습니다. 계속할까요?")) {
+      syncDisconnect();
+    }
+  });
+  syncEls.now.addEventListener("click", function () { syncRun(); });
+
+  /* 페이지를 열 때 이전에 연결해 둔 코드가 있으면 이어서 연결한다 */
+  function syncBoot() {
+    if (!syncUsable() || !window.crypto || !crypto.subtle) return;
+    var cfg;
+    try { cfg = JSON.parse(localStorage.getItem(SYNC_STORE) || "null"); } catch (e) { cfg = null; }
+    if (!cfg || !cfg.code) return;
+    sync.rev = cfg.rev || 0;
+    syncEls.code.value = cfg.code;
+    syncConnect(normCode(cfg.code), true);
+  }
+
   document.getElementById("clearAll").addEventListener("click", function () {
-    if (!window.confirm("이 브라우저에 저장된 기록을 모두 지웁니다. 계속할까요?")) return;
+    var msg = syncOnline()
+      ? "이 브라우저의 기록을 모두 지웁니다. 연결 중이라 다음 동기화 때 다른 기기에서도 지워집니다. 계속할까요?"
+      : "이 브라우저에 저장된 기록을 모두 지웁니다. 계속할까요?";
+    if (!window.confirm(msg)) return;
     state.days = {};
     persist();
     stamp("모두 지웠습니다.");
@@ -2888,5 +3313,7 @@
 
   load();
   render();
+  syncPaint();
+  syncBoot();
 })();
 </script>
