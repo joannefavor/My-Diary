@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="주간 기록부">
+  <!-- 홈 화면 아이콘. 배경을 꽉 채운다 —
+       안드로이드는 모서리를 둥글게, iOS는 제 방식대로 잘라내므로
+       중요한 그림은 가운데 80% 안에만 둔다. -->
+  <rect width="512" height="512" fill="#1d3a5f"/>
+
+  <!-- 주 단위 기록이라는 뜻으로 눈금 일곱 개 -->
+  <g fill="#fbfbfc" opacity=".3">
+    <rect x="140" y="356" width="11" height="24" rx="5.5"/>
+    <rect x="180" y="356" width="11" height="24" rx="5.5"/>
+    <rect x="221" y="356" width="11" height="24" rx="5.5"/>
+    <rect x="261" y="356" width="11" height="24" rx="5.5"/>
+    <rect x="302" y="356" width="11" height="24" rx="5.5"/>
+    <rect x="342" y="356" width="11" height="24" rx="5.5"/>
+    <rect x="383" y="356" width="11" height="24" rx="5.5"/>
+  </g>
+
+  <!-- 기준선 -->
+  <rect x="140" y="337" width="254" height="10" rx="5" fill="#fbfbfc" opacity=".5"/>
+
+  <!-- 추이. 끝점은 선과 이어진 채로 조금 굵게 맺어 '가장 최근'을 나타낸다. -->
+  <polyline points="146,300 210,242 268,266 330,186 388,146"
+            fill="none" stroke="#fbfbfc" stroke-width="30"
+            stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="388" cy="146" r="25" fill="#fbfbfc"/>
+</svg>

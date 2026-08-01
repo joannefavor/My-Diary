@@ -1,4 +1,26 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- 이게 없으면 휴대폰이 데스크톱 폭으로 그린 뒤 통째로 축소해 버려서,
+     좁은 화면용으로 만들어 둔 배치가 전혀 쓰이지 않는다. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>주간 기록부 — 일정과 건강</title>
+<meta name="description" content="일주일 일정과 건강 상태를 한 화면에서 기록하고 추이로 보는 개인 대시보드">
+
+<!-- 주소 표시줄·상태 표시줄 색. 테마 변수와 같은 값을 쓴다. -->
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3f4f7">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d1014">
+
+<!-- 홈 화면에 추가하면 주소창 없이 앱처럼 열린다.
+     화면 방향은 일부러 잠그지 않았다 — 일정표는 가로로 보는 편이 넓다. -->
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="주간 기록부">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 
 <style>
   :root {
@@ -901,6 +923,9 @@
     .cal-body { max-height: 340px; }
   }
 </style>
+
+</head>
+<body>
 
 <div class="wrap">
 
@@ -3311,9 +3336,21 @@
       x.setAttribute("aria-pressed", String(x.getAttribute("data-view") === view));
     });
 
+  /* 인터넷이 없을 때도 열리도록 사본을 챙겨두는 도우미를 등록한다.
+     https 나 localhost 에서만 동작한다. 파일로 직접 연 경우엔 조용히 넘어간다. */
+  if ("serviceWorker" in navigator &&
+      (location.protocol === "https:" || location.hostname === "localhost")) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("/sw.js").catch(function () { /* 없어도 앱은 돌아간다 */ });
+    });
+  }
+
   load();
   render();
   syncPaint();
   syncBoot();
 })();
 </script>
+
+</body>
+</html>
