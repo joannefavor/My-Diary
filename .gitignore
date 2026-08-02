@@ -12,6 +12,6 @@ screenshots/
 .claude/
 skills-lock.json
 
-# 이 프로젝트는 설치할 꾸러미가 없지만, 나중에 생기더라도 올라가지 않게 막아 둔다
+# 설치한 꾸러미. 목록표(package.json)만 올리면 상대 쪽에서 다시 받으므로 옮기지 않는다
 node_modules/
 .next/

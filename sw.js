@@ -59,7 +59,10 @@ self.addEventListener("fetch", function (e) {
           return res;
         })
         .catch(function () {
-          return caches.match("/").then(function (hit) {
+          /* 그 페이지의 사본이 있으면 그것을, 없으면 기록부 화면을 보여준다 */
+          return caches.match(req).then(function (own) {
+            return own || caches.match("/");
+          }).then(function (hit) {
             return hit || new Response(
               "<!doctype html><meta charset=utf-8><p style=\"font:16px system-ui;padding:24px\">" +
               "인터넷에 연결되지 않았고 저장해 둔 화면도 없습니다. 연결한 뒤 다시 열어주세요.",

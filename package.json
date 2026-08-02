@@ -1,0 +1,8 @@
+{
+  "name": "my-diary",
+  "private": true,
+  "description": "주간 기록부 — 일정과 건강",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.58.0"
+  }
+}
