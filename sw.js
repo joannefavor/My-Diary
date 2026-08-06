@@ -7,7 +7,7 @@
  * 기록을 주고받는 /api/ 는 사본을 쓰면 안 된다. 늘 진짜 창고에 물어봐야 한다.
  */
 
-var CACHE = "diary-2026-08-01";
+var CACHE = "diary-2026-08-07";
 
 /* 처음 설치할 때 미리 챙겨둘 것들 */
 var SHELL = [
@@ -48,6 +48,29 @@ self.addEventListener("fetch", function (e) {
   var url = new URL(req.url);
   if (url.origin !== self.location.origin) return;       // 남의 주소는 건드리지 않는다
   if (url.pathname.indexOf("/api/") === 0) return;       // 기록은 늘 진짜 창고에서
+
+  /* 말씀(voice.js)은 계속 채워 나가는 파일이다.
+     사본을 먼저 쓰면 새로 채운 날이 영영 안 보이므로, 화면과 같이 인터넷을 먼저 본다.
+     비행기·지하철에서도 읽히도록 받아올 때마다 사본은 갱신해 둔다. */
+  if (url.pathname === "/voice.js") {
+    e.respondWith(
+      fetch(req)
+        .then(function (res) {
+          if (res && res.status === 200 && res.type === "basic") {
+            var copy = res.clone();
+            caches.open(CACHE).then(function (c) { c.put(req, copy); });
+          }
+          return res;
+        })
+        .catch(function () {
+          /* 사본도 없으면 빈 응답을 준다. 앱은 말씀 패널만 숨기고 그대로 돌아간다. */
+          return caches.match(req).then(function (hit) {
+            return hit || new Response("", { headers: { "Content-Type": "application/javascript" } });
+          });
+        })
+    );
+    return;
+  }
 
   /* 화면 — 인터넷 먼저, 안 되면 사본 */
   if (req.mode === "navigate") {

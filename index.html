@@ -285,6 +285,36 @@
   }
   .panel header .hint { font-size: 11.5px; color: var(--muted); }
 
+  /* ---------- 오늘의 말씀 ----------
+     색은 이미 있는 변수만 쓴다. 새 색 변수를 만들면 세 테마 스코프에
+     모두 넣어야 하고, 하나라도 빠지면 조용히 깨진다. */
+
+  .voice { padding: 14px 16px 16px; }
+  .voice .vtitle {
+    font-family: var(--serif); font-size: 17px; font-weight: 600;
+    margin: 0 0 10px; letter-spacing: -.005em; color: var(--ink);
+  }
+  /* 영문 제목이 없는 날도 있으므로, 있을 때만 한글 제목에 바짝 붙인다 */
+  .voice .vtitle-en {
+    margin: -8px 0 10px; font-size: 11.5px; letter-spacing: .04em;
+    color: var(--muted); font-style: italic;
+  }
+  .voice .vquote {
+    margin: 0 0 11px; padding: 9px 13px;
+    border-left: 2px solid var(--accent-soft);
+    background: var(--surface-2); border-radius: 0 8px 8px 0;
+    font-family: var(--serif); font-size: 14px; line-height: 1.65; color: var(--ink);
+  }
+  .voice .vverse {
+    display: block; margin-top: 6px; font-style: normal;
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+  }
+  .voice .vbody {
+    margin: 0; font-size: 13.5px; line-height: 1.78; color: var(--ink-2);
+    white-space: pre-wrap;
+  }
+  .voice .vsource { margin: 13px 0 0; font-size: 11px; color: var(--muted); }
+
   /* ---------- 일정 원장 ---------- */
 
   .ledger { display: flex; flex-direction: column; }
@@ -950,6 +980,14 @@
 
   <section class="tiles" id="tiles" aria-label="이번 주 요약"></section>
 
+  <section class="panel" id="voicePanel" hidden>
+    <header>
+      <h2>오늘의 말씀</h2>
+      <span class="hint" id="voiceDate"></span>
+    </header>
+    <div class="voice" id="voiceBody"></div>
+  </section>
+
   <section class="panel">
     <header>
       <div class="calnav">
@@ -1032,6 +1070,10 @@
   </footer>
 
 </div>
+
+<!-- 365일 말씀. 「주님의 음성」 저장소에서 "node build.mjs --to ../dairy_report" 로 만든다.
+     파일이 없어도 앱은 그대로 동작하고, 말씀 패널만 숨는다. -->
+<script src="voice.js"></script>
 
 <script>
 (function () {
@@ -2468,6 +2510,52 @@
 
   /* ============================ 렌더 & 이벤트 ============================ */
 
+  /* ---------- 오늘의 말씀 ----------
+     voice.js 가 있으면 window.VOICE 에 { "MM-DD": {title, verse, quote, body} } 로 들어온다.
+     말씀은 기록이 아니라 읽을거리이므로 state 에 넣지 않고, 저장도 동기화도 하지 않는다.
+     파일이 없거나 아직 한 날도 안 채웠으면 패널째 감춘다. */
+
+  function voiceKey(isoDate) {
+    var mmdd = isoDate.slice(5);
+    /* 이 책은 365일치라 2월 29일이 없다. 윤년에는 2월 28일 말씀을 그대로 읽는다. */
+    return mmdd === "02-29" ? "02-28" : mmdd;
+  }
+
+  function renderVoice() {
+    var panel = document.getElementById("voicePanel");
+    var host = document.getElementById("voiceBody");
+    if (!panel || !host) return;
+
+    var data = window.VOICE;
+    if (!data || !Object.keys(data).length) { panel.hidden = true; return; }
+    panel.hidden = false;
+
+    var key = voiceKey(selected);
+    var d = parseISO(selected);
+    var label = (d.getMonth() + 1) + "월 " + d.getDate() + "일";
+    if (selected.slice(5) === "02-29") label += " · 2월 28일 말씀";
+    document.getElementById("voiceDate").textContent = label;
+
+    var e = data[key];
+    if (!e) {
+      host.innerHTML = '<p class="empty">이 날 말씀은 아직 옮겨 적지 않았습니다.</p>';
+      return;
+    }
+
+    var h = "";
+    if (e.title) h += '<p class="vtitle">' + esc(e.title) + "</p>";
+    if (e.title_en) h += '<p class="vtitle-en">' + esc(e.title_en) + "</p>";
+    if (e.quote || e.verse) {
+      h += '<blockquote class="vquote">' + esc(e.quote || "");
+      if (e.verse) h += '<cite class="vverse">' + esc(e.verse) + "</cite>";
+      h += "</blockquote>";
+    }
+    /* 줄바꿈은 CSS white-space: pre-wrap 이 살린다 */
+    if (e.body) h += '<p class="vbody">' + esc(e.body) + "</p>";
+    h += '<p class="vsource">「주님의 음성」(규장) — 개인 묵상용</p>';
+    host.innerHTML = h;
+  }
+
   function persist() { save(); render(); }
 
   /* 입력 폼을 제외한 나머지 화면만 갱신한다.
@@ -2499,6 +2587,7 @@
     }
 
     renderTiles();
+    renderVoice();
     renderLedger();
     renderCharts();
     renderTabs();
