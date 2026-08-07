@@ -289,6 +289,15 @@
      색은 이미 있는 변수만 쓴다. 새 색 변수를 만들면 세 테마 스코프에
      모두 넣어야 하고, 하나라도 빠지면 조용히 깨진다. */
 
+  .voicenav { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .voicenav input[type="date"] {
+    padding: 4px 8px; border: 1px solid var(--hair); border-radius: 8px;
+    background: var(--surface); color: var(--ink);
+    font-family: var(--mono); font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+  .voicenav input[type="date"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
   .voice { padding: 14px 16px 16px; }
   .voice .vtitle {
     font-family: var(--serif); font-size: 17px; font-weight: 600;
@@ -982,10 +991,18 @@
 
   <section class="panel" id="voicePanel" hidden>
     <header>
-      <h2>오늘의 말씀</h2>
-      <span class="hint" id="voiceDate"></span>
+      <div class="calnav">
+        <button class="icon-btn" id="voicePrev" aria-label="어제 말씀">&lt;</button>
+        <h2 id="voiceHeading">오늘의 말씀</h2>
+        <button class="icon-btn" id="voiceNext" aria-label="내일 말씀">&gt;</button>
+      </div>
+      <div class="voicenav">
+        <span class="hint" id="voiceNote"></span>
+        <input type="date" id="voiceDate" aria-label="말씀 날짜">
+        <button class="ghost" id="voiceToday" hidden>오늘</button>
+      </div>
     </header>
-    <div class="voice" id="voiceBody"></div>
+    <div class="voice" id="voiceBody" aria-live="polite"></div>
   </section>
 
   <section class="panel">
@@ -2521,6 +2538,25 @@
     return mmdd === "02-29" ? "02-28" : mmdd;
   }
 
+  /* 말씀은 읽을거리이므로 자기 날짜를 따로 갖는다.
+     voicePick 이 null 이면 일정에서 고른 날(selected)을 그대로 따라간다.
+     화살표나 날짜 칸으로 옮기면 그 날짜만 바뀌고 일정·기록 화면은 건드리지 않는다.
+     일정에서 날짜를 옮기면(= selected 가 바뀌면) 다시 그날로 따라붙는다. */
+  var voicePick = null;
+  var voiceLinked = null;
+
+  function voiceDay() { return voicePick || selected; }
+
+  function voiceGo(dir) {
+    voicePick = iso(addDays(parseISO(voiceDay()), dir));
+    renderVoice();
+  }
+
+  function voiceSet(isoDate) {
+    voicePick = isoDate === selected ? null : isoDate;
+    renderVoice();
+  }
+
   function renderVoice() {
     var panel = document.getElementById("voicePanel");
     var host = document.getElementById("voiceBody");
@@ -2530,11 +2566,20 @@
     if (!data || !Object.keys(data).length) { panel.hidden = true; return; }
     panel.hidden = false;
 
-    var key = voiceKey(selected);
-    var d = parseISO(selected);
-    var label = (d.getMonth() + 1) + "월 " + d.getDate() + "일";
-    if (selected.slice(5) === "02-29") label += " · 2월 28일 말씀";
-    document.getElementById("voiceDate").textContent = label;
+    /* 일정에서 날짜가 바뀌었으면 말씀도 그날로 돌아간다 */
+    if (selected !== voiceLinked) { voiceLinked = selected; voicePick = null; }
+
+    var day = voiceDay();
+    var key = voiceKey(day);
+    var d = parseISO(day);
+
+    document.getElementById("voiceHeading").textContent =
+      day === TODAY ? "오늘의 말씀" : (d.getMonth() + 1) + "월 " + d.getDate() + "일 말씀";
+    document.getElementById("voiceDate").value = day;
+    document.getElementById("voiceToday").hidden = (day === TODAY);
+    /* 윤년 2월 29일에는 어느 날 말씀을 읽고 있는지 밝혀준다 */
+    document.getElementById("voiceNote").textContent =
+      day.slice(5) === "02-29" ? "2월 28일 말씀" : "";
 
     var e = data[key];
     if (!e) {
@@ -3371,6 +3416,17 @@
     }
   });
   syncEls.now.addEventListener("click", function () { syncRun(); });
+
+  /* 말씀 날짜 옮기기 — 말씀만 바뀌고 일정·기록 화면은 그대로 둔다.
+     그래서 persist()/render() 가 아니라 renderVoice() 만 부른다. */
+  document.getElementById("voicePrev").addEventListener("click", function () { voiceGo(-1); });
+  document.getElementById("voiceNext").addEventListener("click", function () { voiceGo(1); });
+  document.getElementById("voiceToday").addEventListener("click", function () { voiceSet(TODAY); });
+  document.getElementById("voiceDate").addEventListener("change", function () {
+    /* 날짜 칸을 비우면 원래대로 일정 날짜를 따라간다 */
+    if (!this.value) { voicePick = null; renderVoice(); return; }
+    voiceSet(this.value);
+  });
 
   /* 페이지를 열 때 이전에 연결해 둔 코드가 있으면 이어서 연결한다 */
   function syncBoot() {
