@@ -1038,7 +1038,11 @@
 
   <section class="panel">
     <header>
-      <h2>하루 기록하기</h2>
+      <div class="calnav">
+        <button class="icon-btn" id="prevDay" aria-label="하루 전">&lt;</button>
+        <h2>하루 기록하기</h2>
+        <button class="icon-btn" id="nextDay" aria-label="하루 뒤">&gt;</button>
+      </div>
       <span class="hint">날짜를 고르고 값을 넣으면 위 요약과 차트가 바로 반영됩니다</span>
     </header>
     <div class="tabs" id="dayTabs" role="tablist" aria-label="기록할 날짜"></div>
@@ -2671,6 +2675,23 @@
   document.getElementById("thisWeek").addEventListener("click", function () {
     weekStart = mondayOf(new Date()); selected = TODAY; render();
   });
+
+  /* 하루 기록하기의 < > — 하루씩 옮긴다.
+     주를 벗어나면 요약·차트가 가리키는 주도 함께 옮겨야 한다. */
+  function stepDay(dir) {
+    var d = addDays(parseISO(selected), dir);
+    selected = iso(d);
+    var wk = mondayOf(d);
+    if (iso(wk) !== iso(weekStart)) {
+      weekStart = wk;
+      render();
+    } else {
+      renderTabs();
+      renderForm();
+    }
+  }
+  document.getElementById("prevDay").addEventListener("click", function () { stepDay(-1); });
+  document.getElementById("nextDay").addEventListener("click", function () { stepDay(1); });
 
   document.getElementById("dayTabs").addEventListener("click", function (e) {
     var b = e.target.closest("button[data-tab]");
