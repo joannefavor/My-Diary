@@ -493,6 +493,13 @@
   .td-in:hover { background: var(--surface); }
   .td-in:focus-visible { outline: 1.5px solid var(--accent); outline-offset: 0; background: var(--surface); }
   .td-row.done .td-in { color: var(--muted); text-decoration: line-through; }
+  /* 이름이 고정된 칸 (QT) */
+  .td-fixed {
+    flex: 1; min-width: 0; font-size: 10.5px; line-height: 1.3;
+    padding: 0 2px 1px; color: var(--ink-2); font-weight: 600;
+    letter-spacing: .02em;
+  }
+  .td-row.is-fixed.done .td-fixed { color: var(--muted); text-decoration: line-through; }
 
   /* 월 보기 — 6주 × 7일 격자 */
   .mon-head, .mon-grid {
@@ -713,6 +720,18 @@
 
   /* 두 열 — 지표 6개가 3행, 마지막 종합 차트가 한 행을 통째로 */
   /* 일곱 항목을 한 줄에. 좁아지면 자동으로 접힌다 */
+  .trendbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .trendrange { display: flex; align-items: center; gap: 5px; }
+  /* hidden 속성이 display:flex 에 지지 않도록 */
+  .trendrange[hidden] { display: none; }
+  .trendrange input[type="date"] {
+    font: inherit; font-size: 11.5px; font-family: var(--mono);
+    background: var(--surface); color: var(--ink);
+    border: 1px solid var(--hair); border-radius: 6px; padding: 3px 6px;
+  }
+  .trendrange input:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .trendrange .sep { color: var(--muted); font-family: var(--mono); font-size: 11px; }
+
   .chart-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(142px, 1fr));
@@ -982,7 +1001,9 @@
       <h1>주간 기록부</h1>
     </div>
     <div class="weeknav">
+      <button class="icon-btn" id="prevWeekTop" aria-label="지난 주">&lt;</button>
       <span class="range" id="weekRange"></span>
+      <button class="icon-btn" id="nextWeekTop" aria-label="다음 주">&gt;</button>
       <button class="ghost" id="thisWeek">오늘</button>
     </div>
   </header>
@@ -1027,7 +1048,19 @@
   <section class="panel">
     <header>
       <h2>건강 추이</h2>
-      <span class="hint">막대나 점 위에 올리면 그날 값이 보입니다</span>
+      <div class="trendbar">
+        <div class="viewtoggle" id="trendToggle" role="group" aria-label="건강 추이 기간">
+          <button type="button" data-trend="week" aria-pressed="true">주</button>
+          <button type="button" data-trend="month" aria-pressed="false">월</button>
+          <button type="button" data-trend="year" aria-pressed="false">연도</button>
+          <button type="button" data-trend="range" aria-pressed="false">기간 지정</button>
+        </div>
+        <span class="trendrange" id="trendRange" hidden>
+          <input type="date" id="trendFrom" aria-label="시작일">
+          <span class="sep">~</span>
+          <input type="date" id="trendTo" aria-label="종료일">
+        </span>
+      </div>
     </header>
     <div class="chart-grid" id="charts"></div>
     <details class="tableview">
@@ -1328,21 +1361,97 @@
   }
   function col(fn) { return weekDates().map(function (d) { return fn(peek(d), d); }); }
 
+  /* ---------- 건강 추이 기간 ----------
+     주는 하루가 한 점, 월은 하루가 한 점, 연도는 한 달이 한 점(그 달 평균),
+     기간 지정은 고른 범위의 하루가 한 점이다. */
+  var TREND_STORE = "weekly-health-ledger-trend";
+  var trendMode = "week";
+  var trendFrom = "", trendTo = "";
+  try {
+    var tsav = JSON.parse(localStorage.getItem(TREND_STORE) || "null");
+    if (tsav && tsav.mode) {
+      trendMode = tsav.mode; trendFrom = tsav.from || ""; trendTo = tsav.to || "";
+    }
+  } catch (e) { /* 못 읽으면 기본값 */ }
+
+  function saveTrend() {
+    try {
+      localStorage.setItem(TREND_STORE,
+        JSON.stringify({ mode: trendMode, from: trendFrom, to: trendTo }));
+    } catch (e) { /* 저장 못 해도 화면은 바뀐다 */ }
+  }
+
+  function daysBetween(a, b) {
+    var out = [], d = parseISO(a), end = parseISO(b), n = 0;
+    while (d <= end && n < 400) { out.push(iso(d)); d = addDays(d, 1); n++; }
+    return out;
+  }
+
+  /* 각 점이 어떤 날들을 묶는지 [{ label, dates }] 로 돌려준다 */
+  function trendPoints() {
+    var base = parseISO(selected), i, d;
+    if (trendMode === "month") {
+      var y = base.getFullYear(), m = base.getMonth();
+      var last = new Date(y, m + 1, 0).getDate(), out = [];
+      for (i = 1; i <= last; i++) {
+        d = iso(new Date(y, m, i));
+        out.push({ label: String(i), dates: [d] });
+      }
+      return out;
+    }
+    if (trendMode === "year") {
+      var yy = base.getFullYear(), res = [];
+      for (m = 0; m < 12; m++) {
+        var lastD = new Date(yy, m + 1, 0).getDate(), ds = [];
+        for (i = 1; i <= lastD; i++) ds.push(iso(new Date(yy, m, i)));
+        res.push({ label: String(m + 1), dates: ds });
+      }
+      return res;
+    }
+    if (trendMode === "range" && trendFrom && trendTo) {
+      var lo = trendFrom, hi = trendTo;
+      if (lo > hi) { var t = lo; lo = hi; hi = t; }
+      return daysBetween(lo, hi).map(function (dt) {
+        var p = parseISO(dt);
+        return { label: (p.getMonth() + 1) + "/" + p.getDate(), dates: [dt] };
+      });
+    }
+    return weekDates().map(function (dt, k) {
+      return { label: DOW[k], dates: [dt] };
+    });
+  }
+
+  /* 점 하나의 값 — 하루면 그 값, 여러 날이면 적은 날만 평균 */
+  function ptVal(pt, fn) {
+    var vals = [];
+    pt.dates.forEach(function (dt) {
+      var v = fn(peek(dt), dt);
+      if (v != null) vals.push(v);
+    });
+    if (!vals.length) return null;
+    if (vals.length === 1) return vals[0];
+    return Math.round(vals.reduce(function (a, b) { return a + b; }, 0) / vals.length * 100) / 100;
+  }
+
   function series() {
+    var pts = trendPoints();
+    function C(fn) { return pts.map(function (pt) { return ptVal(pt, fn); }); }
     return {
-      dates: weekDates(),
-      sleep:   col(function (x) { return sleepHours(x); }),
-      sys:     col(function (x) { return x && x.bp ? x.bp.s : null; }),
-      dia:     col(function (x) { return x && x.bp ? x.bp.d : null; }),
-      glucose: col(function (x) { return x ? x.glucose : null; }),
-      weight:  col(function (x) { return x ? x.weight : null; }),
-      ex:      col(function (x) { return x && x.exercise ? (x.exercise.min || 0) : null; }),
-      water:   col(function (x) { return x ? x.water : null; }),
-      mood:    col(function (x) { return x ? x.mood : null; }),
-      condition: col(function (x) { return x ? x.condition : null; }),
-      overall: col(function (x) { return x ? x.overall : null; })
+      points: pts,
+      dates: pts.map(function (pt) { return pt.dates[0]; }),
+      sleep:   C(function (x) { return sleepHours(x); }),
+      sys:     C(function (x) { return x && x.bp ? x.bp.s : null; }),
+      dia:     C(function (x) { return x && x.bp ? x.bp.d : null; }),
+      glucose: C(function (x) { return x ? x.glucose : null; }),
+      weight:  C(function (x) { return x ? x.weight : null; }),
+      ex:      C(function (x) { return x && x.exercise ? (x.exercise.min || 0) : null; }),
+      water:   C(function (x) { return x ? x.water : null; }),
+      mood:    C(function (x) { return x ? x.mood : null; }),
+      condition: C(function (x) { return x ? x.condition : null; }),
+      overall: C(function (x) { return x ? x.overall : null; })
     };
   }
+
 
   // 기록이 있는 날만 이행률의 분모로 센다
   function loggedDays() {
@@ -1474,13 +1583,16 @@
   } catch (e) { /* 저장소를 못 읽으면 기본값 */ }
 
   var TODO_SLOTS = 5;
+  var TODO_FIXED = "QT";   // 첫 칸은 이름 고정
   /* 날짜별 할 일. 항상 다섯 칸을 보여주고 빈 칸은 그대로 둔다. */
   function todosOf(date) {
     var d = peek(date);
     var t = (d && d.todos) ? d.todos : [];
     var out = [];
     for (var i = 0; i < TODO_SLOTS; i++) {
-      out.push(t[i] || { text: "", done: false });
+      var slot = t[i] || { text: "", done: false };
+      if (i === 0) slot = { text: TODO_FIXED, done: !!slot.done };
+      out.push(slot);
     }
     return out;
   }
@@ -1644,11 +1756,18 @@
     var todoRow = '<div class="cal-todo"><div class="cal-adlabel">Todo</div>' +
       dates.map(function (date) {
         return '<div class="cal-td">' + todosOf(date).map(function (t, i) {
-          return '<div class="td-row' + (t.done ? " done" : "") + '">' +
-            '<input type="checkbox" data-todo="' + date + '|' + i + '"' +
-              (t.done ? " checked" : "") + ' aria-label="' + esc(date) + " 할 일 " + (i + 1) + '">' +
+          var box = '<input type="checkbox" data-todo="' + date + '|' + i + '"' +
+            (t.done ? " checked" : "") + ' aria-label="' + esc(date) + " " +
+            (i === 0 ? TODO_FIXED : "할 일 " + (i + 1)) + '">';
+          /* 첫 칸은 QT 로 고정 — 이름은 못 바꾸고 했는지만 체크한다 */
+          if (i === 0) {
+            return '<div class="td-row is-fixed' + (t.done ? " done" : "") + '">' +
+              box + '<span class="td-fixed">' + TODO_FIXED + "</span></div>";
+          }
+          return '<div class="td-row' + (t.done ? " done" : "") + '">' + box +
             '<input type="text" class="td-in" data-todotext="' + date + '|' + i + '"' +
-              ' value="' + esc(t.text) + '" placeholder="·" aria-label="' + esc(date) + " 할 일 " + (i + 1) + ' 내용">' +
+            ' value="' + esc(t.text) + '" placeholder="·" aria-label="' + esc(date) +
+            " 할 일 " + (i + 1) + ' 내용">' +
           "</div>";
         }).join("") + "</div>";
       }).join("") + "</div>";
@@ -1828,8 +1947,9 @@
   var W = 320, H = 128, PL = 32, PR = 14, PT = 12, PB = 22;
   var IW = W - PL - PR, IH = H - PT - PB;
 
-  function xAt(i) { return PL + i * IW / 6; }
-  function bandAt(i) { return { x: PL + i * IW / 7, w: IW / 7 }; }
+  var NPT = 7;                       // 지금 그리는 점 개수 (기간에 따라 바뀐다)
+  function xAt(i) { return NPT < 2 ? PL + IW / 2 : PL + i * IW / (NPT - 1); }
+  function bandAt(i) { return { x: PL + i * IW / NPT, w: IW / NPT }; }
 
   function niceDomain(vals, opts) {
     opts = opts || {};
@@ -1875,17 +1995,20 @@
     });
     g += '<line x1="' + PL + '" x2="' + (W - PR) + '" y1="' + (PT + IH) + '" y2="' + (PT + IH) +
       '" stroke="var(--baseline)" stroke-width="1" vector-effect="non-scaling-stroke"/>';
-    DOW.forEach(function (d, i) {
+    var labs = (cfg.labels || []);
+    var stepN = Math.ceil(labs.length / 8) || 1;   // 점이 많으면 라벨을 솎아낸다
+    labs.forEach(function (d, i) {
+      if (i % stepN) return;
       var cx = banded ? bandAt(i).x + bandAt(i).w / 2 : xAt(i);
       g += '<text x="' + cx.toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle" ' +
-        'font-family="var(--sans)" font-size="9" fill="var(--muted)">' + d + "</text>";
+        'font-family="var(--sans)" font-size="9" fill="var(--muted)">' + esc(d) + "</text>";
     });
     return g;
   }
 
   function hitRects() {
     var h = "";
-    for (var i = 0; i < 7; i++) {
+    for (var i = 0; i < NPT; i++) {
       var b = bandAt(i);
       h += '<rect class="hit" data-i="' + i + '" x="' + b.x.toFixed(1) + '" y="' + PT +
         '" width="' + b.w.toFixed(1) + '" height="' + IH + '" fill="transparent"/>';
@@ -1906,6 +2029,7 @@
 
   function makeSvg(cfg) {
     useWidth(cfg);
+    NPT = (cfg.labels && cfg.labels.length) || cfg.series[0].values.length || 7;
 
     // 값이 하나도 없으면 눈금 대신 안내를 보여준다 (0~1 같은 엉뚱한 축을 피함)
     var hasAny = cfg.series.some(function (s) {
@@ -1965,7 +2089,7 @@
           'fill="var(--ink-2)">' + esc(cfg.valueFmt(lp[3])) + "</text>";
       });
     } else if (cfg.kind === "grouped") {
-      for (var i = 0; i < 7; i++) {
+      for (var i = 0; i < NPT; i++) {
         var b = bandAt(i);
         var n = cfg.series.length;
         var bw = Math.min(26, (b.w - 10 - (n - 1) * 2) / n); // 넓은 칸에서도 막대가 두꺼워지지 않게
@@ -2134,12 +2258,24 @@
         } }
     ];
 
+    var labs = s.points.map(function (pt) { return pt.label; });
+    chartDefs.forEach(function (c) { c.labels = labs; });
     document.getElementById("charts").innerHTML = chartDefs.map(chartBlock).join("");
     chartDefs.forEach(bindHover);
     renderTable(s);
   }
 
   // 그 주에 남긴 증상·메모를 한자리에 모아 본다
+
+  /* 풍선 머리말 — 주는 '수 · 8/12', 연도는 '8월', 그 외는 날짜 */
+  function trendHead(i) {
+    var pts = trendPoints();
+    var pt = pts[i];
+    if (!pt) return "";
+    if (trendMode === "year") return pt.label + "월";
+    var d = parseISO(pt.dates[0]);
+    return dowOf(pt.dates[0]) + " · " + (d.getMonth() + 1) + "/" + d.getDate();
+  }
 
   function bindHover(cfg) {
     var plot = document.querySelector('.plot[data-chart="' + cfg.id + '"]');
@@ -2159,8 +2295,7 @@
     function show(i) {
       useWidth(cfg);
       var rows = cfg.tipFmt(i);
-      var dd = parseISO(dates[i]);
-      var head = "<b>" + DOW[i] + " · " + (dd.getMonth() + 1) + "/" + dd.getDate() + "</b>";
+      var head = "<b>" + trendHead(i) + "</b>";
       tip.innerHTML = head + (rows
         ? rows.map(function (r) {
             if (r.plain) return '<div class="row">' + esc(r.plain) + "</div>";
@@ -2192,7 +2327,8 @@
   function renderTable(s) {
     var heads = s.dates.map(function (d, i) {
       var dd = parseISO(d);
-      return "<th>" + DOW[i] + "<br>" + (dd.getMonth() + 1) + "/" + dd.getDate() + "</th>";
+      if (trendMode === "year") return "<th>" + s.points[i].label + "월</th>";
+      return "<th>" + dowOf(d) + "<br>" + (dd.getMonth() + 1) + "/" + dd.getDate() + "</th>";
     }).join("");
 
     function row(label, vals) {
@@ -2690,6 +2826,48 @@
       renderForm();
     }
   }
+  /* 맨 위 머리글의 < > — 한 주씩 옮긴다. 요약·차트·일정이 함께 따라간다. */
+  function stepWeek(dir) {
+    weekStart = addDays(weekStart, dir * 7);
+    selected = iso(weekStart);
+    render();
+  }
+  /* 건강 추이 기간 선택 */
+  function syncTrendUI() {
+    Array.prototype.forEach.call(
+      document.querySelectorAll("#trendToggle button[data-trend]"), function (b) {
+        b.setAttribute("aria-pressed", String(b.getAttribute("data-trend") === trendMode));
+      });
+    var box = document.getElementById("trendRange");
+    if (box) box.hidden = trendMode !== "range";
+    var f = document.getElementById("trendFrom"), t = document.getElementById("trendTo");
+    if (f && !f.value) f.value = trendFrom || iso(addDays(new Date(), -29));
+    if (t && !t.value) t.value = trendTo || TODAY;
+  }
+
+  document.getElementById("trendToggle").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-trend]");
+    if (!b) return;
+    trendMode = b.getAttribute("data-trend");
+    if (trendMode === "range") {
+      trendFrom = document.getElementById("trendFrom").value || iso(addDays(new Date(), -29));
+      trendTo = document.getElementById("trendTo").value || TODAY;
+    }
+    saveTrend();
+    syncTrendUI();
+    renderCharts();
+  });
+
+  document.getElementById("trendRange").addEventListener("change", function () {
+    trendFrom = document.getElementById("trendFrom").value;
+    trendTo = document.getElementById("trendTo").value;
+    saveTrend();
+    renderCharts();
+  });
+
+  document.getElementById("prevWeekTop").addEventListener("click", function () { stepWeek(-1); });
+  document.getElementById("nextWeekTop").addEventListener("click", function () { stepWeek(1); });
+
   document.getElementById("prevDay").addEventListener("click", function () { stepDay(-1); });
   document.getElementById("nextDay").addEventListener("click", function () { stepDay(1); });
 
@@ -2803,6 +2981,7 @@
       if (isText) slot.text = td.value.trim();
       else {
         slot.done = td.checked;
+        if (+kk[1] === 0) slot.text = TODO_FIXED;
         var row = td.closest(".td-row");
         if (row) row.classList.toggle("done", td.checked);
       }
