@@ -3220,13 +3220,36 @@
     return { v: l, conflict: true };
   }
 
+  /* 아무것도 적히지 않은 하루인가.
+     화면을 열기만 해도 day()가 오늘 날짜의 빈 칸을 만들어 둔다. 사람이 적은 게 아니다.
+     이걸 '적은 것'으로 세면, 처음 연결하는 기기에서 빈 칸과 저쪽 기록이 부딪쳐
+     충돌로 판정되고 저쪽 기록이 버려진다. 그래서 빈 칸은 없는 것으로 친다. */
+  function emptyDay(d) {
+    if (!d) return true;
+    if (d.schedule && d.schedule.length) return false;
+    if (d.todos && d.todos.some(function (t) { return t && (t.text || t.done); })) return false;
+    if (d.sleep != null || d.bp || d.glucose != null || d.weight != null || d.water != null) return false;
+    if (d.exercise && (d.exercise.min != null || d.exercise.kind)) return false;
+    if (d.meals && (d.meals.b || d.meals.l || d.meals.d)) return false;
+    if (d.menu && (d.menu.b || d.menu.l || d.menu.d)) return false;
+    if (d.pill && (d.pill.b || d.pill.l || d.pill.d)) return false;
+    if (d.meds) return false;
+    if (d.medTaken && Object.keys(d.medTaken).some(function (k) { return d.medTaken[k]; })) return false;
+    if (d.mood != null || d.condition != null || d.overall != null) return false;
+    if (d.note) return false;
+    return true;
+  }
+  /* 빈 칸은 '그 날짜가 없는 것'과 같게 다룬다.
+     지운 날도 빈 칸이 되므로, 지우기가 저쪽에 전해지는 동작은 그대로다. */
+  function realDay(d) { return emptyDay(d) ? undefined : d; }
+
   function mergeDays(base, local, remote) {
     var out = {}, conflicts = [], seen = {};
     [base, local, remote].forEach(function (s) {
       Object.keys((s && s.days) || {}).forEach(function (d) { seen[d] = 1; });
     });
     Object.keys(seen).sort().forEach(function (d) {
-      var got = pick3(base.days[d], local.days[d], remote.days[d]);
+      var got = pick3(realDay(base.days[d]), realDay(local.days[d]), realDay(remote.days[d]));
       if (got.v) out[d] = got.v;
       if (got.conflict) conflicts.push(d);
     });
@@ -3305,7 +3328,13 @@
   }
 
   function syncPush() {
-    var snapshot = { days: state.days, meds: medList() };
+    /* 빈 칸은 올리지 않는다. 저쪽에서 걸러내기도 하지만, 애초에 보내지 않는 편이 낫다.
+       base 도 올린 것과 같은 모양으로 남겨야 다음 합치기가 어긋나지 않는다. */
+    var days = {};
+    Object.keys(state.days).forEach(function (d) {
+      if (!emptyDay(state.days[d])) days[d] = state.days[d];
+    });
+    var snapshot = { days: days, meds: medList() };
     return seal(sync.key, snapshot).then(function (blob) {
       return syncApi("PUT", { blob: blob, rev: sync.rev });
     }).then(function (r) {
