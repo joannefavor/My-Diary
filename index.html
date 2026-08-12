@@ -1115,7 +1115,12 @@
   <footer class="foot">
     <span id="savedAt">기록은 이 브라우저에 저장됩니다.</span>
     <span class="spacer"></span>
+    <!-- 방명록은 Supabase 프로젝트가 사라져 지금은 열어도 글이 안 나온다.
+         코드(guestbook.html, api/guestbook.js)는 그대로 두었으니,
+         새 프로젝트를 만들고 SUPABASE_URL·SUPABASE_ANON_KEY만 바꾸면 이 줄을 되살리면 된다.
     <a class="ghost foot-link" href="/guestbook">방명록</a>
+    -->
+
     <button class="ghost" id="syncBtn" aria-expanded="false" aria-controls="syncPanel">기기 간 동기화</button>
     <button class="ghost" id="clearAll">전체 지우기</button>
     <button class="ghost" id="exportBtn">JSON 내보내기</button>
