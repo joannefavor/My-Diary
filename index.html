@@ -162,6 +162,26 @@
     color: var(--muted); margin: 0 0 6px;
   }
   .weeknav { display: flex; align-items: center; gap: 8px; }
+  /* 제목 왼쪽의 화면 이동 버튼.
+     화면을 통째로 바꾸는 버튼이라 요약 타일의 강조 색을 그대로 써서
+     푸터의 보조 버튼들과 확실히 구분되게 한다. */
+  .mast-left { display: flex; align-items: flex-end; gap: 14px; min-width: 0; }
+  #pageToggle {
+    white-space: nowrap; font-size: 13px; font-weight: 600;
+    padding: 8px 14px; border-radius: 8px;
+    background: var(--accent); border-color: var(--accent); color: var(--on-accent);
+  }
+  #pageToggle:hover {
+    background: color-mix(in srgb, var(--accent) 86%, var(--plane));
+    border-color: var(--accent);
+  }
+
+  /* 두 화면을 오간다. 주소의 #/record 로 지금 어느 쪽인지 정한다.
+     hidden 속성을 건드리지 않고 CSS 로만 감춘다 —
+     말씀·동기화 패널은 그들 나름의 hidden 규칙이 따로 있기 때문이다.
+     동기화 패널은 data-page 가 없어서 어느 화면에서 열어도 보인다. */
+  body.page-record [data-page="dash"] { display: none; }
+  body:not(.page-record) [data-page="record"] { display: none; }
   /* 일정 패널 제목 옆 이동 */
   .calnav { display: flex; align-items: center; gap: 8px; min-width: 0; }
   .calnav h2 { min-width: 0; }
@@ -996,9 +1016,12 @@
 <div class="wrap">
 
   <header class="masthead">
-    <div>
-      <p class="eyebrow">Weekly ledger · 일정과 건강</p>
-      <h1>주간 기록부</h1>
+    <div class="mast-left">
+      <button id="pageToggle">상세 기록</button>
+      <div>
+        <p class="eyebrow">Weekly ledger · 일정과 건강</p>
+        <h1>주간 기록부</h1>
+      </div>
     </div>
     <div class="weeknav">
       <button class="icon-btn" id="prevWeekTop" aria-label="지난 주">&lt;</button>
@@ -1008,9 +1031,9 @@
     </div>
   </header>
 
-  <section class="tiles" id="tiles" aria-label="이번 주 요약"></section>
+  <section class="tiles" id="tiles" aria-label="이번 주 요약" data-page="dash"></section>
 
-  <section class="panel" id="voicePanel" hidden>
+  <section class="panel" id="voicePanel" data-page="dash" hidden>
     <header>
       <div class="calnav">
         <button class="icon-btn" id="voicePrev" aria-label="어제 말씀">&lt;</button>
@@ -1026,7 +1049,7 @@
     <div class="voice" id="voiceBody" aria-live="polite"></div>
   </section>
 
-  <section class="panel">
+  <section class="panel" data-page="dash">
     <header>
       <div class="calnav">
         <button class="icon-btn" id="prevWeek" aria-label="이전">&lt;</button>
@@ -1045,7 +1068,7 @@
   </section>
 
 
-  <section class="panel">
+  <section class="panel" data-page="dash">
     <header>
       <h2>건강 추이</h2>
       <div class="trendbar">
@@ -1069,14 +1092,14 @@
     </details>
   </section>
 
-  <section class="panel">
+  <section class="panel" id="recordPanel" data-page="record">
     <header>
       <div class="calnav">
         <button class="icon-btn" id="prevDay" aria-label="하루 전">&lt;</button>
         <h2>하루 기록하기</h2>
         <button class="icon-btn" id="nextDay" aria-label="하루 뒤">&gt;</button>
       </div>
-      <span class="hint">날짜를 고르고 값을 넣으면 위 요약과 차트가 바로 반영됩니다</span>
+      <span class="hint">날짜를 고르고 값을 넣으면 대시보드의 요약과 차트에 바로 반영됩니다</span>
     </header>
     <div class="tabs" id="dayTabs" role="tablist" aria-label="기록할 날짜"></div>
     <div class="form-grid" id="entryForm"></div>
@@ -2788,6 +2811,28 @@
     renderForm();
   }
 
+  /* ============================ 화면 이동 ============================ */
+
+  /* 대시보드와 상세 기록 두 화면을 오간다. 어느 쪽인지는 주소의 해시로 정한다.
+     그래야 새로고침해도 보던 화면이 그대로고, 뒤로 가기도 뜻대로 동작한다.
+     그리기는 두 화면 모두 늘 해 둔다 — 주간 데이터라 양이 적고,
+     차트 좌표도 화면 크기가 아니라 값에서 나오므로 감춰진 채 그려도 어긋나지 않는다. */
+  function applyRoute() {
+    var onRecord = location.hash === "#/record";
+    document.body.classList.toggle("page-record", onRecord);
+
+    var btn = document.getElementById("pageToggle");
+    btn.textContent = onRecord ? "← 대시보드" : "상세 기록";
+    btn.setAttribute("aria-label", onRecord ? "대시보드로 돌아가기" : "상세 기록 화면으로");
+  }
+
+  document.getElementById("pageToggle").addEventListener("click", function () {
+    location.hash = location.hash === "#/record" ? "#/" : "#/record";
+    window.scrollTo(0, 0);
+  });
+
+  window.addEventListener("hashchange", applyRoute);
+
   /* 보기에 맞춰 하루·한 주·한 달씩 움직인다.
      건강 요약은 늘 선택한 날이 속한 주를 따라간다. */
   /* 달·해를 옮길 때 날짜를 지킨다. 그 달에 없는 날짜면 마지막 날로 맞춘다. */
@@ -3735,6 +3780,7 @@
 
   load();
   render();
+  applyRoute();
   syncPaint();
   syncBoot();
 })();
