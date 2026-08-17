@@ -5383,8 +5383,35 @@
      https 나 localhost 에서만 동작한다. 파일로 직접 연 경우엔 조용히 넘어간다. */
   if ("serviceWorker" in navigator &&
       (location.protocol === "https:" || location.hostname === "localhost")) {
+    /* 홈 화면에 추가한 앱은 다시 열어도 떠 있던 화면을 그대로 되살리는 일이 많다.
+       그러면 새 판을 받아올 기회가 없어 "고친 게 안 보인다". 그래서
+       (1) 앱으로 돌아올 때마다 새 판이 있는지 확인하고
+       (2) 새 도우미가 자리를 넘겨받으면 화면을 한 번 다시 불러온다. */
+    var swReloading = false;
+    var hadWorker = !!navigator.serviceWorker.controller;
+
+    /* 적는 중이면 다시 부르지 않는다. 새 판보다 지금 쓰던 글이 먼저다.
+       다음에 앱을 다시 열 때 자연히 새 판으로 뜬다. */
+    function isTyping() {
+      var el = document.activeElement;
+      if (!el) return false;
+      var tag = el.tagName;
+      return (tag === "TEXTAREA" || tag === "INPUT") && String(el.value || "") !== "";
+    }
+
+    navigator.serviceWorker.addEventListener("controllerchange", function () {
+      /* 처음 설치할 때도 이 신호가 오는데 그때는 이미 최신이라 다시 부를 필요가 없다 */
+      if (!hadWorker || swReloading || isTyping()) return;
+      swReloading = true;
+      location.reload();
+    });
+
     window.addEventListener("load", function () {
-      navigator.serviceWorker.register("/sw.js").catch(function () { /* 없어도 앱은 돌아간다 */ });
+      navigator.serviceWorker.register("/sw.js").then(function (reg) {
+        document.addEventListener("visibilitychange", function () {
+          if (!document.hidden) reg.update();
+        });
+      }).catch(function () { /* 없어도 앱은 돌아간다 */ });
     });
   }
 
