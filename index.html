@@ -318,6 +318,12 @@
     border: 1px solid var(--hair); border-radius: 7px; padding: 5px 9px;
   }
   .visit-bar input { flex: 1 1 180px; min-width: 0; }
+  .datepick input[type="text"] {
+    font: inherit; font-size: 13px; color: var(--ink); background: var(--surface);
+    border: 1px solid var(--hair); border-radius: 7px; padding: 4px 9px;
+    flex: 1 1 160px; min-width: 0;
+  }
+  .datepick input[type="text"]:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 1px; }
   .visit-bar select:focus-visible, .visit-bar input:focus-visible {
     outline: 2px solid var(--accent-ink); outline-offset: 1px;
   }
@@ -1387,7 +1393,11 @@
   <section class="panel" data-page="work">
     <header>
       <h2>이번 주 업무</h2>
-      <span class="hint">메인화면의 <b>빠르게 쓰기</b>로 적으면 그날 할 일로 쌓입니다</span>
+      <div class="datepick">
+        <input type="date" id="workDate" aria-label="어느 날에 적을지">
+        <input type="text" id="workNew" placeholder="할 일" aria-label="할 일 내용">
+        <button class="ghost" id="workAdd">+ 넣기</button>
+      </div>
     </header>
     <div class="worklist" id="workList"></div>
   </section>
@@ -3208,6 +3218,8 @@
     renderTabs();
     renderQuick();
     renderToday();
+    var wd = document.getElementById("workDate");
+    if (wd && wd.value !== selected) wd.value = selected;
     renderWork();
     renderMeetings();
     renderNotes("history");
@@ -3687,6 +3699,9 @@
               '" aria-label="제목">' +
             '<button class="ghost mt-del" data-notedel="' + at + '">지우기</button>' +
           "</div>" +
+          '<div class="mt-row"><span class="mt-key">날짜</span>' +
+            '<input type="date" data-notedate="' + at + '" value="' + date +
+            '" aria-label="적은 날짜"></div>' +
           '<div class="mt-row"><span class="mt-key">내용</span>' +
             '<textarea data-note="notes" data-at="' + at +
             '" placeholder="더 적을 것이 있으면" aria-label="내용">' + esc(n.notes) +
@@ -3701,11 +3716,24 @@
 
     host.addEventListener("change", function (e) {
       var f = e.target.closest("[data-note]");
-      if (!f) return;
-      var k = f.getAttribute("data-at").split("|");
-      var n = noteAt(k[0], k[1], k[2]);
-      /* 화면은 다시 그리지 않는다 — 적는 도중 커서가 튀지 않게 */
-      if (n) { n[f.getAttribute("data-note")] = f.value.trim(); save(); }
+      if (f) {
+        var k = f.getAttribute("data-at").split("|");
+        var n = noteAt(k[0], k[1], k[2]);
+        /* 화면은 다시 그리지 않는다 — 적는 도중 커서가 튀지 않게 */
+        if (n) { n[f.getAttribute("data-note")] = f.value.trim(); save(); }
+        return;
+      }
+      /* 날짜를 바꾸면 그 날짜 밑으로 옮긴다. 지난 일을 뒤늦게 적을 때 쓴다. */
+      var dbox = e.target.closest("input[data-notedate]");
+      if (!dbox) return;
+      var a = dbox.getAttribute("data-notedate").split("|");
+      var to = dbox.value;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(to) || to === a[1]) return;
+      var moved = noteAt(a[0], a[1], a[2]);
+      if (!moved) return;
+      state.days[a[1]][a[0]] = state.days[a[1]][a[0]].filter(function (x) { return x.id !== a[2]; });
+      day(to)[a[0]].push(moved);
+      save(); renderNotes(a[0]);
     });
 
     host.addEventListener("click", function (e) {
@@ -3996,6 +4024,9 @@
             '<button class="ghost mt-del" data-mtdel="' + at + '">지우기</button>' +
           "</div>" +
 
+          '<div class="mt-row"><span class="mt-key">날짜</span>' +
+            '<input type="date" data-mtdate="' + at + '" value="' + date +
+            '" aria-label="미팅 날짜"></div>' +
           '<div class="mt-row"><span class="mt-key">참석</span>' +
             '<input data-mt="people" data-at="' + at + '" value="' + esc(m.people) +
             '" placeholder="김팀장, 박차장" aria-label="참석자"></div>' +
@@ -4034,6 +4065,22 @@
       var k = f.getAttribute("data-at").split("|");
       var m = meetingAt(k[0], k[1]);
       if (m) { m[f.getAttribute("data-mt")] = f.value.trim(); save(); renderTiles(); }
+      return;
+    }
+    var mdate = e.target.closest("input[data-mtdate]");
+    if (mdate) {
+      var q = mdate.getAttribute("data-mtdate").split("|");
+      var to2 = mdate.value;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(to2) || to2 === q[0]) return;
+      var mv = meetingAt(q[0], q[1]);
+      if (!mv) return;
+      state.days[q[0]].meetings = state.days[q[0]].meetings.filter(function (x) { return x.id !== q[1]; });
+      day(to2).meetings.push(mv);
+      save();
+      /* 미팅 목록은 이번 주 것만 보여준다. 다른 주로 옮겼으면 그 주로 따라가야
+         옮긴 것이 눈앞에서 사라지지 않는다. */
+      if (weekDates().indexOf(to2) === -1) goToDate(to2);
+      else renderMeetings();
       return;
     }
     var box = e.target.closest("input[data-mttd]");
@@ -4179,6 +4226,34 @@
       host.innerHTML = '<div class="wk-empty">이번 주에 적어 둔 업무가 없습니다.</div>';
     }
   }
+
+  /* 업무 페이지에서 날짜를 골라 지난 날에도 적을 수 있게 한다.
+     할 일은 그날의 정해진 칸에 들어가므로, 빈 칸이 없으면 넣지 않고 알린다. */
+  function workAdd() {
+    var dbox = document.getElementById("workDate");
+    var tbox = document.getElementById("workNew");
+    var date = dbox.value, text = tbox.value.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !text) return;
+    var slot = -1;
+    for (var i = 1; i < TODO_SLOTS; i++) {
+      if (!todoSlot(date, i).text) { slot = i; break; }
+    }
+    if (slot < 0) {
+      alert("그날 할 일 칸이 다 찼습니다.\n일정 페이지에서 지우고 다시 넣어주세요.");
+      return;
+    }
+    day(date).todos[slot].text = text;
+    tbox.value = "";
+    save();
+    /* 이번 주 것만 보여주므로, 다른 주에 넣었으면 그 주로 옮겨 보여준다 */
+    if (weekDates().indexOf(date) === -1) goToDate(date);
+    else renderWork();
+  }
+
+  document.getElementById("workAdd").addEventListener("click", workAdd);
+  document.getElementById("workNew").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); workAdd(); }
+  });
 
   document.getElementById("workList").addEventListener("change", function (e) {
     var box = e.target.closest("input[data-work]");
