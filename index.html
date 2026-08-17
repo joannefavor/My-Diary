@@ -200,9 +200,27 @@
      data-page 가 없는 칸(동기화 패널 등)은 어느 페이지에서나 보인다. */
   .is-off { display: none !important; }
 
-  /* ---------- 빠른 기록 ---------- */
+  /* ---------- 빠르게 쓰기 ---------- */
 
   .quick { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .quick-when { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .quick-when label { font-size: 11.5px; color: var(--muted); }
+  .quick-when input[type="date"] {
+    font: inherit; font-size: 12.5px; font-family: var(--mono);
+    color: var(--ink); background: var(--surface);
+    border: 1px solid var(--hair); border-radius: 7px; padding: 4px 8px;
+  }
+  .quick-when input[type="date"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .quick-picks { display: flex; flex-wrap: wrap; gap: 6px; }
+  .quick-picks button {
+    font-size: 12.5px; padding: 5px 13px; border-radius: 999px;
+    background: transparent; color: var(--ink-2);
+  }
+  .quick-picks button:hover { background: var(--surface-2); border-color: var(--baseline); }
+  .quick-picks button[aria-pressed="true"] {
+    background: var(--accent); border-color: var(--accent);
+    color: var(--on-accent); font-weight: 600;
+  }
   .quick textarea {
     width: 100%; box-sizing: border-box; resize: vertical; min-height: 62px;
     font: inherit; line-height: 1.5;
@@ -227,6 +245,24 @@
     border-color: var(--accent);
   }
 
+  /* ---------- 오늘 (메인화면) ---------- */
+
+  .today { padding: 4px 16px 16px; display: grid; gap: 18px 26px; }
+  @media (min-width: 720px) { .today { grid-template-columns: 1fr 1fr; } }
+  .today h3 {
+    font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--muted); margin: 12px 0 8px; font-weight: 600;
+  }
+  .td-line { display: flex; align-items: center; gap: 9px; padding: 4px 0; }
+  .td-line input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--accent); flex: none; }
+  .td-line .at {
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    flex: none; min-width: 42px;
+  }
+  .td-line span.txt { min-width: 0; overflow-wrap: anywhere; }
+  .td-line.done span.txt { color: var(--muted); text-decoration: line-through; }
+  .today .none { color: var(--muted); padding: 6px 0; font-size: 13px; }
+
   /* ---------- 업무 목록 ---------- */
 
   .worklist { padding: 6px 16px 16px; }
@@ -243,12 +279,51 @@
   .wk-item.done span { color: var(--muted); text-decoration: line-through; }
   .wk-empty { color: var(--muted); padding: 30px 0; text-align: center; }
 
-  /* 아직 내용이 없는 페이지의 안내 */
-  .soon {
-    padding: 56px 20px; text-align: center; color: var(--muted);
-    display: flex; flex-direction: column; gap: 6px; align-items: center;
+  /* ---------- 미팅 ---------- */
+
+  .meetlist { padding: 6px 16px 16px; }
+  .mt {
+    border: 1px solid var(--hair); border-radius: 10px;
+    padding: 12px 14px; margin-top: 12px;
+    background: var(--surface-2);
   }
-  .soon strong { color: var(--ink-2); font-weight: 600; font-size: 15px; }
+  .mt-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+  .mt-when {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .06em;
+    color: var(--muted); flex: none;
+  }
+  .mt-when.today { color: var(--accent); font-weight: 700; }
+  .mt-title {
+    flex: 1 1 200px; min-width: 0; font-family: var(--serif);
+    font-size: 15px; font-weight: 600;
+    background: transparent; border-color: transparent; padding: 3px 6px;
+  }
+  .mt-title:hover, .mt-title:focus { background: var(--surface); border-color: var(--hair); }
+  .mt-del { flex: none; font-size: 11.5px; color: var(--muted); padding: 3px 8px; }
+  .mt-row { display: flex; align-items: baseline; gap: 8px; margin-top: 8px; }
+  .mt-key {
+    flex: none; width: 44px; font-size: 11px; color: var(--muted);
+    letter-spacing: .04em;
+  }
+  .mt-row input, .mt-row textarea {
+    flex: 1; min-width: 0; font: inherit; font-size: 13px;
+    color: var(--ink); background: var(--surface);
+    border: 1px solid var(--hair); border-radius: 7px; padding: 6px 9px;
+  }
+  .mt-row textarea { resize: vertical; min-height: 52px; line-height: 1.5; }
+  .mt-todos { margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--hair); }
+  .mt-td { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
+  .mt-td input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--accent); flex: none; }
+  .mt-td span { min-width: 0; overflow-wrap: anywhere; font-size: 13px; }
+  .mt-td.done span { color: var(--muted); text-decoration: line-through; }
+  .mt-td button { margin-left: auto; flex: none; font-size: 11px; color: var(--muted); padding: 2px 7px; }
+  .mt-add { display: flex; gap: 6px; margin-top: 7px; }
+  .mt-add input {
+    flex: 1; min-width: 0; font: inherit; font-size: 13px;
+    color: var(--ink); background: var(--surface);
+    border: 1px solid var(--hair); border-radius: 7px; padding: 5px 9px;
+  }
+
   /* 일정 패널 제목 옆 이동 */
   .calnav { display: flex; align-items: center; gap: 8px; min-width: 0; }
   .calnav h2 { min-width: 0; }
@@ -734,18 +809,10 @@
   .ev.chip { position: static; padding: 2px 6px; }
   .ev.short { padding: 1px 5px; font-size: 10.5px; line-height: 1.15; }
   .ev .txt { min-width: 0; }
-  .ev .t {
-    display: block; font-family: var(--mono); font-size: 9.5px; opacity: .82;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
   .ev .n { display: block; overflow-wrap: anywhere; }
-  /* 30분처럼 낮은 칸은 시간과 내용을 한 줄에 붙인다 */
+  /* 칸이 낮으면 한 줄로 줄인다 */
   .ev.short { align-items: center; }
-  .ev.short .txt { display: flex; gap: 5px; align-items: baseline; }
-  .ev.short .t { flex: none; }
   .ev.short .n { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  /* 겹쳐서 좁아진 칸은 시간을 접고 내용에 자리를 준다 (전체 시각은 hover 툴팁) */
-  .ev.tight .t { display: none; }
   .ev.tight.short .txt { display: block; }
   .ev.done { opacity: .52; }
   .ev.done .n { text-decoration: line-through; }
@@ -1110,22 +1177,37 @@
     </div>
   </header>
 
-  <section class="tiles" id="tiles" aria-label="이번 주 요약" data-page="main"></section>
+  <section class="tiles" id="tiles" aria-label="이번 주 요약" data-page="health"></section>
 
-  <section class="panel" id="quickPanel" data-page="main health schedule work">
+  <section class="panel" id="todayPanel" data-page="main">
+    <header>
+      <div class="calnav">
+        <button class="icon-btn" id="todayPrev" aria-label="하루 전">&lt;</button>
+        <h2 id="todayTitle">오늘</h2>
+        <button class="icon-btn" id="todayNext" aria-label="하루 뒤">&gt;</button>
+      </div>
+      <span class="hint" id="todayHint"></span>
+    </header>
+    <div class="today" id="todayBody"></div>
+  </section>
+
+  <section class="panel" id="quickPanel" data-page="main health schedule work meeting history knowledge faith">
     <header>
       <div class="calnav">
         <button class="icon-btn" id="quickPrev" aria-label="하루 전">&lt;</button>
-        <h2>빠른 기록</h2>
+        <h2>빠르게 쓰기</h2>
         <button class="icon-btn" id="quickNext" aria-label="하루 뒤">&gt;</button>
       </div>
-      <span class="hint" id="quickDate"></span>
+      <div class="quick-when">
+        <input type="date" id="quickDateIn" aria-label="어느 날에 넣을지">
+        <span class="hint" id="quickDate"></span>
+      </div>
     </header>
     <div class="quick">
-      <textarea id="quickText" rows="2"
-        placeholder="혈압 120/80  물 5잔  기분 4      금요일 오후 2시 법무회의 1시간 #일정"></textarea>
+      <div class="quick-picks" id="quickPicks" role="group" aria-label="어디에 넣을지"></div>
+      <textarea id="quickText" rows="2"></textarea>
       <div class="quick-foot">
-        <p class="quick-msg" id="quickMsg">보고 있는 페이지에 넣습니다. <b>#일정</b> <b>#업무</b> <b>#건강</b> 을 붙이면 그쪽으로 갑니다.</p>
+        <p class="quick-msg" id="quickMsg">넣을 곳을 고르고 적으세요.</p>
         <button id="quickAdd">기록에 넣기</button>
       </div>
     </div>
@@ -1207,33 +1289,54 @@
   <section class="panel" data-page="work">
     <header>
       <h2>이번 주 업무</h2>
-      <span class="hint">위 빠른 기록에 적으면 그날 할 일로 쌓입니다</span>
+      <span class="hint">위에서 빠르게 쓰면 그날 할 일로 쌓입니다</span>
     </header>
     <div class="worklist" id="workList"></div>
   </section>
 
+  <section class="panel" data-page="faith">
+    <header>
+      <h2>묵상일기</h2>
+      <span class="hint">말씀을 읽고 남은 것 · 최근 것이 위로</span>
+      <button class="ghost" data-noteadd="faith">+ 새로 적기</button>
+    </header>
+    <div class="notelist" id="faithList"></div>
+  </section>
+
+  <section class="panel" data-page="faith">
+    <header>
+      <h2>기도</h2>
+      <span class="hint">기도 제목과 응답 · 최근 것이 위로</span>
+      <button class="ghost" data-noteadd="prayer">+ 새로 적기</button>
+    </header>
+    <div class="notelist" id="prayerList"></div>
+  </section>
+
   <section class="panel" data-page="history">
-    <header><h2>나의 역사</h2></header>
-    <div class="soon">
-      <strong>아직 준비 중입니다</strong>
-      <span>어떤 것을 적을지 정하면 채워 넣겠습니다.</span>
-    </div>
+    <header>
+      <h2>나의 역사</h2>
+      <span class="hint">지나온 일을 적어 둡니다 · 최근 것이 위로</span>
+      <button class="ghost" data-noteadd="history">+ 새로 적기</button>
+    </header>
+    <div class="notelist" id="historyList"></div>
   </section>
 
   <section class="panel" data-page="meeting">
-    <header><h2>미팅</h2></header>
-    <div class="soon">
-      <strong>아직 준비 중입니다</strong>
-      <span>어떤 것을 적을지 정하면 채워 넣겠습니다.</span>
-    </div>
+    <header>
+      <h2>이번 주 미팅</h2>
+      <span class="hint">위에서 <b>미팅</b> 을 골라 적으면 바로 만들어집니다</span>
+      <button class="ghost" id="meetAdd">+ 새 미팅</button>
+    </header>
+    <div class="meetlist" id="meetList"></div>
   </section>
 
   <section class="panel" data-page="knowledge">
-    <header><h2>지식창고</h2></header>
-    <div class="soon">
-      <strong>아직 준비 중입니다</strong>
-      <span>어떤 것을 적을지 정하면 채워 넣겠습니다.</span>
-    </div>
+    <header>
+      <h2>지식창고</h2>
+      <span class="hint">배운 것과 찾아본 것 · 최근 것이 위로</span>
+      <button class="ghost" data-noteadd="knowledge">+ 새로 적기</button>
+    </header>
+    <div class="notelist" id="knowledgeList"></div>
   </section>
 
   <section class="panel" id="syncPanel" hidden>
@@ -1425,6 +1528,12 @@
     if (!d.medTaken) d.medTaken = {};
     if (!d.schedule) d.schedule = [];
     if (!d.todos) d.todos = [];
+    /* 미팅·나의역사·지식창고는 나중에 생긴 항목이라 예전 기록에는 없다 */
+    if (!d.meetings) d.meetings = [];
+    if (!d.history) d.history = [];
+    if (!d.knowledge) d.knowledge = [];
+    if (!d.faith) d.faith = [];
+    if (!d.prayer) d.prayer = [];
     return d;
   }
   function peek(date) { return state.days[date] || null; }
@@ -1854,10 +1963,11 @@
     return out;
   }
 
-  function evBlock(it, chip) {
-    if (chip) return '<span class="n">' + esc(it.title) + "</span>";
-    return '<span class="t">' + esc(it.time + "–" + fromMin(endMin(it))) + "</span>" +
-      '<span class="n">' + esc(it.title) + "</span>";
+  /* 칸 안에는 내용만 적는다. 시각은 왼쪽 눈금이 이미 알려주므로
+     칸에 또 적으면 좁은 자리를 두 번 쓰는 셈이다.
+     정확한 시작·끝은 칸에 마우스를 올리면 나온다. */
+  function evBlock(it) {
+    return '<span class="n">' + esc(it.title) + "</span>";
   }
 
   var EV_COLORS = 24;
@@ -1886,7 +1996,7 @@
       '<input class="tick" type="checkbox"' + (it.done ? " checked" : "") +
       ' data-toggle="' + esc(date) + '|' + esc(it.id) + '"' +
       ' aria-label="' + esc(it.title) + ' 완료">' +
-      '<span class="txt">' + evBlock(it, opts.chip) + "</span>" +
+      '<span class="txt">' + evBlock(it) + "</span>" +
       '<button class="del" data-del="' + esc(date) + '|' + esc(it.id) + '"' +
       ' aria-label="' + esc(it.title) + ' 삭제">×</button>' +
       "</div>";
@@ -2939,7 +3049,13 @@
     renderCharts();
     renderTabs();
     renderQuick();
+    renderToday();
     renderWork();
+    renderMeetings();
+    renderNotes("history");
+    renderNotes("knowledge");
+    renderNotes("faith");
+    renderNotes("prayer");
   }
 
   function render() {
@@ -2947,7 +3063,7 @@
     renderForm();
   }
 
-  /* ============================ 빠른 기록 ============================
+  /* ============================ 빠르게 쓰기 ============================
 
      한 줄로 적은 말에서 수치를 골라내 그날 기록에 넣는다.
      해석은 전부 여기서 규칙으로만 한다 — 적은 글이 바깥으로 나가지 않는다.
@@ -3081,12 +3197,48 @@
     return { got: got, unknown: rest.trim() };
   }
 
+  /* 있지도 않은 날짜(2월 30일 같은)는 만들지 않는다 */
+  function mkDate(y, m, dd) {
+    if (m < 1 || m > 12 || dd < 1 || dd > 31) return null;
+    var d = new Date(y, m - 1, dd);
+    if (d.getMonth() !== m - 1 || d.getDate() !== dd) return null;
+    return iso(d);
+  }
+
   /* ---------- 어느 날에 넣을지 ----------
      "금요일", "내일" 같은 말을 날짜로 바꾸고 그 말은 지워서 돌려준다.
      요일은 지금 보고 있는 주 안에서 찾는다. */
   function takeWhen(text, base) {
     var date = base, found = "";
-    var out = text.replace(/\s(오늘|내일|모레|어제)(?=\s)/, function (all, w) {
+
+    /* 적어 둔 날짜가 먼저다 — 지난 일을 뒤늦게 적을 때 쓴다.
+       "2026-08-03", "8/3", "8월 3일" 을 알아본다.
+       해를 안 적었으면 지금 보고 있는 날의 해로 본다. */
+    var out = text.replace(/\s(\d{4})-(\d{1,2})-(\d{1,2})(?=\s)/, function (all, y, m, dd) {
+      var v = mkDate(+y, +m, +dd);
+      if (!v) return all;
+      date = v; found = v;
+      return " ";
+    });
+    if (found) return { date: date, rest: out, word: found };
+
+    out = text.replace(/\s(\d{1,2})월\s*(\d{1,2})일(?=\s)/, function (all, m, dd) {
+      var v = mkDate(parseISO(base).getFullYear(), +m, +dd);
+      if (!v) return all;
+      date = v; found = v;
+      return " ";
+    });
+    if (found) return { date: date, rest: out, word: found };
+
+    out = text.replace(/\s(\d{1,2})\/(\d{1,2})(?=\s)/, function (all, m, dd) {
+      var v = mkDate(parseISO(base).getFullYear(), +m, +dd);
+      if (!v) return all;
+      date = v; found = v;
+      return " ";
+    });
+    if (found) return { date: date, rest: out, word: found };
+
+    out = text.replace(/\s(오늘|내일|모레|어제)(?=\s)/, function (all, w) {
       var n = w === "내일" ? 1 : w === "모레" ? 2 : w === "어제" ? -1 : 0;
       date = iso(addDays(parseISO(base), n)); found = w;
       return " ";
@@ -3173,23 +3325,391 @@
     return { date: w.date, label: "업무 " + title };
   }
 
-  /* 분류를 정한다. #태그가 있으면 그것을 따르고,
-     없으면 지금 보고 있는 페이지를 따른다. 추측하지 않는다. */
-  var QUICK_TAGS = { "일정": "schedule", "업무": "work", "건강": "health", "todo": "work" };
+  /* ---------- 미팅 ----------
+     하루 밑에 둔다. 동기화가 날짜 단위로 합치므로 이렇게 두면 그대로 따라온다. */
+  function newMeeting(time, title) {
+    return {
+      id: uid(), time: time || "", title: title || "",
+      people: "", notes: "", todos: []
+    };
+  }
 
-  function quickKind(text) {
-    var kind = null;
+  function parseMeeting(text, base) {
+    var w = takeWhen(" " + String(text).replace(/\s+/g, " ").trim() + " ", base);
+    var c = takeClockOnce(w.rest);
+    var title = c.rest.replace(/\s(?:에|부터)(?=\s)/g, " ").replace(/\s+/g, " ").trim();
+    if (!title) return null;
+
+    day(w.date).meetings.push(newMeeting(c.time, title));
+    return {
+      date: w.date,
+      label: "미팅 " + (c.time ? c.time + " " : "") + title
+    };
+  }
+
+  /* ---------- 어디에 넣을지 ----------
+     고른 곳이 곧 저장될 곳이다. 기계가 추측하지 않는다.
+     #태그는 손을 떼지 않고 바꾸는 지름길로 남겨 두었고,
+     쓰면 고른 자리도 함께 바뀌므로 어디로 갔는지 눈에 보인다. */
+  /* 차례는 왼쪽 페이지 막대와 같게 둔다. 두 곳의 차례가 다르면 손이 헷갈린다. */
+  var QUICK_PICKS = [
+    { id: "schedule",  label: "일정",   ph: "금요일 오후 2시 법무회의 1시간" },
+    { id: "work",      label: "업무",   ph: "기획서 초안 (금요일까지)" },
+    { id: "faith",     label: "신앙",   ph: "오늘 말씀에서 마음에 남은 것  ·  기도는 #기도" },
+    { id: "health",    label: "건강",   ph: "혈압 120/80  물 5잔  기분 4  아침 현미밥" },
+    { id: "history",   label: "나의역사", ph: "첫 직장 입사" },
+    { id: "meeting",   label: "미팅",   ph: "오후 2시 법무팀 정기회의" },
+    { id: "knowledge", label: "지식창고", ph: "복리 계산법 — 72 법칙" }
+  ];
+  var QUICK_TAGS = {
+    "일정": "schedule", "업무": "work", "건강": "health",
+    "미팅": "meeting", "회의": "meeting", "todo": "work",
+    "나의역사": "history", "역사": "history",
+    "지식창고": "knowledge", "지식": "knowledge",
+    "신앙": "faith", "묵상": "faith", "묵상일기": "faith",
+    "기도": "prayer", "기도제목": "prayer"
+  };
+
+  /* 고르지 않았으면 보고 있는 페이지에 맞춘다 */
+  var NOTE_PAGES = ["schedule", "work", "meeting", "history", "knowledge", "faith"];
+  var quickPick = null;
+
+  function quickTarget() {
+    if (quickPick) return quickPick;
+    var p = currentPage();
+    return NOTE_PAGES.indexOf(p) !== -1 ? p : "health";
+  }
+
+  function takeTag(text) {
+    var tag = null;
     var rest = text.replace(/\s#(\S+)(?=\s)/, function (all, w) {
       var k = QUICK_TAGS[w];
       if (!k) return all;
-      kind = k; return " ";
+      tag = k; return " ";
     });
-    if (!kind) {
-      var p = currentPage();
-      kind = (p === "schedule" || p === "work") ? p : "health";
-    }
-    return { kind: kind, rest: rest };
+    return { tag: tag, rest: rest };
   }
+
+  function renderPicks() {
+    var host = document.getElementById("quickPicks");
+    if (!host) return;
+    var now = quickTarget();
+    host.innerHTML = QUICK_PICKS.map(function (p) {
+      return '<button type="button" data-pick="' + p.id + '" aria-pressed="' +
+        (p.id === now) + '">' + p.label + "</button>";
+    }).join("");
+
+    var ta = document.getElementById("quickText");
+    for (var i = 0; i < QUICK_PICKS.length; i++) {
+      if (QUICK_PICKS[i].id === now) ta.placeholder = QUICK_PICKS[i].ph;
+    }
+  }
+
+  document.getElementById("quickPicks").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-pick]");
+    if (!b) return;
+    quickPick = b.getAttribute("data-pick");
+    renderPicks();
+    document.getElementById("quickText").focus();
+  });
+
+  /* ---------- 나의역사 · 지식창고 ----------
+     둘은 모양이 같아서 한 벌로 만들고 이름만 바꿔 쓴다.
+     미팅·업무와 달리 이번 주로 끊지 않고 **적어 둔 것을 전부** 보여준다 —
+     지난주 것이 안 보이는 창고는 창고가 아니기 때문이다. */
+  var NOTE_LABEL = { history: "나의역사", knowledge: "지식창고",
+                     faith: "묵상일기", prayer: "기도" };
+  var NOTE_KINDS = {
+    history:   { list: "historyList",   title: "무슨 일이 있었나" },
+    knowledge: { list: "knowledgeList", title: "무엇을 알게 되었나" },
+    faith:     { list: "faithList",     title: "오늘 마음에 남은 것" },
+    prayer:    { list: "prayerList",    title: "무엇을 위해 기도하는가" }
+  };
+
+  function parseNote(kind) {
+    return function (text, base) {
+      var w = takeWhen(" " + String(text).replace(/\s+/g, " ").trim() + " ", base);
+      var title = w.rest.replace(/\s+/g, " ").trim();
+      if (!title) return null;
+      day(w.date)[kind].push({ id: uid(), title: title, notes: "" });
+      return { date: w.date, label: NOTE_LABEL[kind] + " " + title };
+    };
+  }
+
+  function noteAt(kind, date, id) {
+    var list = day(date)[kind];
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+    return null;
+  }
+
+  /* 적어 둔 날짜를 전부 모아 최근 것부터 */
+  function noteDates(kind) {
+    var out = [];
+    for (var date in state.days) {
+      var d = state.days[date];
+      if (d && d[kind] && d[kind].length) out.push(date);
+    }
+    return out.sort().reverse();
+  }
+
+  function renderNotes(kind) {
+    var conf = NOTE_KINDS[kind];
+    var host = document.getElementById(conf.list);
+    if (!host) return;
+    var dates = noteDates(kind);
+
+    if (!dates.length) {
+      host.innerHTML = '<div class="wk-empty">아직 적어 둔 것이 없습니다.</div>';
+      return;
+    }
+
+    host.innerHTML = dates.map(function (date) {
+      var dt = parseISO(date);
+      var when = dt.getFullYear() + "." + pad(dt.getMonth() + 1) + "." + pad(dt.getDate()) +
+        " " + dowOf(date);
+      return state.days[date][kind].map(function (n) {
+        var at = kind + "|" + date + "|" + n.id;
+        return '<div class="mt">' +
+          '<div class="mt-top">' +
+            '<span class="mt-when">' + when + "</span>" +
+            '<input class="mt-title" data-note="title" data-at="' + at +
+              '" value="' + esc(n.title) + '" placeholder="' + conf.title +
+              '" aria-label="제목">' +
+            '<button class="ghost mt-del" data-notedel="' + at + '">지우기</button>' +
+          "</div>" +
+          '<div class="mt-row"><span class="mt-key">내용</span>' +
+            '<textarea data-note="notes" data-at="' + at +
+            '" placeholder="더 적을 것이 있으면" aria-label="내용">' + esc(n.notes) +
+            "</textarea></div>" +
+        "</div>";
+      }).join("");
+    }).join("");
+  }
+
+  function bindNotes(kind) {
+    var host = document.getElementById(NOTE_KINDS[kind].list);
+
+    host.addEventListener("change", function (e) {
+      var f = e.target.closest("[data-note]");
+      if (!f) return;
+      var k = f.getAttribute("data-at").split("|");
+      var n = noteAt(k[0], k[1], k[2]);
+      /* 화면은 다시 그리지 않는다 — 적는 도중 커서가 튀지 않게 */
+      if (n) { n[f.getAttribute("data-note")] = f.value.trim(); save(); }
+    });
+
+    host.addEventListener("click", function (e) {
+      var del = e.target.closest("button[data-notedel]");
+      if (!del) return;
+      var k = del.getAttribute("data-notedel").split("|");
+      var n = noteAt(k[0], k[1], k[2]);
+      if (n && (n.title || n.notes) &&
+          !confirm("이것을 지울까요?\n\n" + (n.title || "제목 없음"))) return;
+      state.days[k[1]][k[0]] = state.days[k[1]][k[0]].filter(function (x) { return x.id !== k[2]; });
+      save(); renderNotes(k[0]);
+    });
+  }
+  bindNotes("history");
+  bindNotes("knowledge");
+  bindNotes("faith");
+  bindNotes("prayer");
+
+  Array.prototype.forEach.call(
+    document.querySelectorAll("button[data-noteadd]"), function (b) {
+      b.addEventListener("click", function () {
+        var kind = b.getAttribute("data-noteadd");
+        day(selected)[kind].push({ id: uid(), title: "", notes: "" });
+        save();
+        renderNotes(kind);
+        var boxes = document.querySelectorAll(
+          "#" + NOTE_KINDS[kind].list + ' input[data-note="title"]');
+        if (boxes.length) boxes[0].focus();
+      });
+    });
+
+  /* ---------- 미팅 화면 ----------
+     이번 주 것만 날짜 순으로 보여준다. 칸을 고치면 그 자리에서 저장하고,
+     화면은 다시 그리지 않는다 — 적는 도중에 글자가 튀지 않게 하려는 것이다. */
+  function meetingAt(date, id) {
+    var list = day(date).meetings;
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+    return null;
+  }
+
+  function renderMeetings() {
+    var host = document.getElementById("meetList");
+    if (!host) return;
+    var today = iso(new Date()), any = false;
+
+    host.innerHTML = weekDates().map(function (date, i) {
+      var list = (peek(date) && peek(date).meetings) || [];
+      if (!list.length) return "";
+      any = true;
+      var dt = parseISO(date);
+      var when = (dt.getMonth() + 1) + "/" + dt.getDate() + " " + DOW[i];
+
+      return list.slice().sort(function (a, b) {
+        return String(a.time).localeCompare(String(b.time));
+      }).map(function (m) {
+        var at = date + "|" + m.id;
+        return '<div class="mt">' +
+          '<div class="mt-top">' +
+            '<span class="mt-when' + (date === today ? " today" : "") + '">' +
+              when + (m.time ? " " + m.time : "") + "</span>" +
+            '<input class="mt-title" data-mt="title" data-at="' + at +
+              '" value="' + esc(m.title) + '" placeholder="미팅 이름" aria-label="미팅 이름">' +
+            '<button class="ghost mt-del" data-mtdel="' + at + '">지우기</button>' +
+          "</div>" +
+
+          '<div class="mt-row"><span class="mt-key">참석</span>' +
+            '<input data-mt="people" data-at="' + at + '" value="' + esc(m.people) +
+            '" placeholder="김팀장, 박차장" aria-label="참석자"></div>' +
+
+          '<div class="mt-row"><span class="mt-key">논의</span>' +
+            '<textarea data-mt="notes" data-at="' + at +
+            '" placeholder="무엇을 이야기했나" aria-label="논의 내용">' + esc(m.notes) + "</textarea></div>" +
+
+          '<div class="mt-todos">' +
+            m.todos.map(function (t, ti) {
+              return '<label class="mt-td' + (t.done ? " done" : "") + '">' +
+                '<input type="checkbox" data-mttd="' + at + "|" + ti + '"' +
+                  (t.done ? " checked" : "") + ">" +
+                "<span>" + esc(t.text) + "</span>" +
+                '<button class="ghost" data-mttddel="' + at + "|" + ti + '">지우기</button></label>';
+            }).join("") +
+            '<div class="mt-add">' +
+              '<input data-mtnew="' + at + '" placeholder="여기서 나온 할 일" aria-label="할 일 추가">' +
+            "</div>" +
+          "</div>" +
+        "</div>";
+      }).join("");
+    }).join("");
+
+    if (!any) {
+      host.innerHTML = '<div class="wk-empty">이번 주에 적어 둔 미팅이 없습니다.</div>';
+    }
+  }
+
+  var meetHost = document.getElementById("meetList");
+
+  /* 글자 칸은 다 적고 칸을 벗어날 때 저장한다. 화면은 그대로 두어 커서가 튀지 않게 한다. */
+  meetHost.addEventListener("change", function (e) {
+    var f = e.target.closest("[data-mt]");
+    if (f) {
+      var k = f.getAttribute("data-at").split("|");
+      var m = meetingAt(k[0], k[1]);
+      if (m) { m[f.getAttribute("data-mt")] = f.value.trim(); save(); renderTiles(); }
+      return;
+    }
+    var box = e.target.closest("input[data-mttd]");
+    if (box) {
+      var b = box.getAttribute("data-mttd").split("|");
+      var m2 = meetingAt(b[0], b[1]);
+      if (m2 && m2.todos[+b[2]]) { m2.todos[+b[2]].done = box.checked; save(); renderMeetings(); }
+      return;
+    }
+    var add = e.target.closest("input[data-mtnew]");
+    if (add) {
+      var t = add.value.trim();
+      if (!t) return;
+      var a = add.getAttribute("data-mtnew").split("|");
+      var m3 = meetingAt(a[0], a[1]);
+      if (m3) { m3.todos.push({ text: t, done: false }); save(); renderMeetings(); }
+    }
+  });
+
+  meetHost.addEventListener("click", function (e) {
+    var del = e.target.closest("button[data-mtdel]");
+    if (del) {
+      var k = del.getAttribute("data-mtdel").split("|");
+      var list = day(k[0]).meetings;
+      var m = meetingAt(k[0], k[1]);
+      /* 적어 둔 것이 있으면 실수로 지우지 않도록 한 번 묻는다 */
+      if (m && (m.title || m.people || m.notes || m.todos.length) &&
+          !confirm("이 미팅을 지울까요?\n\n" + (m.title || "이름 없는 미팅"))) return;
+      day(k[0]).meetings = list.filter(function (x) { return x.id !== k[1]; });
+      save(); renderMeetings();
+      return;
+    }
+    var tdel = e.target.closest("button[data-mttddel]");
+    if (tdel) {
+      var b = tdel.getAttribute("data-mttddel").split("|");
+      var m2 = meetingAt(b[0], b[1]);
+      if (m2) { m2.todos.splice(+b[2], 1); save(); renderMeetings(); }
+    }
+  });
+
+  document.getElementById("meetAdd").addEventListener("click", function () {
+    day(selected).meetings.push(newMeeting("", ""));
+    save();
+    renderMeetings();
+    /* 새로 생긴 칸에 바로 적을 수 있게 커서를 옮긴다 */
+    var boxes = meetHost.querySelectorAll('input[data-mt="title"]');
+    if (boxes.length) boxes[boxes.length - 1].focus();
+  });
+
+  /* ---------- 오늘 (메인화면) ----------
+     보고 있는 날의 일정과 할 일을 한 자리에 모은다.
+     일정·업무 페이지와 같은 자료를 보여주므로 어느 쪽에서 체크해도 함께 바뀐다. */
+  function renderToday() {
+    var host = document.getElementById("todayBody");
+    if (!host) return;
+
+    var isToday = selected === iso(new Date());
+    var dt = parseISO(selected);
+    document.getElementById("todayTitle").textContent = isToday ? "오늘" : "그날";
+    document.getElementById("todayHint").textContent =
+      (dt.getMonth() + 1) + "월 " + dt.getDate() + "일 (" + dowOf(selected) + ")" +
+      (isToday ? "" : " — 오늘이 아닙니다");
+
+    var sched = schedOf(selected).slice().sort(function (a, b) {
+      return String(a.time).localeCompare(String(b.time));
+    });
+    var todos = todosOf(selected);
+
+    host.innerHTML =
+      "<div><h3>일정</h3>" +
+        (sched.length
+          ? sched.map(function (it) {
+              return '<label class="td-line' + (it.done ? " done" : "") + '">' +
+                '<input type="checkbox" data-tds="' + it.id + '"' + (it.done ? " checked" : "") + ">" +
+                '<span class="at">' + esc(it.time === "––:––" ? "—" : it.time) + "</span>" +
+                '<span class="txt">' + esc(it.title) + "</span></label>";
+            }).join("")
+          : '<div class="none">적어 둔 일정이 없습니다.</div>') +
+      "</div>" +
+
+      "<div><h3>할 일</h3>" +
+        todos.map(function (t, i) {
+          if (!t.text) return "";
+          return '<label class="td-line' + (t.done ? " done" : "") + '">' +
+            '<input type="checkbox" data-tdt="' + i + '"' + (t.done ? " checked" : "") + ">" +
+            '<span class="txt">' + esc(t.text) + "</span></label>";
+        }).join("") +
+      "</div>";
+
+    /* 할 일이 첫 칸(QT)뿐이면 그것만 보인다. 빈 칸은 굳이 보여주지 않는다. */
+    if (!todos.some(function (t) { return t.text; })) {
+      host.lastChild.innerHTML += '<div class="none">적어 둔 할 일이 없습니다.</div>';
+    }
+  }
+
+  document.getElementById("todayBody").addEventListener("change", function (e) {
+    var s = e.target.closest("input[data-tds]");
+    if (s) {
+      var id = s.getAttribute("data-tds");
+      schedOf(selected).forEach(function (it) { if (it.id === id) it.done = s.checked; });
+      return persist();
+    }
+    var t = e.target.closest("input[data-tdt]");
+    if (t) {
+      todoSlot(selected, +t.getAttribute("data-tdt")).done = t.checked;
+      persist();
+    }
+  });
+
+  document.getElementById("todayPrev").addEventListener("click", function () { stepDay(-1); });
+  document.getElementById("todayNext").addEventListener("click", function () { stepDay(1); });
 
   /* ---------- 업무 목록 ----------
      그날 할 일 칸(QT 다음 칸부터)을 이번 주 것만 모아 보여준다.
@@ -3232,12 +3752,36 @@
   });
 
   function renderQuick() {
+    renderPicks();
     var el = document.getElementById("quickDate");
     if (!el) return;
-    var dt = parseISO(selected);
-    el.textContent =
-      (dt.getMonth() + 1) + "월 " + dt.getDate() + "일 (" + dowOf(selected) + ") 기록에 넣습니다";
+    var box = document.getElementById("quickDateIn");
+    if (box && box.value !== selected) box.value = selected;
+
+    var today = iso(new Date());
+    var diff = Math.round(
+      (parseISO(selected) - parseISO(today)) / 86400000);
+    el.textContent = "(" + dowOf(selected) + ") " +
+      (diff === 0 ? "오늘"
+       : diff === -1 ? "어제"
+       : diff === 1 ? "내일"
+       : diff < 0 ? (-diff) + "일 전"
+       : diff + "일 뒤");
   }
+
+  /* 아무 날짜로 건너뛴다. 그 날이 다른 주면 보고 있는 주도 함께 옮긴다 —
+     안 그러면 요약·차트가 딴 주를 가리킨 채로 남는다. */
+  function goToDate(date) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+    selected = date;
+    var wk = mondayOf(parseISO(date));
+    if (iso(wk) !== iso(weekStart)) weekStart = wk;
+    render();
+  }
+
+  document.getElementById("quickDateIn").addEventListener("change", function (e) {
+    if (e.target.value) goToDate(e.target.value);
+  });
 
   function quickSubmit() {
     var ta = document.getElementById("quickText");
@@ -3248,14 +3792,26 @@
       msg.textContent = "적은 것이 없습니다.";
       return;
     }
-    var k = quickKind(" " + text.replace(/\s+/g, " ") + " ");
+    /* 태그를 썼으면 고른 자리도 그쪽으로 옮겨, 어디로 갔는지 보이게 한다 */
+    var t = takeTag(" " + text.replace(/\s+/g, " ") + " ");
+    if (t.tag) { quickPick = t.tag; renderPicks(); }
+    var kind = t.tag || quickTarget();
     var got, unknown = "", where = selected;
 
-    if (k.kind === "health") {
-      var r = parseQuick(k.rest, day(selected));
-      got = r.got; unknown = r.unknown;
+    if (kind === "health") {
+      /* 건강도 날짜를 앞에 적을 수 있게 한다 — "어제 혈압 120/80", "8/3 체중 62" */
+      var wh = takeWhen(t.rest, selected);
+      var r = parseQuick(wh.rest, day(wh.date));
+      got = r.got; unknown = r.unknown; where = wh.date;
     } else {
-      var one = (k.kind === "schedule" ? parseSchedule : parseWork)(k.rest, selected);
+      var fn = kind === "schedule"  ? parseSchedule
+             : kind === "meeting"   ? parseMeeting
+             : kind === "history"   ? parseNote("history")
+             : kind === "knowledge" ? parseNote("knowledge")
+             : kind === "faith"     ? parseNote("faith")
+             : kind === "prayer"    ? parseNote("prayer")
+             : parseWork;
+      var one = fn(t.rest, selected);
       if (one && one.full) {
         msg.className = "quick-msg";
         msg.innerHTML = '<span class="miss">그날 할 일 칸이 다 찼습니다.</span> ' +
@@ -3269,9 +3825,9 @@
     if (!got.length) {
       msg.className = "quick-msg";
       msg.innerHTML = '<span class="miss">알아듣지 못했습니다.</span> ' +
-        (k.kind === "health"
+        (kind === "health"
           ? "예: 혈압 120/80 · 물 5잔 · 기분 4 · 아침 현미밥"
-          : "예: 금요일 오후 2시 법무회의 1시간 #일정 · 기획서 초안 #업무");
+          : "예: 금요일 오후 2시 법무회의 1시간 #일정 · 기획서 초안 #업무 · 2시 팀회의 #미팅");
       return;
     }
     save();
@@ -3343,6 +3899,11 @@
     var label = "";
     for (var i = 0; i < PAGES.length; i++) if (PAGES[i].id === now) label = PAGES[i].label;
     document.title = now === "main" ? "주간 기록부" : "주간 기록부 · " + label;
+
+    /* 페이지를 옮기면 고른 자리도 그 페이지에 맞춘다.
+       업무 페이지에 와서 건강이 골라져 있으면 엉뚱한 곳에 들어간다. */
+    quickPick = null;
+    renderPicks();
   }
 
   document.getElementById("pageTabs").addEventListener("click", function (e) {
