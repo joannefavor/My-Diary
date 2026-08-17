@@ -655,6 +655,17 @@
   }
   .cal-dh.is-today .dnum { background: var(--sage); color: var(--on-sage); }
   .cal-dh.is-weekend .dow { color: var(--s2); }
+  /* 공휴일 — 색만으로 알리지 않고 이름을 함께 적는다 */
+  .cal-dh.is-holiday .dow, .cal-dh.is-holiday .dnum { color: var(--s2); }
+  .cal-dh .hol {
+    display: block; font-size: 9.5px; line-height: 1.2; color: var(--s2);
+    margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .mon-cell.is-holiday .mon-num { color: var(--s2); font-weight: 700; }
+  .mon-hol {
+    display: block; font-size: 9.5px; line-height: 1.2; color: var(--s2);
+    margin: 1px 0 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
 
   /* Event 줄은 타임라인의 30분 칸과 같은 높이를 기준으로 삼는다 */
   .cal-allday { border-bottom: 1px solid var(--hair); min-height: var(--hh); }
@@ -1258,7 +1269,7 @@
     <div class="today" id="todayBody"></div>
   </section>
 
-  <section class="panel" id="quickPanel" data-page="main health schedule work meeting history knowledge faith">
+  <section class="panel" id="quickPanel" data-page="main">
     <header>
       <div class="calnav">
         <button class="icon-btn" id="quickPrev" aria-label="하루 전">&lt;</button>
@@ -1375,7 +1386,7 @@
   <section class="panel" data-page="work">
     <header>
       <h2>이번 주 업무</h2>
-      <span class="hint">위에서 빠르게 쓰면 그날 할 일로 쌓입니다</span>
+      <span class="hint">메인화면의 <b>빠르게 쓰기</b>로 적으면 그날 할 일로 쌓입니다</span>
     </header>
     <div class="worklist" id="workList"></div>
   </section>
@@ -1410,7 +1421,7 @@
   <section class="panel" data-page="meeting">
     <header>
       <h2>이번 주 미팅</h2>
-      <span class="hint">위에서 <b>미팅</b> 을 골라 적으면 바로 만들어집니다</span>
+      <span class="hint">메인화면의 <b>빠르게 쓰기</b>에서 미팅을 골라도 만들어집니다</span>
       <button class="ghost" id="meetAdd">+ 새 미팅</button>
     </header>
     <div class="meetlist" id="meetList"></div>
@@ -1486,6 +1497,37 @@
 
   var STORE = "weekly-health-ledger-v3";
   var DOW = ["월", "화", "수", "목", "금", "토", "일"];
+
+  /* ---------- 공휴일 ----------
+     관공서의 공휴일에 관한 규정 기준. 제헌절(2008년부터 공휴일 아님)과
+     근로자의 날(관공서 공휴일이 아님)은 넣지 않았다.
+     설·추석은 음력이라 해마다 달라 미리 적어 둔다. 대체공휴일은 규칙으로
+     따로 계산해 받아온 자료와 맞는지 대조한 값이다.
+     모르는 해는 아무것도 표시하지 않는다 — 틀린 날을 빨갛게 칠하느니 비워 둔다. */
+  var HOLIDAYS = {
+    "2026-01-01": "신정",
+    "2026-02-16": "설날 연휴", "2026-02-17": "설날", "2026-02-18": "설날 연휴",
+    "2026-03-01": "삼일절",    "2026-03-02": "삼일절 대체",
+    "2026-05-05": "어린이날",
+    "2026-05-24": "부처님오신날", "2026-05-25": "부처님오신날 대체",
+    "2026-06-03": "지방선거",  "2026-06-06": "현충일",
+    "2026-08-15": "광복절",    "2026-08-17": "광복절 대체",
+    "2026-09-24": "추석 연휴", "2026-09-25": "추석", "2026-09-26": "추석 연휴",
+    "2026-10-03": "개천절",    "2026-10-05": "개천절 대체",
+    "2026-10-09": "한글날",    "2026-12-25": "성탄절",
+
+    "2027-01-01": "신정",
+    "2027-02-06": "설날 연휴", "2027-02-07": "설날", "2027-02-08": "설날 연휴",
+    "2027-02-09": "설날 대체",
+    "2027-03-01": "삼일절",    "2027-05-05": "어린이날", "2027-05-13": "부처님오신날",
+    "2027-06-06": "현충일",
+    "2027-08-15": "광복절",    "2027-08-16": "광복절 대체",
+    "2027-09-14": "추석 연휴", "2027-09-15": "추석", "2027-09-16": "추석 연휴",
+    "2027-10-03": "개천절",    "2027-10-04": "개천절 대체",
+    "2027-10-09": "한글날",    "2027-10-11": "한글날 대체",
+    "2027-12-25": "성탄절",    "2027-12-27": "성탄절 대체"
+  };
+  function holidayOf(date) { return HOLIDAYS[date] || ""; }
   var MEALS = [["b", "아침"], ["l", "점심"], ["d", "저녁"]];
 
   /* ============================ 판정 기준 ============================ */
@@ -2098,10 +2140,13 @@
 
     var head = '<div class="cal-head"><div></div>' + dates.map(function (date, i) {
       var dd = parseISO(date);
+      var hol = holidayOf(date);
       return '<div class="cal-dh' + (date === TODAY ? " is-today" : "") +
-        (isWeekendDate(date) ? " is-weekend" : "") + '">' +
+        (isWeekendDate(date) ? " is-weekend" : "") +
+        (hol ? " is-holiday" : "") + '" title="' + esc(hol) + '">' +
         '<span class="dow">' + dowOf(date) + "</span>" +
-        '<span class="dnum">' + dd.getDate() + "</span></div>";
+        '<span class="dnum">' + dd.getDate() + "</span>" +
+        (hol ? '<span class="hol">' + esc(hol) + "</span>" : "") + "</div>";
     }).join("") + "</div>";
 
     var allday = '<div class="cal-allday"><div class="cal-adlabel">Event</div>' +
@@ -2253,9 +2298,12 @@
           "/" + todo.length + "</div>"
         : "";
 
+      var hol = holidayOf(date);
       return '<div class="mon-cell' + (dd.getMonth() === mon ? "" : " is-out") +
-        (date === TODAY ? " is-today" : "") + '" data-monday="' + date + '">' +
+        (date === TODAY ? " is-today" : "") + (hol ? " is-holiday" : "") +
+        '" data-monday="' + date + '">' +
         '<span class="mon-num">' + dd.getDate() + "</span>" +
+        (hol ? '<span class="mon-hol">' + esc(hol) + "</span>" : "") +
         shown + more + todoLine + "</div>";
     }).join("");
 
@@ -3462,15 +3510,10 @@
     "병원": "visit", "진료": "visit"
   };
 
-  /* 고르지 않았으면 보고 있는 페이지에 맞춘다 */
-  var NOTE_PAGES = ["schedule", "work", "meeting", "history", "knowledge", "faith"];
+  /* 빠르게 쓰기는 메인화면에만 있다. 고르지 않았으면 일정으로 시작한다 —
+     메인이 그날의 일정과 할 일을 보여주는 화면이기 때문이다. */
   var quickPick = null;
-
-  function quickTarget() {
-    if (quickPick) return quickPick;
-    var p = currentPage();
-    return NOTE_PAGES.indexOf(p) !== -1 ? p : "health";
-  }
+  function quickTarget() { return quickPick || "schedule"; }
 
   function takeTag(text) {
     var tag = null;
@@ -4233,9 +4276,6 @@
     for (var i = 0; i < PAGES.length; i++) if (PAGES[i].id === now) label = PAGES[i].label;
     document.title = now === "main" ? "주간 기록부" : "주간 기록부 · " + label;
 
-    /* 페이지를 옮기면 고른 자리도 그 페이지에 맞춘다.
-       업무 페이지에 와서 건강이 골라져 있으면 엉뚱한 곳에 들어간다. */
-    quickPick = null;
     renderPicks();
   }
 
