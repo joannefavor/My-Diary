@@ -80,6 +80,10 @@
     --ev-22: #795648; --ev-22-fg: #ffffff;
     --ev-23: #616161; --ev-23-fg: #ffffff;
     --ev-24: #a79c8f; --ev-24-fg: #000000;
+    /* 이 앱 팔레트에서 온 두 색. 구글 24색 뒤에 덧붙였다 —
+       앞의 24개를 건드리면 이미 색을 골라 둔 일정들이 다른 색으로 바뀐다. */
+    --ev-25: #f6b08a; --ev-25-fg: #3e3a39;
+    --ev-26: #b7c8a1; --ev-26-fg: #2c3524;
     --good:         #0ca30c;
     --warning:      #fab219;
     --serious:      #ec835a;
@@ -1993,8 +1997,8 @@
     return '<span class="n">' + esc(it.title) + "</span>";
   }
 
-  var EV_COLORS = 24;
-  var EV_DEFAULT = 16;            // 구글 기본색과 같은 파랑
+  var EV_COLORS = 26;
+  var EV_DEFAULT = 25;            // 이 앱의 복숭아색. 화면 전체와 결이 맞는다
   /* 6색 시절 기록을 새 팔레트의 가까운 색으로 옮긴다 */
   var EV_LEGACY = { 1: 18, 2: 16, 3: 12, 4: 7, 5: 1, 6: 21 };
   function evColorIdx(it) {
