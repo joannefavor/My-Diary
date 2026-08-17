@@ -318,6 +318,20 @@
     border: 1px solid var(--hair); border-radius: 7px; padding: 5px 9px;
   }
   .visit-bar input { flex: 1 1 180px; min-width: 0; }
+  .dayspin { display: flex; align-items: center; gap: 5px; flex: 1 1 auto; min-width: 0; }
+  .dayspin input[type="date"] { flex: 1 1 auto; min-width: 0; }
+  .dayspin .icon-btn { flex: none; padding: 4px 8px; }
+  /* 가운데 동그라미 — 누르면 오늘로 돌아온다 */
+  .dot-btn {
+    flex: none; width: 20px; height: 20px; padding: 0; border-radius: 50%;
+    display: grid; place-items: center; background: var(--surface);
+  }
+  .dot-btn::before {
+    content: ""; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--baseline);
+  }
+  .dot-btn:hover::before { background: var(--accent-ink); }
+  .dot-btn.is-today::before { background: var(--sage); }
   .datepick input[type="text"] {
     font: inherit; font-size: 13px; color: var(--ink); background: var(--surface);
     border: 1px solid var(--hair); border-radius: 7px; padding: 4px 9px;
@@ -1394,7 +1408,12 @@
     <header>
       <h2>이번 주 업무</h2>
       <div class="datepick">
-        <input type="date" id="workDate" aria-label="어느 날에 적을지">
+        <span class="dayspin">
+          <button type="button" class="icon-btn" data-daystep="-1" aria-label="하루 전">&lt;</button>
+          <input type="date" id="workDate" aria-label="어느 날에 적을지">
+          <button type="button" class="dot-btn" data-daytoday title="오늘로" aria-label="오늘로"></button>
+          <button type="button" class="icon-btn" data-daystep="1" aria-label="하루 뒤">&gt;</button>
+        </span>
         <input type="text" id="workNew" placeholder="할 일" aria-label="할 일 내용">
         <button class="ghost" id="workAdd">+ 넣기</button>
       </div>
@@ -3219,7 +3238,11 @@
     renderQuick();
     renderToday();
     var wd = document.getElementById("workDate");
-    if (wd && wd.value !== selected) wd.value = selected;
+    if (wd) {
+      if (wd.value !== selected) wd.value = selected;
+      var wdot = wd.parentNode.querySelector(".dot-btn");
+      if (wdot) wdot.classList.toggle("is-today", selected === iso(new Date()));
+    }
     renderWork();
     renderMeetings();
     renderNotes("history");
@@ -3367,6 +3390,40 @@
 
     return { got: got, unknown: rest.trim() };
   }
+
+  /* 달력 칸 옆의 < > — 하루씩 민다.
+     달력을 열지 않고도 하루 앞뒤로 옮기는 일이 잦다. 값을 바꾼 뒤에는
+     사람이 고른 것과 똑같이 change 를 흘려보내, 옮기는 처리를 그대로 쓴다. */
+  function dayField(attrs, value, label) {
+    return '<span class="dayspin">' +
+      '<button type="button" class="icon-btn" data-daystep="-1" aria-label="하루 전">&lt;</button>' +
+      '<input type="date" ' + attrs + ' value="' + value + '" aria-label="' + label + '">' +
+      '<button type="button" class="dot-btn' +
+        (value === iso(new Date()) ? " is-today" : "") +
+        '" data-daytoday title="오늘로" aria-label="오늘로"></button>' +
+      '<button type="button" class="icon-btn" data-daystep="1" aria-label="하루 뒤">&gt;</button>' +
+      "</span>";
+  }
+
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-daystep], button[data-daytoday]");
+    if (!b) return;
+    var box = b.parentNode.querySelector('input[type="date"]');
+    if (!box) return;
+
+    var to;
+    if (b.hasAttribute("data-daytoday")) {
+      to = iso(new Date());
+    } else {
+      if (!box.value) return;
+      var at = parseISO(box.value);
+      at.setDate(at.getDate() + (+b.getAttribute("data-daystep")));
+      to = iso(at);
+    }
+    if (to === box.value) return;
+    box.value = to;
+    box.dispatchEvent(new Event("change", { bubbles: true }));
+  });
 
   /* 있지도 않은 날짜(2월 30일 같은)는 만들지 않는다 */
   function mkDate(y, m, dd) {
@@ -3700,8 +3757,7 @@
             '<button class="ghost mt-del" data-notedel="' + at + '">지우기</button>' +
           "</div>" +
           '<div class="mt-row"><span class="mt-key">날짜</span>' +
-            '<input type="date" data-notedate="' + at + '" value="' + date +
-            '" aria-label="적은 날짜"></div>' +
+            dayField('data-notedate="' + at + '"', date, "적은 날짜") + "</div>" +
           '<div class="mt-row"><span class="mt-key">내용</span>' +
             '<textarea data-note="notes" data-at="' + at +
             '" placeholder="더 적을 것이 있으면" aria-label="내용">' + esc(n.notes) +
@@ -3793,8 +3849,7 @@
         '<button class="ghost mt-del" data-visitdel="' + at + '">지우기</button>' +
       "</div>" +
       '<div class="mt-row"><span class="mt-key">방문일</span>' +
-        '<input type="date" data-visitdate="' + at + '" value="' + date +
-        '" aria-label="방문 날짜"></div>' +
+        dayField('data-visitdate="' + at + '"', date, "방문 날짜") + "</div>" +
       '<div class="mt-row"><span class="mt-key">내용</span>' +
         '<textarea data-visit="notes" data-at="' + at +
         '" placeholder="진료 내용, 처방, 다음 예약" aria-label="내용">' + esc(v.notes) +
@@ -4025,8 +4080,7 @@
           "</div>" +
 
           '<div class="mt-row"><span class="mt-key">날짜</span>' +
-            '<input type="date" data-mtdate="' + at + '" value="' + date +
-            '" aria-label="미팅 날짜"></div>' +
+            dayField('data-mtdate="' + at + '"', date, "미팅 날짜") + "</div>" +
           '<div class="mt-row"><span class="mt-key">참석</span>' +
             '<input data-mt="people" data-at="' + at + '" value="' + esc(m.people) +
             '" placeholder="김팀장, 박차장" aria-label="참석자"></div>' +
