@@ -134,13 +134,22 @@
     -webkit-font-smoothing: antialiased;
   }
 
+  /* 왼쪽에 페이지 이동 막대, 오른쪽에 본문.
+     좁은 화면에서는 아래 media 규칙이 다시 위아래로 세운다. */
   .wrap {
     max-width: 1200px;
     margin: 0 auto;
     padding: 32px 24px 72px;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 28px;
+    align-items: start;
+  }
+  .content {
     display: flex;
     flex-direction: column;
     gap: 20px;
+    min-width: 0;
   }
 
   /* ---------- 머리글 ---------- */
@@ -162,26 +171,84 @@
     color: var(--muted); margin: 0 0 6px;
   }
   .weeknav { display: flex; align-items: center; gap: 8px; }
-  /* 제목 왼쪽의 화면 이동 버튼.
-     화면을 통째로 바꾸는 버튼이라 요약 타일의 강조 색을 그대로 써서
-     푸터의 보조 버튼들과 확실히 구분되게 한다. */
-  .mast-left { display: flex; align-items: flex-end; gap: 14px; min-width: 0; }
-  #pageToggle {
-    white-space: nowrap; font-size: 13px; font-weight: 600;
-    padding: 8px 14px; border-radius: 8px;
+  /* ---------- 페이지 탭 ---------- */
+
+  /* 왼쪽 옆에 세로로 세운 페이지 이동 막대.
+     길게 스크롤해도 따라오도록 위에 붙여 둔다. */
+  .pagetabs {
+    display: flex; flex-direction: column; gap: 2px;
+    position: sticky; top: 24px;
+    width: 150px;
+    /* 머리글 아래 밑줄에 첫 버튼을 맞춘다.
+       머리말·제목·아래 여백·밑줄을 더한 높이다. */
+    margin-top: 78px;
+  }
+  .pagetabs button {
+    flex: none; background: transparent; border-color: transparent;
+    color: var(--ink-2); font-size: 13px; padding: 8px 14px; border-radius: 8px;
+    text-align: left; white-space: nowrap; width: 100%;
+  }
+  .pagetabs button:hover { background: var(--surface-2); border-color: var(--hair); }
+  .pagetabs button[aria-current="page"] {
+    background: var(--accent); border-color: var(--accent);
+    color: var(--on-accent); font-weight: 600;
+  }
+
+  /* 지금 페이지에 속하지 않은 칸을 감춘다. 어느 페이지 것인지는 data-page 에 적는다.
+     hidden 속성은 건드리지 않는다 — 말씀·동기화 패널은 그들 나름의 hidden 규칙이
+     따로 있어서, 여기서 켜고 끄면 서로 싸운다. 이 클래스는 감추기만 더할 뿐이다.
+     data-page 가 없는 칸(동기화 패널 등)은 어느 페이지에서나 보인다. */
+  .is-off { display: none !important; }
+
+  /* ---------- 빠른 기록 ---------- */
+
+  .quick { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .quick textarea {
+    width: 100%; box-sizing: border-box; resize: vertical; min-height: 62px;
+    font: inherit; line-height: 1.5;
+    color: var(--ink); background: var(--surface);
+    border: 1px solid var(--hair); border-radius: 9px; padding: 11px 13px;
+  }
+  .quick textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .quick-foot {
+    display: flex; flex-wrap: wrap; align-items: center;
+    justify-content: space-between; gap: 10px 16px;
+  }
+  .quick-msg { margin: 0; font-size: 12px; color: var(--muted); min-width: 0; }
+  .quick-msg.ok { color: var(--ink-2); }
+  .quick-msg b { color: var(--ink); font-weight: 600; }
+  .quick-msg .miss { color: var(--s2); }
+  #quickAdd {
+    flex: none; font-weight: 600; padding: 8px 16px; border-radius: 8px;
     background: var(--accent); border-color: var(--accent); color: var(--on-accent);
   }
-  #pageToggle:hover {
+  #quickAdd:hover {
     background: color-mix(in srgb, var(--accent) 86%, var(--plane));
     border-color: var(--accent);
   }
 
-  /* 두 화면을 오간다. 주소의 #/record 로 지금 어느 쪽인지 정한다.
-     hidden 속성을 건드리지 않고 CSS 로만 감춘다 —
-     말씀·동기화 패널은 그들 나름의 hidden 규칙이 따로 있기 때문이다.
-     동기화 패널은 data-page 가 없어서 어느 화면에서 열어도 보인다. */
-  body.page-record [data-page="dash"] { display: none; }
-  body:not(.page-record) [data-page="record"] { display: none; }
+  /* ---------- 업무 목록 ---------- */
+
+  .worklist { padding: 6px 16px 16px; }
+  .wk-day { border-top: 1px solid var(--hair); padding: 10px 0; }
+  .wk-day:first-child { border-top: 0; }
+  .wk-date {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .06em;
+    color: var(--muted); margin-bottom: 6px;
+  }
+  .wk-date.today { color: var(--accent); font-weight: 700; }
+  .wk-item { display: flex; align-items: center; gap: 9px; padding: 3px 0; }
+  .wk-item input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--accent); flex: none; }
+  .wk-item span { min-width: 0; overflow-wrap: anywhere; }
+  .wk-item.done span { color: var(--muted); text-decoration: line-through; }
+  .wk-empty { color: var(--muted); padding: 30px 0; text-align: center; }
+
+  /* 아직 내용이 없는 페이지의 안내 */
+  .soon {
+    padding: 56px 20px; text-align: center; color: var(--muted);
+    display: flex; flex-direction: column; gap: 6px; align-items: center;
+  }
+  .soon strong { color: var(--ink-2); font-weight: 600; font-size: 15px; }
   /* 일정 패널 제목 옆 이동 */
   .calnav { display: flex; align-items: center; gap: 8px; min-width: 0; }
   .calnav h2 { min-width: 0; }
@@ -993,6 +1060,17 @@
   @media (max-width: 980px) {
     .columns { grid-template-columns: minmax(0, 1fr); }
   }
+  /* 옆에 세울 자리가 없으면 이동 막대를 다시 본문 위로 눕힌다.
+     칸이 모자라면 옆으로 밀어서 본다. */
+  @media (max-width: 760px) {
+    .wrap { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+    .pagetabs {
+      flex-direction: row; overflow-x: auto; gap: 4px;
+      position: static; width: auto;
+      margin: 0 -4px; padding: 0 4px;
+    }
+    .pagetabs button { width: auto; }
+  }
   @media (max-width: 1080px) {
     /* 열이 적으면 메모를 한 줄로 내려 좁아지지 않게 */
     .memo-field { grid-column: 1 / -1; }
@@ -1015,13 +1093,14 @@
 
 <div class="wrap">
 
+  <nav class="pagetabs" id="pageTabs" aria-label="페이지"></nav>
+
+  <div class="content">
+
   <header class="masthead">
-    <div class="mast-left">
-      <button id="pageToggle">상세 기록</button>
-      <div>
-        <p class="eyebrow">Weekly ledger · 일정과 건강</p>
-        <h1>주간 기록부</h1>
-      </div>
+    <div>
+      <p class="eyebrow">Weekly ledger · 일정과 건강</p>
+      <h1>주간 기록부</h1>
     </div>
     <div class="weeknav">
       <button class="icon-btn" id="prevWeekTop" aria-label="지난 주">&lt;</button>
@@ -1031,9 +1110,28 @@
     </div>
   </header>
 
-  <section class="tiles" id="tiles" aria-label="이번 주 요약" data-page="dash"></section>
+  <section class="tiles" id="tiles" aria-label="이번 주 요약" data-page="main"></section>
 
-  <section class="panel" id="voicePanel" data-page="dash" hidden>
+  <section class="panel" id="quickPanel" data-page="main health schedule work">
+    <header>
+      <div class="calnav">
+        <button class="icon-btn" id="quickPrev" aria-label="하루 전">&lt;</button>
+        <h2>빠른 기록</h2>
+        <button class="icon-btn" id="quickNext" aria-label="하루 뒤">&gt;</button>
+      </div>
+      <span class="hint" id="quickDate"></span>
+    </header>
+    <div class="quick">
+      <textarea id="quickText" rows="2"
+        placeholder="혈압 120/80  물 5잔  기분 4      금요일 오후 2시 법무회의 1시간 #일정"></textarea>
+      <div class="quick-foot">
+        <p class="quick-msg" id="quickMsg">보고 있는 페이지에 넣습니다. <b>#일정</b> <b>#업무</b> <b>#건강</b> 을 붙이면 그쪽으로 갑니다.</p>
+        <button id="quickAdd">기록에 넣기</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="voicePanel" data-page="main faith" hidden>
     <header>
       <div class="calnav">
         <button class="icon-btn" id="voicePrev" aria-label="어제 말씀">&lt;</button>
@@ -1049,7 +1147,7 @@
     <div class="voice" id="voiceBody" aria-live="polite"></div>
   </section>
 
-  <section class="panel" data-page="dash">
+  <section class="panel" data-page="schedule">
     <header>
       <div class="calnav">
         <button class="icon-btn" id="prevWeek" aria-label="이전">&lt;</button>
@@ -1068,7 +1166,7 @@
   </section>
 
 
-  <section class="panel" data-page="dash">
+  <section class="panel" data-page="health">
     <header>
       <h2>건강 추이</h2>
       <div class="trendbar">
@@ -1092,17 +1190,50 @@
     </details>
   </section>
 
-  <section class="panel" id="recordPanel" data-page="record">
+  <section class="panel" id="recordPanel" data-page="health">
     <header>
       <div class="calnav">
         <button class="icon-btn" id="prevDay" aria-label="하루 전">&lt;</button>
         <h2>하루 기록하기</h2>
         <button class="icon-btn" id="nextDay" aria-label="하루 뒤">&gt;</button>
       </div>
-      <span class="hint">날짜를 고르고 값을 넣으면 대시보드의 요약과 차트에 바로 반영됩니다</span>
+      <span class="hint">날짜를 고르고 값을 넣으면 요약과 건강 추이에 바로 반영됩니다</span>
     </header>
     <div class="tabs" id="dayTabs" role="tablist" aria-label="기록할 날짜"></div>
     <div class="form-grid" id="entryForm"></div>
+  </section>
+
+  <!-- 아직 내용을 정하지 않은 페이지들. 무엇을 적을지 정하면 이 자리를 채운다. -->
+  <section class="panel" data-page="work">
+    <header>
+      <h2>이번 주 업무</h2>
+      <span class="hint">위 빠른 기록에 적으면 그날 할 일로 쌓입니다</span>
+    </header>
+    <div class="worklist" id="workList"></div>
+  </section>
+
+  <section class="panel" data-page="history">
+    <header><h2>나의 역사</h2></header>
+    <div class="soon">
+      <strong>아직 준비 중입니다</strong>
+      <span>어떤 것을 적을지 정하면 채워 넣겠습니다.</span>
+    </div>
+  </section>
+
+  <section class="panel" data-page="meeting">
+    <header><h2>미팅</h2></header>
+    <div class="soon">
+      <strong>아직 준비 중입니다</strong>
+      <span>어떤 것을 적을지 정하면 채워 넣겠습니다.</span>
+    </div>
+  </section>
+
+  <section class="panel" data-page="knowledge">
+    <header><h2>지식창고</h2></header>
+    <div class="soon">
+      <strong>아직 준비 중입니다</strong>
+      <span>어떤 것을 적을지 정하면 채워 넣겠습니다.</span>
+    </div>
   </section>
 
   <section class="panel" id="syncPanel" hidden>
@@ -1141,6 +1272,7 @@
     <!-- 방명록은 Supabase 프로젝트가 사라져 지금은 열어도 글이 안 나온다.
          코드(guestbook.html, api/guestbook.js)는 그대로 두었으니,
          새 프로젝트를 만들고 SUPABASE_URL·SUPABASE_ANON_KEY만 바꾸면 이 줄을 되살리면 된다.
+    <a class="ghost foot-link" href="/docs">작업 기록</a>
     <a class="ghost foot-link" href="/guestbook">방명록</a>
     -->
 
@@ -1150,6 +1282,8 @@
     <button class="ghost" id="importBtn">가져오기</button>
     <input type="file" id="importFile" accept="application/json,.json" hidden>
   </footer>
+
+  </div><!-- /content -->
 
 </div>
 
@@ -2804,6 +2938,8 @@
     renderLedger();
     renderCharts();
     renderTabs();
+    renderQuick();
+    renderWork();
   }
 
   function render() {
@@ -2811,23 +2947,408 @@
     renderForm();
   }
 
-  /* ============================ 화면 이동 ============================ */
+  /* ============================ 빠른 기록 ============================
 
-  /* 대시보드와 상세 기록 두 화면을 오간다. 어느 쪽인지는 주소의 해시로 정한다.
-     그래야 새로고침해도 보던 화면이 그대로고, 뒤로 가기도 뜻대로 동작한다.
-     그리기는 두 화면 모두 늘 해 둔다 — 주간 데이터라 양이 적고,
-     차트 좌표도 화면 크기가 아니라 값에서 나오므로 감춰진 채 그려도 어긋나지 않는다. */
-  function applyRoute() {
-    var onRecord = location.hash === "#/record";
-    document.body.classList.toggle("page-record", onRecord);
+     한 줄로 적은 말에서 수치를 골라내 그날 기록에 넣는다.
+     해석은 전부 여기서 규칙으로만 한다 — 적은 글이 바깥으로 나가지 않는다.
+     알아본 부분은 지우고 남은 말을 돌려주므로, 무엇을 못 알아들었는지
+     사람이 바로 보고 고쳐 쓸 수 있다. */
 
-    var btn = document.getElementById("pageToggle");
-    btn.textContent = onRecord ? "← 대시보드" : "상세 기록";
-    btn.setAttribute("aria-label", onRecord ? "대시보드로 돌아가기" : "상세 기록 화면으로");
+  /* 오전·오후가 붙은 시각을 24시간 "HH:MM" 으로. 폼이 저장하는 모양과 같다. */
+  function quickTime(ap, h, m) {
+    h = +h; m = (m == null || m === "") ? 0 : +m;
+    if (ap === "오후" && h < 12) h += 12;
+    if (ap === "오전" && h === 12) h = 0;
+    if (h > 23 || m > 59) return null;
+    return pad(h) + ":" + pad(m);
   }
 
-  document.getElementById("pageToggle").addEventListener("click", function () {
-    location.hash = location.hash === "#/record" ? "#/" : "#/record";
+  function parseQuick(text, d) {
+    var got = [];
+    var rest = " " + String(text).replace(/\s+/g, " ").trim() + " ";
+
+    /* 규칙 하나를 훑는다. fn 이 이름을 돌려주면 그 자리를 지우고,
+       null 을 돌려주면(값이 범위를 벗어난 경우) 못 알아들은 말로 남겨 둔다.
+       끝을 (?=\s) 로 보는 것은 값을 잇달아 적었을 때 사이의 빈칸을
+       앞 규칙이 먹어버려 다음 규칙이 못 찾는 일을 막기 위해서다. */
+    function take(re, fn) {
+      rest = rest.replace(re, function () {
+        var label = fn.apply(null, arguments);
+        if (label == null) return arguments[0];
+        got.push(label);
+        return " ";
+      });
+    }
+    function inRange(n, lo, hi) { return n >= lo && n <= hi ? n : null; }
+
+    var T = "(?:(오전|오후)\\s*)?(\\d{1,2})\\s*(?:시|:)\\s*(\\d{1,2})?\\s*분?";
+
+    /* 낱말이 앞에 오든 뒤에 오든 같게 읽는다 — "취침 23시" 와 "23시에 취침" */
+    function takeClock(words, apply) {
+      var w = words.join("|");
+      take(new RegExp("\\s(?:" + w + ")\\s*" + T + "(?=\\s)"), function (all, ap, h, m) {
+        var t = quickTime(ap, h, m); return t == null ? null : apply(t);
+      });
+      take(new RegExp("\\s" + T + "\\s*에?\\s*(?:" + w + ")(?=\\s)"), function (all, ap, h, m) {
+        var t = quickTime(ap, h, m); return t == null ? null : apply(t);
+      });
+    }
+    function setSleep(key, t) {
+      var s = (d.sleep && typeof d.sleep === "object") ? d.sleep : {};
+      s[key] = t; d.sleep = s;
+      return (key === "from" ? "취침 " : "기상 ") + t;
+    }
+
+    /* 수면을 운동보다 먼저 본다. 안 그러면 "분"·"시간" 조각을 운동이 집어간다. */
+    takeClock(["취침", "잠자리"], function (t) { return setSleep("from", t); });
+    takeClock(["기상", "일어\\S*"], function (t) { return setSleep("to", t); });
+
+    take(/\s수면\s*(\d{1,2}(?:\.\d)?)\s*시간(?=\s)/, function (all, n) {
+      var v = inRange(+n, 0, 24); if (v == null) return null;
+      d.sleep = v; return "수면 " + fmtDur(v);
+    });
+    take(/\s(\d{1,2}(?:\.\d)?)\s*시간\s*(?:정도\s*)?(?:잤\S*|잠\S*|수면)(?=\s)/, function (all, n) {
+      var v = inRange(+n, 0, 24); if (v == null) return null;
+      d.sleep = v; return "수면 " + fmtDur(v);
+    });
+
+    take(/\s(?:혈압\s*)?(\d{2,3})\s*\/\s*(\d{2,3})(?=\s)/, function (all, s, dia) {
+      var a = inRange(+s, 60, 250), b = inRange(+dia, 30, 150);
+      if (a == null || b == null) return null;
+      d.bp = { s: a, d: b }; return "혈압 " + a + "/" + b;
+    });
+    take(/\s(?:공복\s*)?혈당\s*(\d{2,3})(?=\s)/, function (all, n) {
+      var v = inRange(+n, 30, 500); if (v == null) return null;
+      d.glucose = v; return "공복혈당 " + v;
+    });
+    take(/\s체중\s*(\d{2,3}(?:\.\d)?)\s*(?:kg)?(?=\s)/i, function (all, n) {
+      var v = inRange(+n, 20, 250); if (v == null) return null;
+      d.weight = v; return "체중 " + v + "kg";
+    });
+    take(/\s(\d{2,3}(?:\.\d)?)\s*kg(?=\s)/i, function (all, n) {
+      var v = inRange(+n, 20, 250); if (v == null) return null;
+      d.weight = v; return "체중 " + v + "kg";
+    });
+    take(/\s(?:물\s*)?(\d{1,2})\s*잔(?=\s)/, function (all, n) {
+      var v = inRange(+n, 0, 20); if (v == null) return null;
+      d.water = v; return "물 " + v + "잔";
+    });
+
+    function setEx(min, kind) {
+      var v = inRange(+min, 0, 600); if (v == null) return null;
+      d.exercise = { min: v, kind: (kind || (d.exercise && d.exercise.kind) || "").trim() };
+      return "운동 " + v + "분" + (d.exercise.kind ? " " + d.exercise.kind : "");
+    }
+    take(/\s운동\s*(\d{1,3})\s*분\s*([가-힣a-zA-Z]+)?(?=\s)/, function (all, n, k) { return setEx(n, k); });
+    take(/\s(\d{1,3})\s*분\s*([가-힣a-zA-Z]+)(?=\s)/, function (all, n, k) { return setEx(n, k); });
+    take(/\s([가-힣a-zA-Z]+)\s*(\d{1,3})\s*분(?=\s)/, function (all, k, n) { return setEx(n, k); });
+    take(/\s운동\s*(\d{1,3})\s*분(?=\s)/, function (all, n) { return setEx(n, ""); });
+
+    var RATE = { "기분": "mood", "컨디션": "condition", "전체평가": "overall", "평가": "overall" };
+    take(/\s(기분|컨디션|전체평가|평가)\s*([1-5])(?=\s)/g, function (all, w, v) {
+      d[RATE[w]] = +v; return w + " " + v;
+    });
+
+    /* 식사·복약은 뒤에 오는 말을 통째로 가져가므로 다른 규칙을 모두 지나온 뒤에 본다 */
+    var MEAL_KEY = { "아침": "b", "점심": "l", "저녁": "d" };
+    var re = /(아침|점심|저녁)\s*(약)?/g, hits = [], m;
+    while ((m = re.exec(rest))) {
+      hits.push({ at: m.index, len: m[0].length, name: m[1], k: MEAL_KEY[m[1]], isPill: !!m[2] });
+    }
+    if (hits.length) {
+      var keep = rest.slice(0, hits[0].at);
+      for (var i = 0; i < hits.length; i++) {
+        var h = hits[i];
+        var end = (i + 1 < hits.length) ? hits[i + 1].at : rest.length;
+        var val = rest.slice(h.at + h.len, end).trim();
+        if (!val) { keep += " " + h.name + (h.isPill ? "약" : "") + " "; continue; }
+        if (h.isPill) {
+          d.pill[h.k] = val;
+          got.push(h.name + " 약 " + val);
+        } else {
+          d.menu[h.k] = val; d.meals[h.k] = true;
+          got.push(h.name + " " + val);
+        }
+      }
+      rest = keep + " ";
+    }
+
+    take(/\s메모\s*(\S[^]*?)(?=\s*$)/, function (all, t) {
+      d.note = (d.note ? d.note + "\n" : "") + t.trim();
+      return "메모";
+    });
+
+    return { got: got, unknown: rest.trim() };
+  }
+
+  /* ---------- 어느 날에 넣을지 ----------
+     "금요일", "내일" 같은 말을 날짜로 바꾸고 그 말은 지워서 돌려준다.
+     요일은 지금 보고 있는 주 안에서 찾는다. */
+  function takeWhen(text, base) {
+    var date = base, found = "";
+    var out = text.replace(/\s(오늘|내일|모레|어제)(?=\s)/, function (all, w) {
+      var n = w === "내일" ? 1 : w === "모레" ? 2 : w === "어제" ? -1 : 0;
+      date = iso(addDays(parseISO(base), n)); found = w;
+      return " ";
+    });
+    if (found) return { date: date, rest: out, word: found };
+
+    out = text.replace(/\s(월|화|수|목|금|토|일)요일?(?=\s)/, function (all, w) {
+      var i = DOW.indexOf(w);
+      if (i < 0) return all;
+      date = weekDates()[i]; found = w + "요일";
+      return " ";
+    });
+    return { date: date, rest: out, word: found };
+  }
+
+  /* ---------- 시각 ---------- */
+  function takeClockOnce(text) {
+    var t = null;
+    var re = new RegExp("\\s(?:(오전|오후)\\s*)?(\\d{1,2})\\s*(?:시|:)\\s*(\\d{1,2})?\\s*분?(?=\\s)");
+    var out = text.replace(re, function (all, ap, h, m) {
+      var v = quickTime(ap, h, m);
+      if (v == null) return all;
+      t = v; return " ";
+    });
+    return { time: t, rest: out };
+  }
+
+  /* ---------- 일정 ---------- */
+  function parseSchedule(text, base) {
+    var w = takeWhen(" " + String(text).replace(/\s+/g, " ").trim() + " ", base);
+    var rest = w.rest;
+
+    /* "2시~4시" 처럼 붙여 적으면 시각 규칙이 낱말 경계를 못 찾는다.
+       숫자 사이의 물결표·붙임표에만 빈칸을 넣는다 — 제목 속 붙임표는 건드리지 않는다. */
+    rest = rest.replace(/(\d\s*시?)\s*[~-]\s*(?=\d)/g, "$1 ~ ");
+
+    var c1 = takeClockOnce(rest); rest = c1.rest;
+    var start = c1.time;
+
+    /* "2시~4시" 처럼 끝 시각을 적었으면 그것을 쓰고,
+       "1시간" 처럼 길이를 적었으면 시작에 더해 끝을 만든다. */
+    var end = null;
+    if (start) {
+      var c2 = takeClockOnce(rest);
+      if (c2.time) { end = c2.time; rest = c2.rest; }
+      else {
+        rest = rest.replace(/\s(?:~|-|부터)?\s*(\d{1,2}(?:\.\d)?)\s*시간(?=\s)/, function (all, n) {
+          end = fromMin(toMin(start) + Math.round(+n * 60)); return " ";
+        });
+        rest = rest.replace(/\s(\d{1,3})\s*분\s*(?:간|짜리|동안)?(?=\s)/, function (all, n) {
+          if (end) return all;
+          end = fromMin(toMin(start) + +n); return " ";
+        });
+      }
+    }
+
+    rest = rest.replace(/\s(?:~|-|동안|부터|까지|에)(?=\s)/g, " ");
+    var title = rest.replace(/\s+/g, " ").trim();
+    if (!title) return null;
+
+    day(w.date).schedule.push({
+      id: uid(), time: start || "––:––", end: end, title: title, done: false
+    });
+    return {
+      date: w.date,
+      label: "일정 " + (start ? start + (end ? "–" + end : "") + " " : "") + title
+    };
+  }
+
+  /* ---------- 업무 (그날 Todo 칸) ---------- */
+  function parseWork(text, base) {
+    var w = takeWhen(" " + String(text).replace(/\s+/g, " ").trim() + " ", base);
+    var title = w.rest.replace(/\s+/g, " ").trim();
+    if (!title) return null;
+
+    /* 첫 칸은 QT 로 고정되어 있으므로 두 번째 칸부터 빈자리를 찾는다 */
+    var d = day(w.date), slot = -1;
+    for (var i = 1; i < TODO_SLOTS; i++) {
+      var s = todoSlot(w.date, i);
+      if (!s.text) { slot = i; break; }
+    }
+    if (slot < 0) return { full: true };
+    d.todos[slot].text = title;
+    return { date: w.date, label: "업무 " + title };
+  }
+
+  /* 분류를 정한다. #태그가 있으면 그것을 따르고,
+     없으면 지금 보고 있는 페이지를 따른다. 추측하지 않는다. */
+  var QUICK_TAGS = { "일정": "schedule", "업무": "work", "건강": "health", "todo": "work" };
+
+  function quickKind(text) {
+    var kind = null;
+    var rest = text.replace(/\s#(\S+)(?=\s)/, function (all, w) {
+      var k = QUICK_TAGS[w];
+      if (!k) return all;
+      kind = k; return " ";
+    });
+    if (!kind) {
+      var p = currentPage();
+      kind = (p === "schedule" || p === "work") ? p : "health";
+    }
+    return { kind: kind, rest: rest };
+  }
+
+  /* ---------- 업무 목록 ----------
+     그날 할 일 칸(QT 다음 칸부터)을 이번 주 것만 모아 보여준다.
+     같은 자료를 일정 페이지의 Todo 칸과 나눠 쓰므로 어느 쪽에서 고쳐도 함께 바뀐다. */
+  function renderWork() {
+    var host = document.getElementById("workList");
+    if (!host) return;
+    var today = iso(new Date()), any = false;
+
+    host.innerHTML = weekDates().map(function (date, i) {
+      var items = todosOf(date).map(function (s, idx) {
+        return { text: s.text, done: s.done, idx: idx };
+      }).filter(function (s) { return s.idx > 0 && s.text; });
+      if (!items.length) return "";
+      any = true;
+      var dt = parseISO(date);
+      return '<div class="wk-day">' +
+        '<div class="wk-date' + (date === today ? " today" : "") + '">' +
+          (dt.getMonth() + 1) + "/" + dt.getDate() + " " + DOW[i] + "</div>" +
+        items.map(function (s) {
+          return '<label class="wk-item' + (s.done ? " done" : "") + '">' +
+            '<input type="checkbox" data-work="' + date + "|" + s.idx + '"' +
+              (s.done ? " checked" : "") + ">" +
+            "<span>" + esc(s.text) + "</span></label>";
+        }).join("") +
+      "</div>";
+    }).join("");
+
+    if (!any) {
+      host.innerHTML = '<div class="wk-empty">이번 주에 적어 둔 업무가 없습니다.</div>';
+    }
+  }
+
+  document.getElementById("workList").addEventListener("change", function (e) {
+    var box = e.target.closest("input[data-work]");
+    if (!box) return;
+    var k = box.getAttribute("data-work").split("|");
+    todoSlot(k[0], +k[1]).done = box.checked;
+    persist();
+  });
+
+  function renderQuick() {
+    var el = document.getElementById("quickDate");
+    if (!el) return;
+    var dt = parseISO(selected);
+    el.textContent =
+      (dt.getMonth() + 1) + "월 " + dt.getDate() + "일 (" + dowOf(selected) + ") 기록에 넣습니다";
+  }
+
+  function quickSubmit() {
+    var ta = document.getElementById("quickText");
+    var msg = document.getElementById("quickMsg");
+    var text = ta.value.trim();
+    if (!text) {
+      msg.className = "quick-msg";
+      msg.textContent = "적은 것이 없습니다.";
+      return;
+    }
+    var k = quickKind(" " + text.replace(/\s+/g, " ") + " ");
+    var got, unknown = "", where = selected;
+
+    if (k.kind === "health") {
+      var r = parseQuick(k.rest, day(selected));
+      got = r.got; unknown = r.unknown;
+    } else {
+      var one = (k.kind === "schedule" ? parseSchedule : parseWork)(k.rest, selected);
+      if (one && one.full) {
+        msg.className = "quick-msg";
+        msg.innerHTML = '<span class="miss">그날 할 일 칸이 다 찼습니다.</span> ' +
+          "일정 페이지에서 지우고 다시 넣어주세요.";
+        return;
+      }
+      got = one ? [one.label] : [];
+      if (one) where = one.date;
+    }
+
+    if (!got.length) {
+      msg.className = "quick-msg";
+      msg.innerHTML = '<span class="miss">알아듣지 못했습니다.</span> ' +
+        (k.kind === "health"
+          ? "예: 혈압 120/80 · 물 5잔 · 기분 4 · 아침 현미밥"
+          : "예: 금요일 오후 2시 법무회의 1시간 #일정 · 기획서 초안 #업무");
+      return;
+    }
+    save();
+    render();
+    /* 알아들은 말은 지우고 남은 말만 남겨 이어서 고쳐 쓸 수 있게 한다 */
+    ta.value = unknown;
+    var dt = parseISO(where);
+    msg.className = "quick-msg ok";
+    msg.innerHTML = "<b>" + esc(got.join(" · ")) + "</b> — " +
+      (dt.getMonth() + 1) + "월 " + dt.getDate() + "일에 넣었습니다." +
+      (unknown ? ' <span class="miss">모르는 말: ' + esc(unknown) + "</span>" : "");
+  }
+
+  document.getElementById("quickAdd").addEventListener("click", quickSubmit);
+  document.getElementById("quickText").addEventListener("keydown", function (e) {
+    /* 긴 글을 적을 수도 있으니 줄바꿈은 그대로 두고, 조합키로 넣는다 */
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); quickSubmit(); }
+  });
+  document.getElementById("quickPrev").addEventListener("click", function () { stepDay(-1); });
+  document.getElementById("quickNext").addEventListener("click", function () { stepDay(1); });
+
+  /* ============================ 화면 이동 ============================ */
+
+  /* 여덟 페이지를 오간다. 어느 쪽인지는 주소의 해시로 정한다.
+     그래야 새로고침해도 보던 페이지가 그대로고, 뒤로 가기도 뜻대로 동작한다.
+     그리기는 모든 페이지 것을 늘 해 둔다 — 주간 데이터라 양이 적고,
+     차트 좌표도 화면 크기가 아니라 값에서 나오므로 감춰진 채 그려도 어긋나지 않는다. */
+  var PAGES = [
+    { id: "main",      label: "메인화면" },
+    { id: "schedule",  label: "일정" },
+    { id: "work",      label: "업무" },
+    { id: "faith",     label: "신앙" },
+    { id: "health",    label: "건강" },
+    { id: "history",   label: "나의역사" },
+    { id: "meeting",   label: "미팅" },
+    { id: "knowledge", label: "지식창고" }
+  ];
+
+  function currentPage() {
+    var id = location.hash.replace(/^#\/?/, "");
+    for (var i = 0; i < PAGES.length; i++) if (PAGES[i].id === id) return id;
+    return "main"; /* 빈 해시나 모르는 주소는 메인으로 */
+  }
+
+  function renderPageTabs() {
+    document.getElementById("pageTabs").innerHTML = PAGES.map(function (p) {
+      return '<button data-goto="' + p.id + '">' + p.label + "</button>";
+    }).join("");
+  }
+
+  function applyRoute() {
+    var now = currentPage();
+
+    /* data-page 에 이름을 여러 개 적으면 그 페이지들에서 함께 보인다.
+       말씀 패널이 메인화면과 신앙 양쪽에 나오는 식이다. */
+    Array.prototype.forEach.call(document.querySelectorAll("[data-page]"), function (el) {
+      var on = el.getAttribute("data-page").split(/\s+/).indexOf(now) !== -1;
+      el.classList.toggle("is-off", !on);
+    });
+
+    Array.prototype.forEach.call(
+      document.querySelectorAll("#pageTabs button[data-goto]"), function (b) {
+        var on = b.getAttribute("data-goto") === now;
+        /* aria-current 는 "지금 이 페이지"라는 뜻이라 링크 성격의 탭에 맞다 */
+        if (on) b.setAttribute("aria-current", "page");
+        else b.removeAttribute("aria-current");
+      });
+
+    var label = "";
+    for (var i = 0; i < PAGES.length; i++) if (PAGES[i].id === now) label = PAGES[i].label;
+    document.title = now === "main" ? "주간 기록부" : "주간 기록부 · " + label;
+  }
+
+  document.getElementById("pageTabs").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-goto]");
+    if (!b) return;
+    location.hash = "#/" + b.getAttribute("data-goto");
     window.scrollTo(0, 0);
   });
 
@@ -3780,6 +4301,7 @@
 
   load();
   render();
+  renderPageTabs();
   applyRoute();
   syncPaint();
   syncBoot();

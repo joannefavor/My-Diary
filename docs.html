@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>작업 기록 — 주간 기록부</title>
+<meta name="description" content="주간 기록부를 만들며 남긴 개발 로그와 사례글">
+
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3f4f7">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d1014">
+
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+
+<style>
+
+  /* 색·글꼴은 기록부 화면과 같은 값을 쓴다.
+     테마 변수는 세 곳(밝음 / 시스템 어두움 / 직접 어두움)에 모두 넣어야 한다.
+     하나라도 빠지면 어느 한쪽에서 조용히 깨진다. */
+  :root {
+    color-scheme: light;
+    --plane:        #f3f4f7;
+    --surface:      #fbfbfc;
+    --surface-2:    #f6f7fa;
+    --ink:          #12161c;
+    --ink-2:        #565c66;
+    --muted:        #868d97;
+    --hair:         #e2e5ea;
+    --baseline:     #c8cdd4;
+    --accent:       #1d3a5f;
+    --on-accent:    #fbfbfc;
+    --accent-soft:  #dfe7f1;
+    --critical:     #d03b3b;
+    --good:         #0ca30c;
+    --shadow: 0 1px 2px rgba(18,22,28,.05), 0 8px 24px -16px rgba(18,22,28,.18);
+
+    --serif: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, "Source Serif Pro", Georgia, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --plane:       #0d1014;
+      --surface:     #161a20;
+      --surface-2:   #1c2128;
+      --ink:         #f1f3f6;
+      --ink-2:       #a7afba;
+      --muted:       #7b838e;
+      --hair:        #262c35;
+      --baseline:    #363d47;
+      --accent:      #9dbfe8;
+      --on-accent:   #0d1014;
+      --accent-soft: #1e2b3c;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --plane:       #0d1014;
+    --surface:     #161a20;
+    --surface-2:   #1c2128;
+    --ink:         #f1f3f6;
+    --ink-2:       #a7afba;
+    --muted:       #7b838e;
+    --hair:        #262c35;
+    --baseline:    #363d47;
+    --accent:      #9dbfe8;
+    --on-accent:   #0d1014;
+    --accent-soft: #1e2b3c;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+  }* { box-sizing: border-box; }
+
+body {
+  margin: 0; background: var(--plane); color: var(--ink);
+  font-family: var(--sans); font-size: 15px; line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 860px; margin: 0 auto; padding: 28px 20px 72px; }
+
+.top {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 14px 20px; flex-wrap: wrap;
+  padding-bottom: 16px; border-bottom: 2px solid var(--accent); margin-bottom: 22px;
+}
+.top .eyebrow {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--muted); margin: 0 0 6px;
+}
+.top h1 {
+  font-family: var(--serif); font-size: 28px; font-weight: 600;
+  margin: 0; letter-spacing: -.01em;
+}
+.back {
+  font: inherit; font-size: 13px; color: var(--ink-2); text-decoration: none;
+  border: 1px solid transparent; border-radius: 7px; padding: 5px 11px;
+}
+.back:hover { background: var(--surface-2); border-color: var(--hair); }
+
+.lead { color: var(--ink-2); font-size: 14px; margin: 0 0 22px; }
+
+.group { margin-bottom: 26px; }
+.group h2 {
+  font-family: var(--serif); font-size: 17px; font-weight: 600;
+  margin: 0 0 4px;
+}
+.group .note { font-size: 12.5px; color: var(--muted); margin: 0 0 12px; }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+.card {
+  display: block; text-align: left; width: 100%; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--hair); border-radius: 11px;
+  box-shadow: var(--shadow); padding: 13px 15px 14px; color: inherit; font: inherit;
+}
+.card:hover { border-color: var(--baseline); }
+.card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.card .t { font-weight: 600; font-size: 14.5px; display: block; margin-bottom: 3px; }
+.card .d { font-size: 12.5px; color: var(--ink-2); display: block; line-height: 1.5; }
+.card .m {
+  font-family: var(--mono); font-size: 10.5px; color: var(--muted);
+  display: block; margin-top: 7px;
+}
+
+/* 읽기 화면 */
+.reader { display: none; }
+.reader.on { display: block; }
+.list.off { display: none; }
+.readerbar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.readerbar .title { font-family: var(--serif); font-size: 17px; font-weight: 600; }
+.readerbar .spacer { flex: 1; }
+
+.doc {
+  background: var(--surface); border: 1px solid var(--hair); border-radius: 12px;
+  box-shadow: var(--shadow); padding: 26px 28px 32px;
+  overflow-wrap: anywhere;
+}
+.doc h1 { font-family: var(--serif); font-size: 25px; margin: 0 0 18px; line-height: 1.25; text-wrap: balance; }
+.doc h2 {
+  font-family: var(--serif); font-size: 19px; margin: 30px 0 10px;
+  padding-top: 16px; border-top: 1px solid var(--hair); line-height: 1.3;
+}
+.doc h3 { font-size: 15.5px; margin: 22px 0 8px; font-weight: 700; }
+.doc h4 { font-size: 14px; margin: 18px 0 6px; font-weight: 700; color: var(--ink-2); }
+.doc p { margin: 10px 0; }
+.doc ul, .doc ol { margin: 10px 0; padding-left: 22px; }
+.doc li { margin: 4px 0; }
+.doc hr { border: 0; border-top: 1px solid var(--hair); margin: 22px 0; }
+.doc a { color: var(--accent); }
+.doc strong { font-weight: 700; }
+.doc code {
+  font-family: var(--mono); font-size: .88em;
+  background: var(--surface-2); border: 1px solid var(--hair);
+  border-radius: 5px; padding: 1px 5px;
+}
+.doc pre {
+  background: var(--surface-2); border: 1px solid var(--hair); border-radius: 9px;
+  padding: 12px 14px; overflow-x: auto; margin: 12px 0;
+}
+.doc pre code { background: none; border: 0; padding: 0; font-size: 12.5px; line-height: 1.6; }
+.doc blockquote {
+  margin: 12px 0; padding: 2px 0 2px 14px;
+  border-left: 3px solid var(--accent-soft); color: var(--ink-2);
+}
+.doc blockquote p { margin: 6px 0; }
+.doc .tablewrap { overflow-x: auto; margin: 14px 0; }
+.doc table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+.doc th, .doc td {
+  border-bottom: 1px solid var(--hair); padding: 7px 10px; text-align: left;
+  vertical-align: top;
+}
+.doc th {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .06em;
+  color: var(--muted); font-weight: 500; text-transform: uppercase;
+  border-bottom-color: var(--baseline); white-space: nowrap;
+}
+.doc td code { white-space: nowrap; }
+
+.msg { color: var(--muted); font-size: 13.5px; padding: 20px 0; }
+
+@media (max-width: 560px) {
+  .wrap { padding: 20px 14px 56px; }
+  .top h1 { font-size: 23px; }
+  .doc { padding: 20px 17px 26px; }
+  .doc h1 { font-size: 21px; }
+  .doc h2 { font-size: 17px; }
+}
+</style>
+
+<div class="wrap">
+
+  <div class="top">
+    <div>
+      <p class="eyebrow">Work log · 만들며 남긴 기록</p>
+      <h1>작업 기록</h1>
+    </div>
+    <a class="back" href="/">← 기록부로</a>
+  </div>
+
+  <div class="list" id="list">
+    <p class="lead">
+      이 대시보드를 만들며 남긴 개발 로그와 사례글입니다.
+      개발 로그는 무엇을 어떻게 고쳤는지, 사례글은 비개발자가 읽을 수 있게 풀어 쓴 이야기입니다.
+    </p>
+    <div id="groups"></div>
+  </div>
+
+  <div class="reader" id="reader">
+    <div class="readerbar">
+      <button class="back" id="toList">← 목록</button>
+      <span class="title" id="docTitle"></span>
+      <span class="spacer"></span>
+      <a class="back" href="/">기록부로</a>
+    </div>
+    <div class="doc" id="doc"></div>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* 문서 목록 — 파일은 저장소에 그대로 있고, 여기서 읽어와 보여준다 */
+  var GROUPS = [
+    {
+      name: "사례글",
+      note: "비개발자가 읽을 수 있게 풀어 쓴 이야기",
+      docs: [
+        { f: "AI_CASE_STUDY.md", t: "대시보드를 만들어 배포하기까지",
+          d: "앱 네 개에 흩어진 기록을 주소 하나로 모은 과정" },
+        { f: "AI_CASE_STUDY_오늘의말씀365일.md", t: "카톡에 흩어진 1년치 말씀 정리",
+          d: "대화 내보내기와 책 사진으로 365일을 채운 이야기" },
+        { f: "AI_CASE_STUDY_기기간동기화와홈화면앱.md", t: "기기 간 동기화와 홈 화면 앱",
+          d: "휴대폰과 PC가 같은 기록을 보게 만들기" },
+        { f: "AI_CASE_STUDY_방명록Supabase연동.md", t: "방명록 만들기",
+          d: "다른 사람이 글을 남길 수 있게" },
+        { f: "AI_CASE_STUDY_동기화버그수정.md", t: "동기화가 기록을 덮던 문제",
+          d: "빈 칸을 '적은 것'으로 세던 버그를 잡은 과정" }
+      ]
+    },
+    {
+      name: "개발 로그",
+      note: "무엇을 어떻게 고쳤는지 날짜순으로",
+      docs: [
+        { f: "DEVLOG.md", t: "대시보드 개발 로그", d: "7/25부터 지금까지, 작업 30건" },
+        { f: "DEVLOG_주님의음성말씀연동.md", t: "오늘의 말씀 연동", d: "365일 말씀을 붙이기까지" },
+        { f: "DEVLOG_기기간동기화와홈화면앱.md", t: "동기화와 홈 화면 앱", d: "연결 코드와 앱처럼 쓰기" },
+        { f: "DEVLOG_방명록Supabase연동.md", t: "방명록", d: "Supabase 연동" }
+      ]
+    },
+    {
+      name: "인수인계",
+      note: "이어받는 사람이 먼저 읽을 문서",
+      docs: [
+        { f: "HANDOFF.md", t: "HANDOFF", d: "구조, 데이터, 함정, 개발 방법" },
+        { f: "README.md", t: "README", d: "기록 항목과 판정 기준 출처" }
+      ]
+    }
+  ];
+
+  var listEl = document.getElementById("list");
+  var readerEl = document.getElementById("reader");
+  var docEl = document.getElementById("doc");
+  var titleEl = document.getElementById("docTitle");
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  /* ---------- 마크다운 옮기기 ----------
+     문서에 실제로 쓰인 것만 다룬다: 제목, 목록, 표, 코드, 인용, 굵게, 링크, 구분선 */
+
+  function inline(t) {
+    t = esc(t);
+    t = t.replace(/`([^`]+)`/g, function (m, c) { return "<code>" + c + "</code>"; });
+    t = t.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    t = t.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g,
+      '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    t = t.replace(/(^|[\s(])((?:https?:\/\/)[^\s<)]+)/g,
+      '$1<a href="$2" target="_blank" rel="noopener">$2</a>');
+    return t;
+  }
+
+  function cells(line) {
+    var s = line.trim().replace(/^\|/, "").replace(/\|$/, "");
+    return s.split("|").map(function (c) { return c.trim(); });
+  }
+
+  function toHtml(md) {
+    var lines = md.replace(/\r\n?/g, "\n").split("\n");
+    var out = [], i = 0;
+
+    function closeList(stack) {
+      while (stack.length) out.push("</" + stack.pop() + ">");
+    }
+
+    var listStack = [];
+
+    while (i < lines.length) {
+      var ln = lines[i];
+
+      /* 코드 블록 */
+      if (/^```/.test(ln)) {
+        closeList(listStack);
+        var buf = [];
+        i++;
+        while (i < lines.length && !/^```/.test(lines[i])) { buf.push(lines[i]); i++; }
+        i++;
+        out.push("<pre><code>" + esc(buf.join("\n")) + "</code></pre>");
+        continue;
+      }
+
+      /* 표 — 다음 줄이 구분선이면 표로 본다 */
+      if (/^\s*\|/.test(ln) && i + 1 < lines.length && /^\s*\|[\s:|-]+\|?\s*$/.test(lines[i + 1])) {
+        closeList(listStack);
+        var head = cells(ln);
+        i += 2;
+        var rows = [];
+        while (i < lines.length && /^\s*\|/.test(lines[i])) { rows.push(cells(lines[i])); i++; }
+        var th = head.map(function (c) { return "<th>" + inline(c) + "</th>"; }).join("");
+        var tb = rows.map(function (r) {
+          return "<tr>" + r.map(function (c) { return "<td>" + inline(c) + "</td>"; }).join("") + "</tr>";
+        }).join("");
+        out.push('<div class="tablewrap"><table><thead><tr>' + th +
+          "</tr></thead><tbody>" + tb + "</tbody></table></div>");
+        continue;
+      }
+
+      /* 인용 */
+      if (/^>\s?/.test(ln)) {
+        closeList(listStack);
+        var q = [];
+        while (i < lines.length && /^>\s?/.test(lines[i])) {
+          q.push(lines[i].replace(/^>\s?/, ""));
+          i++;
+        }
+        out.push("<blockquote>" + toHtml(q.join("\n")) + "</blockquote>");
+        continue;
+      }
+
+      /* 제목 */
+      var h = /^(#{1,4})\s+(.*)$/.exec(ln);
+      if (h) {
+        closeList(listStack);
+        var lv = h[1].length;
+        out.push("<h" + lv + ">" + inline(h[2]) + "</h" + lv + ">");
+        i++;
+        continue;
+      }
+
+      /* 구분선 */
+      if (/^\s*(---|___|\*\*\*)\s*$/.test(ln)) {
+        closeList(listStack);
+        out.push("<hr>");
+        i++;
+        continue;
+      }
+
+      /* 목록 */
+      var ul = /^(\s*)[-*]\s+(.*)$/.exec(ln);
+      var ol = /^(\s*)\d+\.\s+(.*)$/.exec(ln);
+      if (ul || ol) {
+        var m = ul || ol;
+        var tag = ul ? "ul" : "ol";
+        var depth = Math.floor(m[1].length / 2) + 1;
+        while (listStack.length > depth) out.push("</" + listStack.pop() + ">");
+        while (listStack.length < depth) { out.push("<" + tag + ">"); listStack.push(tag); }
+        out.push("<li>" + inline(m[2]) + "</li>");
+        i++;
+        continue;
+      }
+
+      /* 빈 줄 */
+      if (!ln.trim()) {
+        closeList(listStack);
+        i++;
+        continue;
+      }
+
+      /* 문단 — 이어지는 줄을 붙인다 */
+      closeList(listStack);
+      var para = [ln];
+      i++;
+      while (i < lines.length && lines[i].trim() &&
+             !/^(#{1,4}\s|>|\s*[-*]\s|\s*\d+\.\s|```|\s*\|)/.test(lines[i]) &&
+             !/^\s*(---|___|\*\*\*)\s*$/.test(lines[i])) {
+        para.push(lines[i]);
+        i++;
+      }
+      out.push("<p>" + inline(para.join(" ")) + "</p>");
+    }
+    closeList(listStack);
+    return out.join("\n");
+  }
+
+  /* ---------- 화면 ---------- */
+
+  document.getElementById("groups").innerHTML = GROUPS.map(function (g) {
+    return '<div class="group"><h2>' + esc(g.name) + "</h2>" +
+      '<p class="note">' + esc(g.note) + "</p>" +
+      '<div class="cards">' + g.docs.map(function (d) {
+        return '<button type="button" class="card" data-f="' + esc(d.f) + '"' +
+          ' data-t="' + esc(d.t) + '">' +
+          '<span class="t">' + esc(d.t) + "</span>" +
+          '<span class="d">' + esc(d.d) + "</span>" +
+          '<span class="m">' + esc(d.f) + "</span></button>";
+      }).join("") + "</div></div>";
+  }).join("");
+
+  var cache = {};
+
+  function show(file, title) {
+    titleEl.textContent = title;
+    listEl.classList.add("off");
+    readerEl.classList.add("on");
+    window.scrollTo(0, 0);
+
+    if (cache[file]) { docEl.innerHTML = cache[file]; return; }
+    docEl.innerHTML = '<p class="msg">불러오는 중…</p>';
+
+    fetch("/" + encodeURIComponent(file), { cache: "no-store" })
+      .then(function (r) {
+        if (!r.ok) throw new Error(r.status);
+        return r.text();
+      })
+      .then(function (md) {
+        var html = toHtml(md);
+        cache[file] = html;
+        docEl.innerHTML = html;
+      })
+      .catch(function () {
+        docEl.innerHTML = '<p class="msg">문서를 불러오지 못했습니다. ' +
+          '연결을 확인하고 새로고침해 주세요.</p>';
+      });
+  }
+
+  function toList() {
+    readerEl.classList.remove("on");
+    listEl.classList.remove("off");
+    if (location.hash) history.replaceState(null, "", location.pathname);
+    window.scrollTo(0, 0);
+  }
+
+  document.getElementById("groups").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-f]");
+    if (!b) return;
+    var f = b.getAttribute("data-f");
+    history.replaceState(null, "", "#" + encodeURIComponent(f));
+    show(f, b.getAttribute("data-t"));
+  });
+
+  document.getElementById("toList").addEventListener("click", toList);
+
+  /* 주소에 문서가 적혀 있으면 바로 연다 */
+  (function boot() {
+    var h = decodeURIComponent((location.hash || "").replace(/^#/, ""));
+    if (!h) return;
+    var found = null;
+    GROUPS.forEach(function (g) {
+      g.docs.forEach(function (d) { if (d.f === h) found = d; });
+    });
+    if (found) show(found.f, found.t);
+  })();
+})();
+</script>
