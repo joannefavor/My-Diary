@@ -9,8 +9,8 @@
 <meta name="description" content="일주일 일정과 건강 상태를 한 화면에서 기록하고 추이로 보는 개인 대시보드">
 
 <!-- 주소 표시줄·상태 표시줄 색. 테마 변수와 같은 값을 쓴다. -->
-<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3f4f7">
-<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d1014">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f9f4ef">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#17120e">
 
 <!-- 홈 화면에 추가하면 주소창 없이 앱처럼 열린다.
      화면 방향은 일부러 잠그지 않았다 — 일정표는 가로로 보는 편이 넓다. -->
@@ -25,18 +25,24 @@
 <style>
   :root {
     color-scheme: light;
-    --plane:        #f3f4f7;
-    --surface:      #fbfbfc;
-    --surface-2:    #f6f7fa;
-    --ink:          #12161c;
-    --ink-2:        #565c66;
-    --muted:        #868d97;
-    --hair:         #e2e5ea;
-    --grid:         #e7eaee;
-    --baseline:     #c8cdd4;
-    --accent:       #1d3a5f;
-    --on-accent:    #fbfbfc;
-    --accent-soft:  #dfe7f1;
+    /* 종이 같은 따뜻한 색. 대비는 계산해 맞췄다 —
+       본문 글자 4.5:1 이상, 테두리도 눈에 걸리는 선까지. */
+    --plane:        #f9f4ef;
+    --surface:      #fffdfa;
+    --surface-2:    #f6efe7;
+    --ink:          #33271e;
+    --ink-2:        #64564a;
+    --muted:        #6f6053;
+    --hair:         #ecdfd2;
+    --grid:         #f0e5da;
+    --baseline:     #d2c2b0;
+    /* 복숭아색은 넓게 칠하는 자리에만 쓰고, 그 위에는 짙은 갈색 글자를 얹는다.
+       글자·초점 테두리·체크 표시처럼 가는 것에는 --accent-ink 를 쓴다 —
+       연한 복숭아색은 크림 배경 위에서 1.7:1 이라 글자로 쓰면 안 보인다. */
+    --accent:       #ecb390;
+    --on-accent:    #3d2b1c;
+    --accent-ink:   #a35a2a;
+    --accent-soft:  #f8e3d3;
     --s1:           #2a78d6;
     --s2:           #eb6834;
     --s3:           #1baf7a;
@@ -71,9 +77,10 @@
     --critical:     #d03b3b;
     /* 물 섭취량 — 파랑 단일 색조 순서 램프 (밝은 면에서 2:1 이상) */
     --w1: #86b6ef; --w2: #5598e7; --w3: #2a78d6; --w4: #1c5cab; --w5: #104281;
-    --shadow: 0 1px 2px rgba(18,22,28,.05), 0 8px 24px -16px rgba(18,22,28,.18);
+    --shadow: 0 1px 2px rgba(51,39,30,.05), 0 8px 24px -16px rgba(51,39,30,.20);
 
-    --serif: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, "Source Serif Pro", Georgia, serif;
+    /* 글씨는 한 가지로 통일하고 제목은 굵기로만 구분한다.
+       기기에 이미 있는 글꼴만 쓰므로 받아올 것이 없고, 비행기 모드에서도 그대로다. */
     --sans: system-ui, -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
     --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
   }
@@ -81,21 +88,21 @@
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       color-scheme: dark;
-      --plane:       #0d1014;
-      --surface:     #161a20;
-      --surface-2:   #1c2128;
-      --ink:         #f1f3f6;
-      --ink-2:       #a7afba;
-      --muted:       #7b838e;
-      --hair:        #262c35;
-      --grid:        #242a33;
-      --baseline:    #363d47;
-      --accent:      #9dbfe8;
-      --on-accent:   #0d1014;
-      --accent-soft: #1e2b3c;
+      --plane:       #17120e;
+      --surface:     #201a15;
+      --surface-2:   #29221b;
+      --ink:         #f6efe8;
+      --ink-2:       #beb0a1;
+      --muted:       #96887a;
+      --hair:        #332a22;
+      --grid:        #2f2720;
+      --baseline:    #4a3f34;
+      --accent:      #ecb390;
+      --on-accent:   #2a1d13;
+      --accent-ink:  #f0c3a4;
+      --accent-soft: #3a2a1e;
       --s1:          #3987e5;
       --s2:          #d95926;
-    --s3:          #199e70;
       --s3:          #199e70;
       --w1: #184f95; --w2: #256abf; --w3: #3987e5; --w4: #6da7ec; --w5: #9ec5f4;
       --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
@@ -103,18 +110,19 @@
   }
   :root[data-theme="dark"] {
     color-scheme: dark;
-    --plane:       #0d1014;
-    --surface:     #161a20;
-    --surface-2:   #1c2128;
-    --ink:         #f1f3f6;
-    --ink-2:       #a7afba;
-    --muted:       #7b838e;
-    --hair:        #262c35;
-    --grid:        #242a33;
-    --baseline:    #363d47;
-    --accent:      #9dbfe8;
-    --on-accent:   #0d1014;
-    --accent-soft: #1e2b3c;
+    --plane:       #17120e;
+    --surface:     #201a15;
+    --surface-2:   #29221b;
+    --ink:         #f6efe8;
+    --ink-2:       #beb0a1;
+    --muted:       #96887a;
+    --hair:        #332a22;
+    --grid:        #2f2720;
+    --baseline:    #4a3f34;
+    --accent:      #ecb390;
+    --on-accent:   #2a1d13;
+    --accent-ink:  #f0c3a4;
+    --accent-soft: #3a2a1e;
     --s1:          #3987e5;
     --s2:          #d95926;
     --s3:          #199e70;
@@ -161,8 +169,8 @@
     border-bottom: 2px solid var(--accent);
   }
   .masthead h1 {
-    font-family: var(--serif);
-    font-size: 30px; font-weight: 600; line-height: 1.1;
+    font-family: var(--sans);
+    font-size: 30px; font-weight: 700; line-height: 1.15;
     letter-spacing: -.01em; margin: 0; text-wrap: balance;
   }
   .eyebrow {
@@ -210,7 +218,7 @@
     color: var(--ink); background: var(--surface);
     border: 1px solid var(--hair); border-radius: 7px; padding: 4px 8px;
   }
-  .quick-when input[type="date"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .quick-when input[type="date"]:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 1px; }
   .quick-picks { display: flex; flex-wrap: wrap; gap: 6px; }
   .quick-picks button {
     font-size: 12.5px; padding: 5px 13px; border-radius: 999px;
@@ -227,7 +235,7 @@
     color: var(--ink); background: var(--surface);
     border: 1px solid var(--hair); border-radius: 9px; padding: 11px 13px;
   }
-  .quick textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .quick textarea:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 1px; }
   .quick-foot {
     display: flex; flex-wrap: wrap; align-items: center;
     justify-content: space-between; gap: 10px 16px;
@@ -254,7 +262,7 @@
     color: var(--muted); margin: 12px 0 8px; font-weight: 600;
   }
   .td-line { display: flex; align-items: center; gap: 9px; padding: 4px 0; }
-  .td-line input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--accent); flex: none; }
+  .td-line input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--accent-ink); flex: none; }
   .td-line .at {
     font-family: var(--mono); font-size: 11px; color: var(--muted);
     flex: none; min-width: 42px;
@@ -272,9 +280,9 @@
     font-family: var(--mono); font-size: 11px; letter-spacing: .06em;
     color: var(--muted); margin-bottom: 6px;
   }
-  .wk-date.today { color: var(--accent); font-weight: 700; }
+  .wk-date.today { color: var(--accent-ink); font-weight: 700; }
   .wk-item { display: flex; align-items: center; gap: 9px; padding: 3px 0; }
-  .wk-item input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--accent); flex: none; }
+  .wk-item input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--accent-ink); flex: none; }
   .wk-item span { min-width: 0; overflow-wrap: anywhere; }
   .wk-item.done span { color: var(--muted); text-decoration: line-through; }
   .wk-empty { color: var(--muted); padding: 30px 0; text-align: center; }
@@ -292,9 +300,9 @@
     font-family: var(--mono); font-size: 11px; letter-spacing: .06em;
     color: var(--muted); flex: none;
   }
-  .mt-when.today { color: var(--accent); font-weight: 700; }
+  .mt-when.today { color: var(--accent-ink); font-weight: 700; }
   .mt-title {
-    flex: 1 1 200px; min-width: 0; font-family: var(--serif);
+    flex: 1 1 200px; min-width: 0; font-family: var(--sans);
     font-size: 15px; font-weight: 600;
     background: transparent; border-color: transparent; padding: 3px 6px;
   }
@@ -313,7 +321,7 @@
   .mt-row textarea { resize: vertical; min-height: 52px; line-height: 1.5; }
   .mt-todos { margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--hair); }
   .mt-td { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
-  .mt-td input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--accent); flex: none; }
+  .mt-td input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--accent-ink); flex: none; }
   .mt-td span { min-width: 0; overflow-wrap: anywhere; font-size: 13px; }
   .mt-td.done span { color: var(--muted); text-decoration: line-through; }
   .mt-td button { margin-left: auto; flex: none; font-size: 11px; color: var(--muted); padding: 2px 7px; }
@@ -340,7 +348,7 @@
     padding: 5px 11px; cursor: pointer;
   }
   button:hover { background: var(--surface-2); border-color: var(--baseline); }
-  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
   .icon-btn { padding: 5px 10px; font-family: var(--mono); line-height: 1.4; }
   .ghost { background: transparent; border-color: transparent; color: var(--ink-2); }
   .ghost:hover { background: var(--surface-2); border-color: var(--hair); }
@@ -375,7 +383,7 @@
     letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
   }
   .tile .value {
-    font-family: var(--serif); font-size: 25px; font-weight: 600;
+    font-family: var(--sans); font-size: 25px; font-weight: 600;
     line-height: 1.08; letter-spacing: -.015em;
   }
   .tile .value .unit {
@@ -442,7 +450,7 @@
     padding: 14px 16px 12px; border-bottom: 1px solid var(--hair);
   }
   .panel h2 {
-    font-family: var(--serif); font-size: 16.5px; font-weight: 600;
+    font-family: var(--sans); font-size: 16.5px; font-weight: 700;
     margin: 0; letter-spacing: -.005em;
   }
   .panel header .hint { font-size: 11.5px; color: var(--muted); }
@@ -458,11 +466,11 @@
     font-family: var(--mono); font-size: 12px;
     font-variant-numeric: tabular-nums;
   }
-  .voicenav input[type="date"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .voicenav input[type="date"]:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 1px; }
 
   .voice { padding: 14px 16px 16px; }
   .voice .vtitle {
-    font-family: var(--serif); font-size: 17px; font-weight: 600;
+    font-family: var(--sans); font-size: 17px; font-weight: 600;
     margin: 0 0 10px; letter-spacing: -.005em; color: var(--ink);
   }
   /* 영문 제목이 없는 날도 있으므로, 있을 때만 한글 제목에 바짝 붙인다 */
@@ -474,7 +482,7 @@
     margin: 0 0 11px; padding: 9px 13px;
     border-left: 2px solid var(--accent-soft);
     background: var(--surface-2); border-radius: 0 8px 8px 0;
-    font-family: var(--serif); font-size: 14px; line-height: 1.65; color: var(--ink);
+    font-family: var(--sans); font-size: 14px; line-height: 1.65; color: var(--ink);
   }
   .voice .vverse {
     display: block; margin-top: 6px; font-style: normal;
@@ -499,14 +507,14 @@
   .day-row.is-weekend .dow { color: var(--s2); }
 
   .daystamp { display: flex; flex-direction: column; gap: 1px; padding-top: 2px; }
-  .daystamp .dow { font-family: var(--serif); font-size: 15px; font-weight: 600; line-height: 1; }
+  .daystamp .dow { font-family: var(--sans); font-size: 15px; font-weight: 600; line-height: 1; }
   .daystamp .date {
     font-family: var(--mono); font-size: 10.5px; color: var(--muted);
     font-variant-numeric: tabular-nums;
   }
   .daystamp .today-mark {
     font-family: var(--mono); font-size: 9px; letter-spacing: .1em;
-    color: var(--accent); font-weight: 700;
+    color: var(--accent-ink); font-weight: 700;
   }
 
   .items { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
@@ -524,7 +532,7 @@
     display: grid; place-items: center;
     font-size: 10px; line-height: 1; color: var(--on-accent);
   }
-  .item .tick:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .item .tick:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
   .item .at {
     font-family: var(--mono); font-size: 11.5px; color: var(--ink-2);
     font-variant-numeric: tabular-nums; flex: none; min-width: 82px;
@@ -548,7 +556,7 @@
     border: 1px solid var(--hair); border-radius: 6px;
     padding: 4px 8px; min-width: 0;
   }
-  .add-row input:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .add-row input:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: -1px; }
   .add-row input.time { width: 64px; font-family: var(--mono); font-variant-numeric: tabular-nums; }
   .add-row input.title { flex: 1; }
   .add-row button { padding: 4px 10px; font-size: 12.5px; }
@@ -586,7 +594,7 @@
   .cal-dh .dnum {
     display: inline-grid; place-items: center;
     min-width: 24px; height: 24px; margin-top: 3px;
-    font-family: var(--serif); font-size: 15px; font-weight: 600;
+    font-family: var(--sans); font-size: 15px; font-weight: 600;
     border-radius: 50%; font-variant-numeric: tabular-nums;
   }
   .cal-dh.is-today .dnum { background: var(--accent); color: var(--on-accent); }
@@ -602,7 +610,7 @@
   }
   .ad-in::placeholder { color: var(--baseline); }
   .ad-in:hover { background: var(--surface); }
-  .ad-in:focus-visible { outline: 1.5px solid var(--accent); background: var(--surface); }
+  .ad-in:focus-visible { outline: 1.5px solid var(--accent-ink); background: var(--surface); }
   .cal-adlabel {
     display: flex; align-items: center; justify-content: flex-end;
     padding-right: 8px; font-family: var(--mono); font-size: 9.5px; color: var(--muted);
@@ -644,7 +652,7 @@
     content: "✓"; position: absolute; inset: 0; display: grid; place-items: center;
     font-size: 8px; line-height: 1; color: var(--on-accent);
   }
-  .td-row input[type="checkbox"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .td-row input[type="checkbox"]:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 1px; }
   .td-in {
     flex: 1; min-width: 0; font: inherit; font-size: 10.5px; line-height: 1.3;
     border: 0; border-bottom: 1px solid var(--hair);
@@ -653,7 +661,7 @@
   }
   .td-in::placeholder { color: var(--baseline); }
   .td-in:hover { background: var(--surface); }
-  .td-in:focus-visible { outline: 1.5px solid var(--accent); outline-offset: 0; background: var(--surface); }
+  .td-in:focus-visible { outline: 1.5px solid var(--accent-ink); outline-offset: 0; background: var(--surface); }
   .td-row.done .td-in { color: var(--muted); text-decoration: line-through; }
   /* 이름이 고정된 칸 (QT) */
   .td-fixed {
@@ -687,7 +695,7 @@
   .mon-num {
     align-self: flex-start; min-width: 20px; height: 20px; padding: 0 5px;
     display: grid; place-items: center; border-radius: 999px;
-    font-family: var(--serif); font-size: 12.5px; font-weight: 600;
+    font-family: var(--sans); font-size: 12.5px; font-weight: 600;
     font-variant-numeric: tabular-nums;
   }
   .mon-cell.is-out .mon-num { color: var(--muted); }
@@ -706,7 +714,7 @@
   }
   .yr-m { min-width: 0; }
   .yr-mt {
-    font-family: var(--serif); font-size: 13px; font-weight: 600;
+    font-family: var(--sans); font-size: 13px; font-weight: 600;
     margin-bottom: 5px; padding-left: 2px;
   }
   .yr-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
@@ -724,7 +732,7 @@
   .yr-d.has-ev { font-weight: 700; color: var(--ink); }
   .yr-d.has-ev::after {
     content: ""; position: absolute; bottom: 1px; left: 50%; transform: translateX(-50%);
-    width: 3px; height: 3px; border-radius: 50%; background: var(--accent);
+    width: 3px; height: 3px; border-radius: 50%; background: var(--accent-ink);
   }
   .yr-d.is-today { background: var(--accent); color: var(--on-accent); font-weight: 700; }
   .yr-d.is-today::after { background: var(--on-accent); }
@@ -762,7 +770,7 @@
     border: 1px solid var(--hair); border-radius: 7px; padding: 6px 8px;
   }
   .evpop input.tm { width: 62px; font-family: var(--mono); text-align: center; }
-  .evpop input:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .evpop input:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: -1px; }
   /* 24색을 두 줄로 */
   .evpop .pop-colors {
     display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px;
@@ -853,7 +861,7 @@
     border: 1px solid var(--hair); border-radius: 6px; padding: 4px 8px; min-width: 0;
   }
   .cal-add select:focus-visible, .cal-add input:focus-visible {
-    outline: 2px solid var(--accent); outline-offset: -1px;
+    outline: 2px solid var(--accent-ink); outline-offset: -1px;
   }
   .cal-add input.time {
     width: 62px; font-family: var(--mono); font-variant-numeric: tabular-nums;
@@ -883,7 +891,7 @@
     background: var(--surface); color: var(--ink);
     border: 1px solid var(--hair); border-radius: 6px; padding: 3px 6px;
   }
-  .trendrange input:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .trendrange input:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: -1px; }
   .trendrange .sep { color: var(--muted); font-family: var(--mono); font-size: 11px; }
 
   .chart-grid {
@@ -899,7 +907,7 @@
 
   /* 주간 메모 */
   .chart-latest {
-    font-family: var(--serif); font-size: 19px; font-weight: 600;
+    font-family: var(--sans); font-size: 19px; font-weight: 600;
     line-height: 1.1; letter-spacing: -.01em; margin: 1px 0 5px;
     font-variant-numeric: tabular-nums;
   }
@@ -980,7 +988,7 @@
     background: transparent; color: var(--ink-2); padding: 6px 12px 8px;
     display: flex; flex-direction: column; align-items: center; gap: 1px; line-height: 1.2;
   }
-  .tabs button .d { font-family: var(--serif); font-size: 14px; font-weight: 600; }
+  .tabs button .d { font-family: var(--sans); font-size: 14px; font-weight: 600; }
   .tabs button .n {
     font-family: var(--mono); font-size: 9.5px; color: var(--muted);
     font-variant-numeric: tabular-nums;
@@ -988,7 +996,7 @@
   .tabs button[aria-selected="true"] {
     background: var(--surface-2); color: var(--ink);
     border-color: var(--hair); border-bottom-color: var(--surface-2);
-    box-shadow: inset 0 2px 0 var(--accent);
+    box-shadow: inset 0 2px 0 var(--accent-ink);
   }
 
   .form-grid {
@@ -1010,7 +1018,7 @@
   }
   .field textarea { resize: vertical; min-height: 58px; font-variant-numeric: normal; }
   .field input:focus-visible, .field textarea:focus-visible {
-    outline: 2px solid var(--accent); outline-offset: -1px;
+    outline: 2px solid var(--accent-ink); outline-offset: -1px;
   }
   .pair { display: flex; align-items: center; gap: 7px; }
   .pair input { min-width: 0; }
@@ -1036,7 +1044,7 @@
     padding: 6px 6px; min-width: 0;
     font-variant-numeric: tabular-nums;
   }
-  .timerow select:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .timerow select:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: -1px; }
   .pair span.sep { color: var(--muted); font-family: var(--mono); }
   .field .note { font-size: 11px; color: var(--muted); min-height: 17px; }
   .span-2 { grid-column: span 2; }
@@ -1121,7 +1129,7 @@
     padding: 5px 11px; text-decoration: none; color: var(--ink-2);
   }
   .foot-link:hover { background: var(--surface-2); border-color: var(--hair); }
-  .foot-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .foot-link:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
   footer.foot .spacer { flex: 1; }
 
   @media (max-width: 980px) {
