@@ -9,8 +9,8 @@
 <meta name="description" content="일주일 일정과 건강 상태를 한 화면에서 기록하고 추이로 보는 개인 대시보드">
 
 <!-- 주소 표시줄·상태 표시줄 색. 테마 변수와 같은 값을 쓴다. -->
-<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f9f4ef">
-<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#17120e">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#fceee3">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1a1717">
 
 <!-- 홈 화면에 추가하면 주소창 없이 앱처럼 열린다.
      화면 방향은 일부러 잠그지 않았다 — 일정표는 가로로 보는 편이 넓다. -->
@@ -27,22 +27,31 @@
     color-scheme: light;
     /* 종이 같은 따뜻한 색. 대비는 계산해 맞췄다 —
        본문 글자 4.5:1 이상, 테두리도 눈에 걸리는 선까지. */
-    --plane:        #f9f4ef;
-    --surface:      #fffdfa;
-    --surface-2:    #f6efe7;
-    --ink:          #33271e;
-    --ink-2:        #64564a;
-    --muted:        #6f6053;
-    --hair:         #ecdfd2;
-    --grid:         #f0e5da;
-    --baseline:     #d2c2b0;
+    /* 받은 다섯 색을 역할로 나눈 것
+       #fceee3 크림 = 배경 · #f6b08a 복숭아 = 강조 · #ffd6b5 연복숭아 = 은은한 강조
+       #b7c8a1 세이지 = 오늘 표시 · #3e3a39 먹 = 글자 */
+    --plane:        #fceee3;
+    --surface:      #fffaf4;
+    --surface-2:    #f8e9dc;
+    --ink:          #3e3a39;
+    --ink-2:        #645b57;
+    --muted:        #6f6359;
+    --hair:         #efdcc9;
+    --grid:         #f3e2d3;
+    --baseline:     #d6c2ae;
     /* 복숭아색은 넓게 칠하는 자리에만 쓰고, 그 위에는 짙은 갈색 글자를 얹는다.
        글자·초점 테두리·체크 표시처럼 가는 것에는 --accent-ink 를 쓴다 —
        연한 복숭아색은 크림 배경 위에서 1.7:1 이라 글자로 쓰면 안 보인다. */
-    --accent:       #ecb390;
-    --on-accent:    #3d2b1c;
-    --accent-ink:   #a35a2a;
-    --accent-soft:  #f8e3d3;
+    --accent:       #f6b08a;
+    --on-accent:    #3e3a39;
+    --accent-ink:   #9e5225;
+    --accent-soft:  #ffd6b5;
+    /* 오늘을 가리키는 자리에만 쓴다. 복숭아와 밝기가 1.03:1 로 거의 같아서
+       흑백이나 색각 이상에서는 구분되지 않는다 — 그래서 이 색이 혼자 뜻을 나르는
+       자리에는 쓰지 않고, 날짜 숫자나 'TODAY' 글자가 늘 함께 있는 곳에만 쓴다. */
+    --sage:         #b7c8a1;
+    --on-sage:      #2c3524;
+    --sage-ink:     #4f6a3a;
     --s1:           #2a78d6;
     --s2:           #eb6834;
     --s3:           #1baf7a;
@@ -77,7 +86,7 @@
     --critical:     #d03b3b;
     /* 물 섭취량 — 파랑 단일 색조 순서 램프 (밝은 면에서 2:1 이상) */
     --w1: #86b6ef; --w2: #5598e7; --w3: #2a78d6; --w4: #1c5cab; --w5: #104281;
-    --shadow: 0 1px 2px rgba(51,39,30,.05), 0 8px 24px -16px rgba(51,39,30,.20);
+    --shadow: 0 1px 2px rgba(62,58,57,.05), 0 8px 24px -16px rgba(62,58,57,.20);
 
     /* 글씨는 한 가지로 통일하고 제목은 굵기로만 구분한다.
        기기에 이미 있는 글꼴만 쓰므로 받아올 것이 없고, 비행기 모드에서도 그대로다. */
@@ -88,19 +97,22 @@
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       color-scheme: dark;
-      --plane:       #17120e;
-      --surface:     #201a15;
-      --surface-2:   #29221b;
-      --ink:         #f6efe8;
-      --ink-2:       #beb0a1;
-      --muted:       #96887a;
-      --hair:        #332a22;
-      --grid:        #2f2720;
-      --baseline:    #4a3f34;
-      --accent:      #ecb390;
-      --on-accent:   #2a1d13;
-      --accent-ink:  #f0c3a4;
-      --accent-soft: #3a2a1e;
+      --plane:       #1a1717;
+      --surface:     #232020;
+      --surface-2:   #2b2726;
+      --ink:         #f7efe8;
+      --ink-2:       #c0b4ab;
+      --muted:       #9b8c82;
+      --hair:        #363130;
+      --grid:        #322d2c;
+      --baseline:    #4d4644;
+      --accent:      #f6b08a;
+      --on-accent:   #2a1d16;
+      --accent-ink:  #f5c2a1;
+      --accent-soft: #3d2b20;
+      --sage:        #b7c8a1;
+      --on-sage:     #22291b;
+      --sage-ink:    #b7c8a1;
       --s1:          #3987e5;
       --s2:          #d95926;
       --s3:          #199e70;
@@ -110,19 +122,22 @@
   }
   :root[data-theme="dark"] {
     color-scheme: dark;
-    --plane:       #17120e;
-    --surface:     #201a15;
-    --surface-2:   #29221b;
-    --ink:         #f6efe8;
-    --ink-2:       #beb0a1;
-    --muted:       #96887a;
-    --hair:        #332a22;
-    --grid:        #2f2720;
-    --baseline:    #4a3f34;
-    --accent:      #ecb390;
-    --on-accent:   #2a1d13;
-    --accent-ink:  #f0c3a4;
-    --accent-soft: #3a2a1e;
+    --plane:       #1a1717;
+    --surface:     #232020;
+    --surface-2:   #2b2726;
+    --ink:         #f7efe8;
+    --ink-2:       #c0b4ab;
+    --muted:       #9b8c82;
+    --hair:        #363130;
+    --grid:        #322d2c;
+    --baseline:    #4d4644;
+    --accent:      #f6b08a;
+    --on-accent:   #2a1d16;
+    --accent-ink:  #f5c2a1;
+    --accent-soft: #3d2b20;
+    --sage:        #b7c8a1;
+    --on-sage:     #22291b;
+    --sage-ink:    #b7c8a1;
     --s1:          #3987e5;
     --s2:          #d95926;
     --s3:          #199e70;
@@ -280,7 +295,7 @@
     font-family: var(--mono); font-size: 11px; letter-spacing: .06em;
     color: var(--muted); margin-bottom: 6px;
   }
-  .wk-date.today { color: var(--accent-ink); font-weight: 700; }
+  .wk-date.today { color: var(--sage-ink); font-weight: 700; }
   .wk-item { display: flex; align-items: center; gap: 9px; padding: 3px 0; }
   .wk-item input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--accent-ink); flex: none; }
   .wk-item span { min-width: 0; overflow-wrap: anywhere; }
@@ -300,7 +315,7 @@
     font-family: var(--mono); font-size: 11px; letter-spacing: .06em;
     color: var(--muted); flex: none;
   }
-  .mt-when.today { color: var(--accent-ink); font-weight: 700; }
+  .mt-when.today { color: var(--sage-ink); font-weight: 700; }
   .mt-title {
     flex: 1 1 200px; min-width: 0; font-family: var(--sans);
     font-size: 15px; font-weight: 600;
@@ -514,7 +529,7 @@
   }
   .daystamp .today-mark {
     font-family: var(--mono); font-size: 9px; letter-spacing: .1em;
-    color: var(--accent-ink); font-weight: 700;
+    color: var(--sage-ink); font-weight: 700;
   }
 
   .items { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
@@ -597,7 +612,7 @@
     font-family: var(--sans); font-size: 15px; font-weight: 600;
     border-radius: 50%; font-variant-numeric: tabular-nums;
   }
-  .cal-dh.is-today .dnum { background: var(--accent); color: var(--on-accent); }
+  .cal-dh.is-today .dnum { background: var(--sage); color: var(--on-sage); }
   .cal-dh.is-weekend .dow { color: var(--s2); }
 
   /* Event 줄은 타임라인의 30분 칸과 같은 높이를 기준으로 삼는다 */
@@ -734,7 +749,7 @@
     content: ""; position: absolute; bottom: 1px; left: 50%; transform: translateX(-50%);
     width: 3px; height: 3px; border-radius: 50%; background: var(--accent-ink);
   }
-  .yr-d.is-today { background: var(--accent); color: var(--on-accent); font-weight: 700; }
+  .yr-d.is-today { background: var(--sage); color: var(--on-sage); font-weight: 700; }
   .yr-d.is-today::after { background: var(--on-accent); }
   .yr-d:hover:not(.is-out):not(.is-today) { background: var(--surface-2); }
 
