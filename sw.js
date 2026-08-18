@@ -11,16 +11,16 @@
  * 폰에서 예전 것이 나오던 이유가 이것이었다.
  */
 
-var CACHE = "diary-2026-08-18";
+var CACHE = "diary-2026-08-18b";
 
 /* 처음 설치할 때 미리 챙겨둘 것들 */
 var SHELL = [
   "/",
   "/manifest.json",
   "/icon.svg",
-  "/icons/icon-192.png",
-  "/icons/icon-512.png",
-  "/icons/apple-touch-icon.png"
+  "/icons/icon-192-2.png",
+  "/icons/icon-512-2.png",
+  "/icons/apple-touch-icon-2.png"
 ];
 
 self.addEventListener("install", function (e) {
