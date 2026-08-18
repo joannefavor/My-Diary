@@ -2045,6 +2045,18 @@
     }
     return n;
   }
+  /* 그 날짜부터 뒤쪽의 같은 반복들. 앞의 것은 지나간 기록이라 빼 둔다. */
+  function laterRepeat(rid, from) {
+    var out = [];
+    for (var date in state.days) {
+      if (date < from) continue;
+      var d = state.days[date];
+      if (!d || !d.schedule) continue;
+      d.schedule.forEach(function (it) { if (it.rid === rid) out.push(it); });
+    }
+    return out;
+  }
+
   function removeRepeat(rid) {
     for (var date in state.days) {
       var d = state.days[date];
@@ -4888,7 +4900,19 @@
       if (en === "––:––") en = null;
 
       if (it) {
-        it.title = title; it.time = st; it.end = en; it.color = chosen;
+        /* 반복 중 하나를 고칠 때는 이것만인지 앞으로 전부인지 묻는다.
+           '앞으로'는 이 날부터 뒤쪽만 — 이미 지나간 것은 그때의 기록이라 건드리지 않는다. */
+        var later = it.rid ? laterRepeat(it.rid, date) : [];
+        if (later.length > 1 && confirm(
+            "'" + (it.title || "제목 없음") + "' 은 " + (it.rep || "반복") + " 일정입니다.\n\n" +
+            "확인 — 이 날부터 뒤의 " + (later.length - 1) + "번까지 함께 고칩니다\n" +
+            "취소 — 이 하루만 고칩니다")) {
+          later.forEach(function (x) {
+            x.title = title; x.time = st; x.end = en; x.color = chosen;
+          });
+        } else {
+          it.title = title; it.time = st; it.end = en; it.color = chosen;
+        }
       } else {
         day(date).schedule.push({
           id: uid(), time: st, end: en, title: title, done: false, color: chosen
