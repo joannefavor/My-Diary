@@ -310,6 +310,18 @@
 
   /* ---------- 병원 방문 ---------- */
 
+  .daybar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px;
+    padding: 10px 16px 0;
+  }
+  .daybar input[type="search"] {
+    font: inherit; font-size: 13px; color: var(--ink); background: var(--surface);
+    border: 1px solid var(--hair); border-radius: 7px; padding: 5px 9px;
+    flex: 1 1 160px; min-width: 0;
+  }
+  .daybar input[type="search"]:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 1px; }
+  .daybar .dayspin { flex: 0 1 240px; }
+
   .visit-bar {
     display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px;
     padding: 10px 16px 0;
@@ -1359,6 +1371,12 @@
       <button class="ghost" id="visitAdd">+ 새로 적기</button>
     </header>
     <div class="visit-bar">
+      <span class="dayspin">
+        <button type="button" class="icon-btn" data-daystep="-1" aria-label="하루 전">&lt;</button>
+        <input type="date" data-dayof="visit" aria-label="어느 날을 볼지">
+        <button type="button" class="dot-btn" data-daytoday title="오늘로" aria-label="오늘로"></button>
+        <button type="button" class="icon-btn" data-daystep="1" aria-label="하루 뒤">&gt;</button>
+      </span>
       <label for="visitPlace">병원</label>
       <select id="visitPlace"><option value="">전체</option></select>
       <input type="search" id="visitQuery" placeholder="병원 이름·내용으로 찾기"
@@ -1408,7 +1426,7 @@
   <!-- 아직 내용을 정하지 않은 페이지들. 무엇을 적을지 정하면 이 자리를 채운다. -->
   <section class="panel" data-page="work">
     <header>
-      <h2>이번 주 업무</h2>
+      <h2>업무</h2>
       <div class="datepick">
         <span class="dayspin">
           <button type="button" class="icon-btn" data-daystep="-1" aria-label="하루 전">&lt;</button>
@@ -1418,6 +1436,8 @@
         </span>
         <input type="text" id="workNew" placeholder="할 일" aria-label="할 일 내용">
         <button class="ghost" id="workAdd">+ 넣기</button>
+        <input type="search" data-find="work" placeholder="단어로 찾기" aria-label="업무 찾기">
+        <span class="visit-count" data-count="work"></span>
       </div>
     </header>
     <div class="worklist" id="workList"></div>
@@ -1426,18 +1446,40 @@
   <section class="panel" data-page="faith">
     <header>
       <h2>묵상일기</h2>
-      <span class="hint">말씀을 읽고 남은 것 · 최근 것이 위로</span>
       <button class="ghost" data-noteadd="faith">+ 새로 적기</button>
     </header>
+      <div class="daybar">
+        <span class="dayspin">
+          <button type="button" class="icon-btn" data-daystep="-1" aria-label="하루 전">&lt;</button>
+          <input type="date" data-dayof="faith" aria-label="어느 날을 볼지">
+          <button type="button" class="dot-btn" data-daytoday title="오늘로" aria-label="오늘로"></button>
+          <button type="button" class="icon-btn" data-daystep="1" aria-label="하루 뒤">&gt;</button>
+        </span>
+        <input type="search" data-find="faith" placeholder="단어로 찾기"
+          aria-label="묵상일기 찾기">
+        <span class="visit-count" data-count="faith"></span>
+      </div>
+
     <div class="notelist" id="faithList"></div>
   </section>
 
   <section class="panel" data-page="faith">
     <header>
       <h2>기도</h2>
-      <span class="hint">기도 제목과 응답 · 최근 것이 위로</span>
       <button class="ghost" data-noteadd="prayer">+ 새로 적기</button>
     </header>
+      <div class="daybar">
+        <span class="dayspin">
+          <button type="button" class="icon-btn" data-daystep="-1" aria-label="하루 전">&lt;</button>
+          <input type="date" data-dayof="prayer" aria-label="어느 날을 볼지">
+          <button type="button" class="dot-btn" data-daytoday title="오늘로" aria-label="오늘로"></button>
+          <button type="button" class="icon-btn" data-daystep="1" aria-label="하루 뒤">&gt;</button>
+        </span>
+        <input type="search" data-find="prayer" placeholder="단어로 찾기"
+          aria-label="기도 찾기">
+        <span class="visit-count" data-count="prayer"></span>
+      </div>
+
     <div class="notelist" id="prayerList"></div>
   </section>
 
@@ -1452,10 +1494,21 @@
 
   <section class="panel" data-page="meeting">
     <header>
-      <h2>이번 주 미팅</h2>
-      <span class="hint">메인화면의 <b>빠르게 쓰기</b>에서 미팅을 골라도 만들어집니다</span>
+      <h2>미팅</h2>
       <button class="ghost" id="meetAdd">+ 새 미팅</button>
     </header>
+      <div class="daybar">
+        <span class="dayspin">
+          <button type="button" class="icon-btn" data-daystep="-1" aria-label="하루 전">&lt;</button>
+          <input type="date" data-dayof="meeting" aria-label="어느 날을 볼지">
+          <button type="button" class="dot-btn" data-daytoday title="오늘로" aria-label="오늘로"></button>
+          <button type="button" class="icon-btn" data-daystep="1" aria-label="하루 뒤">&gt;</button>
+        </span>
+        <input type="search" data-find="meeting" placeholder="단어로 찾기"
+          aria-label="미팅 찾기">
+        <span class="visit-count" data-count="meeting"></span>
+      </div>
+
     <div class="meetlist" id="meetList"></div>
   </section>
 
@@ -3429,6 +3482,23 @@
       "</span>";
   }
 
+  /* 패널 머리의 날짜 칸은 앱이 보고 있는 날을 움직인다.
+     여기저기 날짜가 따로 놀면 어느 날에 적고 있는지 알 수 없다. */
+  document.addEventListener("change", function (e) {
+    var dbox = e.target.closest("input[data-dayof]");
+    if (dbox && dbox.value) goToDate(dbox.value);
+  });
+
+  document.addEventListener("input", function (e) {
+    var fbox = e.target.closest("input[data-find]");
+    if (!fbox) return;
+    var kind = fbox.getAttribute("data-find");
+    findWord[kind] = fbox.value;
+    if (kind === "meeting") renderMeetings();
+    else if (kind === "work") renderWork();
+    else renderNotes(kind);
+  });
+
   document.addEventListener("click", function (e) {
     var b = e.target.closest("button[data-daystep], button[data-daytoday]");
     if (!b) return;
@@ -3755,14 +3825,56 @@
     return out.sort().reverse();
   }
 
+  /* 쌓일수록 화면이 길어지지 않게, 평소엔 고른 날 것만 보여준다.
+     찾는 말을 적었을 때만 날짜를 넘어 전부 뒤진다 — 찾는 중에 날짜로 잘라내면
+     "어제 적은 그것"을 영영 못 찾는다. */
+  var findWord = {};
+
+  function dayBarPaint(kind, shown, total) {
+    var box = document.querySelector('input[data-dayof="' + kind + '"]');
+    if (box && box.value !== selected) box.value = selected;
+    var dot = box && box.parentNode.querySelector(".dot-btn");
+    if (dot) dot.classList.toggle("is-today", selected === iso(new Date()));
+    var cnt = document.querySelector('[data-count="' + kind + '"]');
+    if (cnt) {
+      cnt.textContent = !total ? ""
+        : (findWord[kind] ? shown + " / " + total + "건 (전체에서 찾음)"
+                          : shown + "건");
+    }
+  }
+
+  function hitWord(kind, text) {
+    var q = (findWord[kind] || "").trim().toLowerCase();
+    if (!q) return true;
+    return String(text || "").toLowerCase().indexOf(q) !== -1;
+  }
+
   function renderNotes(kind) {
     var conf = NOTE_KINDS[kind];
     var host = document.getElementById(conf.list);
     if (!host) return;
-    var dates = noteDates(kind);
+    var all = noteDates(kind);
+    var total = 0;
+    all.forEach(function (d0) { total += state.days[d0][kind].length; });
 
-    if (!dates.length) {
+    var finding = !!(findWord[kind] || "").trim();
+    var dates = finding ? all : (all.indexOf(selected) !== -1 ? [selected] : []);
+
+    var shown = 0;
+    dates.forEach(function (d0) {
+      state.days[d0][kind].forEach(function (n) {
+        if (hitWord(kind, n.title + " " + n.notes)) shown++;
+      });
+    });
+    dayBarPaint(kind, shown, total);
+
+    if (!total) {
       host.innerHTML = '<div class="wk-empty">아직 적어 둔 것이 없습니다.</div>';
+      return;
+    }
+    if (!shown) {
+      host.innerHTML = '<div class="wk-empty">' +
+        (finding ? "찾는 것이 없습니다." : "이 날에 적어 둔 것이 없습니다.") + "</div>";
       return;
     }
 
@@ -3770,7 +3882,9 @@
       var dt = parseISO(date);
       var when = dt.getFullYear() + "." + pad(dt.getMonth() + 1) + "." + pad(dt.getDate()) +
         " " + dowOf(date);
-      return state.days[date][kind].map(function (n) {
+      return state.days[date][kind].filter(function (n) {
+        return hitWord(kind, n.title + " " + n.notes);
+      }).map(function (n) {
         var at = kind + "|" + date + "|" + n.id;
         return '<div class="mt">' +
           '<div class="mt-top">' +
@@ -3836,6 +3950,9 @@
     document.querySelectorAll("button[data-noteadd]"), function (b) {
       b.addEventListener("click", function () {
         var kind = b.getAttribute("data-noteadd");
+        /* 찾는 중이면 새로 만든 빈 것이 조건에 안 걸려 사라진다 */
+        var fbox = document.querySelector('input[data-find="' + kind + '"]');
+        if (fbox) { fbox.value = ""; findWord[kind] = ""; }
         day(selected)[kind].push({ id: uid(), title: "", notes: "" });
         save();
         renderNotes(kind);
@@ -3937,19 +4054,33 @@
     var place = sel.value;
     var q = document.getElementById("visitQuery").value.trim();
     var all = allVisits();
-    var rows = all.filter(function (r) { return visitMatches(r, place, q); });
+
+    /* 평소엔 고른 날 것만. 병원을 고르거나 말을 적었을 때만 날짜를 넘어 전부 뒤진다 —
+       "그 병원에 언제 갔더라"가 이 화면을 여는 큰 이유다. */
+    var wide = !!(place || q);
+    var rows = all.filter(function (r) {
+      if (!wide && r.date !== selected) return false;
+      return visitMatches(r, place, q);
+    });
+
+    var dbox = document.querySelector('input[data-dayof="visit"]');
+    if (dbox) {
+      if (dbox.value !== selected) dbox.value = selected;
+      var vdot = dbox.parentNode.querySelector(".dot-btn");
+      if (vdot) vdot.classList.toggle("is-today", selected === iso(new Date()));
+    }
 
     var count = document.getElementById("visitCount");
-    count.textContent = all.length
-      ? (rows.length === all.length ? all.length + "번" : rows.length + " / " + all.length + "번")
-      : "";
+    count.textContent = !all.length ? ""
+      : (wide ? rows.length + " / " + all.length + "번 (전체에서 찾음)" : rows.length + "번");
 
     if (!all.length) {
       host.innerHTML = '<div class="wk-empty">아직 적어 둔 병원 방문이 없습니다.</div>';
       return;
     }
     if (!rows.length) {
-      host.innerHTML = '<div class="wk-empty">찾는 기록이 없습니다.</div>';
+      host.innerHTML = '<div class="wk-empty">' +
+        (wide ? "찾는 기록이 없습니다." : "이 날에 적어 둔 방문이 없습니다.") + "</div>";
       return;
     }
 
@@ -4083,8 +4214,33 @@
     if (!host) return;
     var today = iso(new Date()), any = false;
 
-    host.innerHTML = weekDates().map(function (date, i) {
-      var list = (peek(date) && peek(date).meetings) || [];
+    var findingM = !!(findWord.meeting || "").trim();
+    var mDates = [];
+    if (findingM) {
+      for (var dk in state.days) {
+        if (state.days[dk] && state.days[dk].meetings && state.days[dk].meetings.length) mDates.push(dk);
+      }
+      mDates.sort().reverse();
+    } else {
+      mDates = [selected];
+    }
+    var mTotal = 0, mShown = 0;
+    for (var dk2 in state.days) {
+      var mm = (state.days[dk2] && state.days[dk2].meetings) || [];
+      mTotal += mm.length;
+    }
+    mDates.forEach(function (d0) {
+      ((peek(d0) && peek(d0).meetings) || []).forEach(function (m) {
+        if (hitWord("meeting", m.title + " " + m.people + " " + m.notes)) mShown++;
+      });
+    });
+    dayBarPaint("meeting", mShown, mTotal);
+
+    host.innerHTML = mDates.map(function (date) {
+      var i = (parseISO(date).getDay() + 6) % 7;
+      var list = ((peek(date) && peek(date).meetings) || []).filter(function (m) {
+        return hitWord("meeting", m.title + " " + m.people + " " + m.notes);
+      });
       if (!list.length) return "";
       any = true;
       var dt = parseISO(date);
@@ -4130,7 +4286,10 @@
     }).join("");
 
     if (!any) {
-      host.innerHTML = '<div class="wk-empty">이번 주에 적어 둔 미팅이 없습니다.</div>';
+      host.innerHTML = '<div class="wk-empty">' +
+        (findingM ? "찾는 미팅이 없습니다."
+                  : (mTotal ? "이 날에 적어 둔 미팅이 없습니다." : "아직 적어 둔 미팅이 없습니다.")) +
+        "</div>";
     }
   }
 
@@ -4200,6 +4359,8 @@
   });
 
   document.getElementById("meetAdd").addEventListener("click", function () {
+    var mf = document.querySelector('input[data-find="meeting"]');
+    if (mf) { mf.value = ""; findWord.meeting = ""; }
     day(selected).meetings.push(newMeeting("", ""));
     save();
     renderMeetings();
@@ -4281,10 +4442,37 @@
     if (!host) return;
     var today = iso(new Date()), any = false;
 
-    host.innerHTML = weekDates().map(function (date, i) {
+    /* 평소엔 고른 날 것만. 찾는 말이 있을 때만 날짜를 넘어 전부 뒤진다. */
+    var findingW = !!(findWord.work || "").trim();
+    var wDates = [];
+    var wTotal = 0, wShown = 0;
+    for (var wk in state.days) {
+      var td = (state.days[wk] && state.days[wk].todos) || [];
+      for (var wi = 1; wi < td.length; wi++) if (td[wi] && td[wi].text) wTotal++;
+    }
+    if (findingW) {
+      for (var wk2 in state.days) {
+        var td2 = (state.days[wk2] && state.days[wk2].todos) || [];
+        for (var wj = 1; wj < td2.length; wj++) {
+          if (td2[wj] && td2[wj].text && hitWord("work", td2[wj].text)) { wDates.push(wk2); break; }
+        }
+      }
+      wDates.sort().reverse();
+    } else {
+      wDates = [selected];
+    }
+    wDates.forEach(function (d0) {
+      todosOf(d0).forEach(function (t, ti) {
+        if (ti > 0 && t.text && hitWord("work", t.text)) wShown++;
+      });
+    });
+    dayBarPaint("work", wShown, wTotal);
+
+    host.innerHTML = wDates.map(function (date) {
+      var i = (parseISO(date).getDay() + 6) % 7;
       var items = todosOf(date).map(function (s, idx) {
         return { text: s.text, done: s.done, idx: idx };
-      }).filter(function (s) { return s.idx > 0 && s.text; });
+      }).filter(function (s) { return s.idx > 0 && s.text && hitWord("work", s.text); });
       if (!items.length) return "";
       any = true;
       var dt = parseISO(date);
@@ -4301,7 +4489,10 @@
     }).join("");
 
     if (!any) {
-      host.innerHTML = '<div class="wk-empty">이번 주에 적어 둔 업무가 없습니다.</div>';
+      host.innerHTML = '<div class="wk-empty">' +
+        (findingW ? "찾는 업무가 없습니다."
+                  : (wTotal ? "이 날에 적어 둔 업무가 없습니다." : "아직 적어 둔 업무가 없습니다.")) +
+        "</div>";
     }
   }
 
@@ -4323,8 +4514,10 @@
     day(date).todos[slot].text = text;
     tbox.value = "";
     save();
-    /* 이번 주 것만 보여주므로, 다른 주에 넣었으면 그 주로 옮겨 보여준다 */
-    if (weekDates().indexOf(date) === -1) goToDate(date);
+    /* 고른 날 것만 보여주므로, 다른 날에 넣었으면 그 날로 옮겨 보여준다 */
+    var wf = document.querySelector('input[data-find="work"]');
+    if (wf) { wf.value = ""; findWord.work = ""; }
+    if (date !== selected) goToDate(date);
     else renderWork();
   }
 
