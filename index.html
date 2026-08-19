@@ -5729,10 +5729,23 @@
     Object.keys(state.days).forEach(function (d) {
       if (!emptyDay(state.days[d])) days[d] = state.days[d];
     });
-    var bytes = new TextEncoder().encode(
-      JSON.stringify({ days: days, meds: medList() })).length;
+    var plain = new TextEncoder().encode(
+      JSON.stringify({ days: days, meds: medList() }));
     /* base64(iv 12 + 암호문 + 태그 16) */
-    sizeCache = { at: Date.now(), blob: Math.ceil((bytes + 28) / 3) * 4 };
+    var est = function (n) { return Math.ceil((n + 28) / 3) * 4; };
+    sizeCache = { at: Date.now(), blob: est(plain.length) };
+
+    /* 압축한 크기가 실제로 올라가는 크기다. 재는 데 시간이 걸리므로
+       먼저 대충 값을 넣어 두고, 끝나면 조용히 바꿔 다시 그린다. */
+    if (canZip()) {
+      zip(plain).then(function (z) {
+        var real = est(z.length);
+        if (real !== sizeCache.blob) {
+          sizeCache = { at: Date.now(), blob: real };
+          paintSize();
+        }
+      }).catch(function () { /* 못 재면 대충 값 그대로 */ });
+    }
     return sizeCache.blob;
   }
 
@@ -5813,21 +5826,56 @@
       });
   }
 
+  /* ---------- 올리기 전 압축 ----------
+     기록은 같은 낱말이 되풀이돼서 잘 줄어든다 (실제 값으로 재보면 7~8배).
+     한도 900KB 안에 1년 반이 아니라 열다섯 해쯤 들어간다.
+
+     봉투 모양은 그대로 두고 안에 넣는 것만 바꾼다. gzip 은 늘 1f 8b 로 시작하고
+     JSON 은 { 로 시작하므로 받는 쪽은 첫 바이트만 보면 구분된다.
+     형식 번호를 따로 붙일 필요가 없다.
+
+     압축을 못 하는 브라우저에서는 예전처럼 그냥 올린다. */
+
+  function canZip() {
+    return typeof CompressionStream === "function" &&
+           typeof DecompressionStream === "function";
+  }
+
+  function through(bytes, stream) {
+    return new Response(new Blob([bytes]).stream().pipeThrough(stream))
+      .arrayBuffer().then(function (b) { return new Uint8Array(b); });
+  }
+
+  function zip(bytes) {
+    if (!canZip()) return Promise.resolve(bytes);
+    return through(bytes, new CompressionStream("gzip"))
+      .catch(function () { return bytes; });      /* 실패하면 원본 그대로 */
+  }
+
+  function unzip(bytes) {
+    /* gzip 표식이 없으면 예전 형식이므로 그대로 돌려준다 */
+    if (!(bytes[0] === 0x1f && bytes[1] === 0x8b)) return Promise.resolve(bytes);
+    return through(bytes, new DecompressionStream("gzip"));
+  }
+
   function seal(key, obj) {
     var iv = crypto.getRandomValues(new Uint8Array(12));
-    var data = new TextEncoder().encode(JSON.stringify(obj));
-    return crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, data).then(function (ct) {
+    return zip(new TextEncoder().encode(JSON.stringify(obj))).then(function (data) {
+      return crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, data);
+    }).then(function (ct) {
       var out = new Uint8Array(12 + ct.byteLength);
       out.set(iv, 0);
       out.set(new Uint8Array(ct), 12);
       return toB64(out);
     });
   }
+
   function unseal(key, b64) {
     var raw = fromB64(b64);
     return crypto.subtle
       .decrypt({ name: "AES-GCM", iv: raw.slice(0, 12) }, key, raw.slice(12))
-      .then(function (pt) { return JSON.parse(new TextDecoder().decode(pt)); });
+      .then(function (pt) { return unzip(new Uint8Array(pt)); })
+      .then(function (bytes) { return JSON.parse(new TextDecoder().decode(bytes)); });
   }
 
   /* ---------- 합치기 ---------- */
