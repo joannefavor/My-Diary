@@ -310,6 +310,30 @@
 
   /* ---------- 병원 방문 ---------- */
 
+  .findbar { display: flex; align-items: center; gap: 10px; padding: 14px 16px; }
+  .findbar input {
+    flex: 1; min-width: 0; font: inherit; font-size: 14px;
+    color: var(--ink); background: var(--surface);
+    border: 1px solid var(--hair); border-radius: 9px; padding: 9px 12px;
+  }
+  .findbar input:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 1px; }
+  .findlist { padding: 0 16px 8px; }
+  .findlist:empty { padding: 0; }
+  .fr {
+    display: flex; align-items: baseline; gap: 10px; width: 100%;
+    padding: 8px 10px; border: 0; border-top: 1px solid var(--hair);
+    background: transparent; text-align: left; cursor: pointer;
+  }
+  .fr:hover { background: var(--surface-2); }
+  .fr .fd { font-family: var(--mono); font-size: 11.5px; color: var(--muted); flex: none; }
+  .fr .fk {
+    flex: none; font-size: 11px; padding: 1px 7px; border-radius: 999px;
+    background: var(--accent-soft); color: var(--ink);
+  }
+  .fr .ft { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fr mark { background: var(--accent); color: var(--on-accent); border-radius: 3px; padding: 0 1px; }
+  .find-none { padding: 14px 10px 18px; color: var(--muted); }
+
   .daybar {
     display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px;
     padding: 10px 16px 0;
@@ -1325,6 +1349,20 @@
       </div>
     </div>
   </section>
+
+  <section class="panel" id="findPanel" data-page="main">
+    <header>
+      <h2>빠르게 찾기</h2>
+      <span class="hint">적어 둔 모든 것에서 찾습니다</span>
+    </header>
+    <div class="findbar">
+      <input type="search" id="findAll" placeholder="단어나 문장으로 (예: 혈압약, 법무팀, 어머니 건강)"
+        aria-label="모든 기록에서 찾기">
+      <span class="visit-count" id="findCount"></span>
+    </div>
+    <div class="findlist" id="findList"></div>
+  </section>
+
 
   <section class="panel" id="voicePanel" data-page="main faith" hidden>
     <header>
@@ -4635,6 +4673,112 @@
   });
   document.getElementById("quickPrev").addEventListener("click", function () { stepDay(-1); });
   document.getElementById("quickNext").addEventListener("click", function () { stepDay(1); });
+
+  /* ============================ 빠르게 찾기 ============================
+
+     적어 둔 모든 갈래를 한 번에 뒤진다. 갈래마다 따로 찾으려면 어디에 적었는지
+     먼저 기억해야 하는데, 기억이 안 나서 찾는 경우가 대부분이다.
+     찾은 것을 누르면 그 갈래의 화면에서 그날로 데려다준다. */
+  var FIND_MAX = 60;
+
+  /* 어느 갈래가 어느 페이지에 있는지 */
+  var FIND_WHERE = {
+    "일정": "schedule", "할 일": "work", "미팅": "meeting",
+    "병원": "health", "묵상일기": "faith", "기도": "faith",
+    "나의역사": "history", "지식창고": "knowledge",
+    "메모": "health", "식단": "health", "복약": "health", "운동": "health"
+  };
+
+  function findAllRecords(q) {
+    q = String(q || "").trim().toLowerCase();
+    if (!q) return { rows: [], total: 0 };
+    var rows = [], total = 0;
+
+    function hit(date, kind, text) {
+      if (!text) return;
+      if (String(text).toLowerCase().indexOf(q) === -1) return;
+      total++;
+      if (rows.length < FIND_MAX) rows.push({ date: date, kind: kind, text: String(text) });
+    }
+
+    for (var date in state.days) {
+      var d = state.days[date];
+      if (!d) continue;
+
+      (d.schedule || []).forEach(function (it) {
+        hit(date, "일정", (it.time && it.time !== "––:––" ? it.time + " " : "") + it.title);
+      });
+      (d.todos || []).forEach(function (t, i) { if (i > 0) hit(date, "할 일", t.text); });
+      (d.meetings || []).forEach(function (m) {
+        hit(date, "미팅", [m.title, m.people, m.notes].filter(Boolean).join(" · "));
+      });
+      (d.visits || []).forEach(function (v) {
+        hit(date, "병원", [v.place, v.notes].filter(Boolean).join(" · "));
+      });
+      [["faith", "묵상일기"], ["prayer", "기도"],
+       ["history", "나의역사"], ["knowledge", "지식창고"]].forEach(function (pair) {
+        (d[pair[0]] || []).forEach(function (n) {
+          hit(date, pair[1], [n.title, n.notes].filter(Boolean).join(" · "));
+        });
+      });
+      hit(date, "메모", d.note);
+      if (d.menu) MEALS.forEach(function (m) { hit(date, "식단", d.menu[m[0]]); });
+      if (d.pill) MEALS.forEach(function (m) { hit(date, "복약", d.pill[m[0]]); });
+      if (d.exercise) hit(date, "운동", d.exercise.kind);
+    }
+
+    rows.sort(function (a, b) { return b.date.localeCompare(a.date); });
+    return { rows: rows, total: total };
+  }
+
+  /* 찾은 말에 표시를 남긴다. 왜 걸렸는지 눈에 보여야 한다. */
+  function markHit(text, q) {
+    var i = text.toLowerCase().indexOf(q.toLowerCase());
+    if (i === -1) return esc(text);
+    return esc(text.slice(0, i)) + "<mark>" + esc(text.slice(i, i + q.length)) +
+      "</mark>" + esc(text.slice(i + q.length));
+  }
+
+  function renderFind() {
+    var box = document.getElementById("findAll");
+    var host = document.getElementById("findList");
+    var cnt = document.getElementById("findCount");
+    if (!box || !host) return;
+
+    var q = box.value.trim();
+    if (!q) { host.innerHTML = ""; cnt.textContent = ""; return; }
+
+    var r = findAllRecords(q);
+    cnt.textContent = r.total
+      ? (r.total > r.rows.length ? r.rows.length + " / " + r.total + "건" : r.total + "건")
+      : "";
+
+    if (!r.rows.length) {
+      host.innerHTML = '<div class="find-none">찾는 것이 없습니다.</div>';
+      return;
+    }
+
+    host.innerHTML = r.rows.map(function (x) {
+      var dt = parseISO(x.date);
+      return '<button type="button" class="fr" data-go="' + x.date + "|" + esc(x.kind) + '">' +
+        '<span class="fd">' + (dt.getMonth() + 1) + "/" + dt.getDate() +
+          "<small> " + dt.getFullYear() + "</small></span>" +
+        '<span class="fk">' + esc(x.kind) + "</span>" +
+        '<span class="ft">' + markHit(x.text, q) + "</span>" +
+      "</button>";
+    }).join("");
+  }
+
+  document.getElementById("findAll").addEventListener("input", renderFind);
+
+  document.getElementById("findList").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-go]");
+    if (!b) return;
+    var k = b.getAttribute("data-go").split("|");
+    goToDate(k[0]);
+    var page = FIND_WHERE[k[1]];
+    if (page) location.hash = "#/" + page;
+  });
 
   /* ============================ 화면 이동 ============================ */
 
