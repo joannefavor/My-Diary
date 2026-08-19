@@ -1257,6 +1257,15 @@
 
   /* ---------- 기기 간 동기화 ---------- */
 
+  .sync-size { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .sync-size b { color: var(--ink-2); font-weight: 600; }
+  .sync-size.warn { color: var(--s2); }
+  .sync-size.warn b { color: var(--s2); }
+  .size-warn {
+    font-size: 11.5px; color: var(--s2); border: 1px solid var(--s2);
+    border-radius: 999px; padding: 2px 9px;
+  }
+
   .sync-body {
     padding: 14px 16px 16px;
     display: flex; flex-direction: column; gap: 13px;
@@ -1642,6 +1651,7 @@
         </div>
       </div>
       <div class="sync-status" id="syncStatus" role="status" aria-live="polite"></div>
+      <div class="sync-size" id="syncSize"></div>
       <p class="sync-note">
         기록은 이 코드로 <strong>이 기기 안에서 암호로 잠근 뒤</strong> 올라갑니다.
         코드는 전송되지 않으므로 서버도, 저장소 회사도 내용을 열어볼 수 없습니다.
@@ -1654,6 +1664,7 @@
 
   <footer class="foot">
     <span id="savedAt">기록은 이 브라우저에 저장됩니다.</span>
+    <span class="size-warn" id="sizeWarn" hidden></span>
     <span class="spacer"></span>
     <!-- 방명록은 Supabase 프로젝트가 사라져 지금은 열어도 글이 안 나온다.
          코드(guestbook.html, api/guestbook.js)는 그대로 두었으니,
@@ -1919,6 +1930,7 @@
   function save() {
     try {
       localStorage.setItem(STORE, JSON.stringify(state));
+      paintSize();          /* 쌓이는 동안에도 한도가 가까워지면 알린다 */
       stamp("저장됨 · " + new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }));
     } catch (e) {
       stamp("이 브라우저에 저장할 수 없어 화면에만 남습니다.");
@@ -5692,12 +5704,64 @@
   function normCode(s) { return String(s || "").trim().toLowerCase().replace(/\s+/g, ""); }
 
   function syncPaint() {
+    paintSize();
     var on = syncOnline();
     syncEls.on.hidden = on;
     syncEls.make.hidden = on;
     syncEls.off.hidden = !on;
     syncEls.now.hidden = !on;
     syncEls.code.readOnly = on;
+  }
+
+  /* ---------- 기록 크기 ----------
+     동기화는 기록을 통째로 암호로 잠가 올린다. 서버가 900KB 까지만 받으므로
+     쌓이다 보면 어느 날 갑자기 올리지 못하게 된다. 그 전에 미리 알린다.
+
+     올라가는 크기는 글자 수가 아니라 UTF-8 바이트에 base64 를 씌운 값이다.
+     한글은 한 글자가 3바이트라 글자 수로 재면 크게 어긋난다. */
+  var MAX_BLOB = 900000;
+  var sizeCache = { at: 0, blob: 0 };
+
+  function blobSizeNow() {
+    /* 재는 데 몇 ms 걸리므로 자주 다시 재지 않는다 */
+    if (Date.now() - sizeCache.at < 20000) return sizeCache.blob;
+    var days = {};
+    Object.keys(state.days).forEach(function (d) {
+      if (!emptyDay(state.days[d])) days[d] = state.days[d];
+    });
+    var bytes = new TextEncoder().encode(
+      JSON.stringify({ days: days, meds: medList() })).length;
+    /* base64(iv 12 + 암호문 + 태그 16) */
+    sizeCache = { at: Date.now(), blob: Math.ceil((bytes + 28) / 3) * 4 };
+    return sizeCache.blob;
+  }
+
+  function sizeText(n) {
+    return n >= 1024 * 1024 ? (n / 1024 / 1024).toFixed(1) + "MB"
+                            : Math.round(n / 1024) + "KB";
+  }
+
+  function paintSize() {
+    var blob = blobSizeNow();
+    var pct = Math.round(blob / MAX_BLOB * 100);
+
+    var line = document.getElementById("syncSize");
+    if (line) {
+      line.className = "sync-size" + (pct >= 80 ? " warn" : "");
+      line.innerHTML = "올릴 기록 <b>" + sizeText(blob) + "</b> · 한도의 <b>" + pct + "%</b>" +
+        (pct >= 100
+          ? " — 한도를 넘어 올리지 못합니다. JSON 으로 내보내 두고 오래된 해를 정리해 주세요."
+          : pct >= 80
+            ? " — 한도에 가까워지고 있습니다. JSON 으로 내보내 두시길 권합니다."
+            : "");
+    }
+
+    /* 푸터 표시는 가까워졌을 때만 낸다. 평소엔 자리를 차지하지 않는다 */
+    var warn = document.getElementById("sizeWarn");
+    if (warn) {
+      warn.hidden = pct < 80;
+      warn.textContent = pct >= 100 ? "동기화 한도 넘음" : "동기화 한도 " + pct + "%";
+    }
   }
 
   /* ---------- 바이트 다루기 ---------- */
