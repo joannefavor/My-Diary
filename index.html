@@ -334,6 +334,42 @@
   .fr mark { background: var(--accent); color: var(--on-accent); border-radius: 3px; padding: 0 1px; }
   .find-none { padding: 14px 10px 18px; color: var(--muted); }
 
+  /* ---------- 가계부 ---------- */
+
+  .mon-sum {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 1px; background: var(--hair); border-top: 1px solid var(--hair);
+  }
+  .mon-sum > div { background: var(--surface); padding: 14px 16px; }
+  .mon-sum .lb { font-size: 11.5px; color: var(--muted); }
+  .mon-sum .vl {
+    font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums;
+    margin-top: 2px; overflow-wrap: anywhere;
+  }
+  .mon-sum .out .vl { color: var(--s2); }
+  .mon-sum .in .vl { color: var(--s3); }
+  .mon-cats { padding: 10px 16px 16px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .mon-cat {
+    font-size: 12px; padding: 4px 10px; border-radius: 999px;
+    background: var(--surface-2); border: 1px solid var(--hair);
+    font-variant-numeric: tabular-nums;
+  }
+  .mon-cat b { font-weight: 600; }
+  .mon-empty { padding: 6px 16px 18px; color: var(--muted); font-size: 13px; }
+
+  .mrow { display: flex; align-items: baseline; gap: 10px; padding: 9px 10px;
+    border-top: 1px solid var(--hair); }
+  .mrow:first-child { border-top: 0; }
+  .mrow .md { font-family: var(--mono); font-size: 11.5px; color: var(--muted); flex: none; }
+  .mrow .mc {
+    flex: none; font-size: 11px; padding: 1px 7px; border-radius: 999px;
+    background: var(--accent-soft); color: var(--ink);
+  }
+  .mrow .mn { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .mrow .ma { flex: none; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .mrow.out .ma { color: var(--s2); }
+  .mrow.in .ma { color: var(--s3); }
+
   .daybar {
     display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px;
     padding: 10px 16px 0;
@@ -1521,6 +1557,33 @@
     <div class="notelist" id="prayerList"></div>
   </section>
 
+  <section class="panel" data-page="money">
+    <header>
+      <h2 id="moneyTitle">가계부</h2>
+      <span class="hint">이 달을 모아 보여줍니다</span>
+    </header>
+    <div class="mon-sum" id="moneySum"></div>
+    <div class="mon-cats" id="moneyCats"></div>
+  </section>
+
+  <section class="panel" data-page="money">
+    <header>
+      <h2>쓴 것 · 번 것</h2>
+      <button class="ghost" id="moneyAdd">+ 새로 적기</button>
+    </header>
+    <div class="daybar">
+      <span class="dayspin">
+        <button type="button" class="icon-btn" data-daystep="-1" aria-label="하루 전">&lt;</button>
+        <input type="date" data-dayof="money" aria-label="어느 날을 볼지">
+        <button type="button" class="dot-btn" data-daytoday title="오늘로" aria-label="오늘로"></button>
+        <button type="button" class="icon-btn" data-daystep="1" aria-label="하루 뒤">&gt;</button>
+      </span>
+      <input type="search" data-find="money" placeholder="단어로 찾기" aria-label="가계부 찾기">
+      <span class="visit-count" data-count="money"></span>
+    </div>
+    <div class="notelist" id="moneyList"></div>
+  </section>
+
   <section class="panel" data-page="history">
     <header>
       <h2>나의 역사</h2>
@@ -1796,6 +1859,7 @@
     if (!d.faith) d.faith = [];
     if (!d.prayer) d.prayer = [];
     if (!d.visits) d.visits = [];
+    if (!d.money) d.money = [];
     return d;
   }
   function peek(date) { return state.days[date] || null; }
@@ -3365,6 +3429,7 @@
     renderNotes("faith");
     renderNotes("prayer");
     renderVisits();
+    renderMoney();
   }
 
   function render() {
@@ -3536,6 +3601,7 @@
     findWord[kind] = fbox.value;
     if (kind === "meeting") renderMeetings();
     else if (kind === "work") renderWork();
+    else if (kind === "money") renderMoney();
     else renderNotes(kind);
   });
 
@@ -3764,6 +3830,7 @@
     { id: "work",      label: "업무",   ph: "기획서 초안 (금요일까지)" },
     { id: "faith",     label: "신앙",   ph: "오늘 말씀에서 마음에 남은 것  ·  기도는 #기도" },
     { id: "health",    label: "건강",   ph: "혈압 120/80  물 5잔  기분 4  아침 현미밥" },
+    { id: "money",     label: "가계부", ph: "점심 12000 식비    ·    수입 월급 3200000" },
     { id: "history",   label: "나의역사", ph: "첫 직장 입사" },
     { id: "meeting",   label: "미팅",   ph: "오후 2시 법무팀 정기회의" },
     { id: "knowledge", label: "지식창고", ph: "복리 계산법 — 72 법칙" }
@@ -3775,7 +3842,8 @@
     "지식창고": "knowledge", "지식": "knowledge",
     "신앙": "faith", "묵상": "faith", "묵상일기": "faith",
     "기도": "prayer", "기도제목": "prayer",
-    "병원": "visit", "진료": "visit"
+    "병원": "visit", "진료": "visit",
+    "가계부": "money", "지출": "money", "수입": "money", "돈": "money"
   };
 
   /* 빠르게 쓰기는 메인화면에만 있다. 고르지 않았으면 일정으로 시작한다 —
@@ -3837,6 +3905,52 @@
     if (!place) return null;
     day(w.date).visits.push({ id: uid(), place: place, notes: "" });
     return { date: w.date, label: "병원 " + place };
+  }
+
+  /* ---------- 가계부 ----------
+     "점심 12000 식비" → 지출 12,000원 · 내용 점심 · 분류 식비
+     "수입 월급 3200000" → 수입.
+     금액 뒤에 낱말 하나가 더 있으면 그것을 분류로 본다 — 자주 쓰는 몇 가지를
+     골라 적게 되므로, 나중에 분류별로 합쳐 볼 수 있다. */
+  function parseMoney(text, base) {
+    var w = takeWhen(" " + String(text).replace(/\s+/g, " ").trim() + " ", base);
+    var rest = w.rest;
+
+    var kind = "out";
+    rest = rest.replace(/\s(수입|들어옴|받음)(?=\s)/, function () { kind = "in"; return " "; });
+    rest = rest.replace(/\s(지출|나감|씀)(?=\s)/, function () { kind = "out"; return " "; });
+
+    /* 금액 — 12000, 12,000, 12000원, 1만, 1만2천 */
+    var amount = null, tail = "";
+    rest = rest.replace(/\s(\d[\d,]*)\s*원?(?=\s)/, function (all, n) {
+      amount = +n.replace(/,/g, ""); return " ";
+    });
+    if (amount == null) {
+      rest = rest.replace(/\s(\d+)\s*만\s*(\d+)?\s*천?\s*원?(?=\s)/, function (all, a, b) {
+        amount = (+a) * 10000 + (b ? (+b) * 1000 : 0); return " ";
+      });
+    }
+    if (amount == null || amount <= 0) return null;
+
+    var words = rest.replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
+    var cat = "";
+    /* 낱말이 둘 이상이면 마지막 하나를 분류로 본다 */
+    if (words.length > 1) cat = words.pop();
+    var note = words.join(" ");
+    if (!note && cat) { note = cat; cat = ""; }
+
+    day(w.date).money.push({
+      id: uid(), kind: kind, amount: amount, cat: cat, note: note
+    });
+    return {
+      date: w.date,
+      label: (kind === "in" ? "수입 " : "지출 ") + wonText(amount) +
+        (note ? " " + note : "") + (cat ? " · " + cat : "")
+    };
+  }
+
+  function wonText(n) {
+    return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",") + "원";
   }
 
   function parseNote(kind) {
@@ -4240,6 +4354,176 @@
     if (box) box.focus();
   });
 
+  /* ---------- 가계부 화면 ----------
+     저장은 날짜 밑에 하고, 보여줄 때 그 달을 모은다. 돈은 달 단위로 보는 것이
+     쓸모 있지만 적는 것은 그날 일이기 때문이다. */
+  function moneyOf(date) { return (peek(date) && peek(date).money) || []; }
+
+  function monthOf(date) { return date.slice(0, 7); }
+
+  function moneyMonth(ym) {
+    var out = [];
+    for (var date in state.days) {
+      if (monthOf(date) !== ym) continue;
+      moneyOf(date).forEach(function (m) { out.push({ date: date, m: m }); });
+    }
+    return out;
+  }
+
+  function renderMoneySum() {
+    var host = document.getElementById("moneySum");
+    if (!host) return;
+    var ym = monthOf(selected);
+    var rows = moneyMonth(ym);
+    var inSum = 0, outSum = 0, cats = {};
+    rows.forEach(function (r) {
+      if (r.m.kind === "in") inSum += r.m.amount;
+      else {
+        outSum += r.m.amount;
+        var k = (r.m.cat || "").trim() || "그 밖";
+        cats[k] = (cats[k] || 0) + r.m.amount;
+      }
+    });
+
+    var dt = parseISO(selected);
+    document.getElementById("moneyTitle").textContent =
+      dt.getFullYear() + "년 " + (dt.getMonth() + 1) + "월 가계부";
+
+    host.innerHTML =
+      '<div class="in"><div class="lb">번 것</div><div class="vl">' + wonText(inSum) + "</div></div>" +
+      '<div class="out"><div class="lb">쓴 것</div><div class="vl">' + wonText(outSum) + "</div></div>" +
+      '<div><div class="lb">남은 것</div><div class="vl">' + wonText(inSum - outSum) + "</div></div>";
+
+    var catHost = document.getElementById("moneyCats");
+    var keys = Object.keys(cats).sort(function (a, b) { return cats[b] - cats[a]; });
+    catHost.innerHTML = keys.length
+      ? keys.map(function (k) {
+          return '<span class="mon-cat">' + esc(k) + " <b>" + wonText(cats[k]) + "</b></span>";
+        }).join("")
+      : '<div class="mon-empty">이 달에 적어 둔 것이 없습니다.</div>';
+  }
+
+  function moneyCard(date, m) {
+    var at = date + "|" + m.id;
+    var dt = parseISO(date);
+    return '<div class="mt">' +
+      '<div class="mt-top">' +
+        '<span class="mt-when">' + (dt.getMonth() + 1) + "." + pad(dt.getDate()) +
+          " " + dowOf(date) + "</span>" +
+        '<input class="mt-title" data-money="note" data-at="' + at +
+          '" value="' + esc(m.note) + '" placeholder="무엇에 썼는지" aria-label="내용">' +
+        '<button class="ghost mt-del" data-moneydel="' + at + '">지우기</button>' +
+      "</div>" +
+      '<div class="mt-row"><span class="mt-key">날짜</span>' +
+        dayField('data-moneydate="' + at + '"', date, "적은 날짜") + "</div>" +
+      '<div class="mt-row"><span class="mt-key">금액</span>' +
+        '<input type="number" inputmode="numeric" data-money="amount" data-at="' + at +
+        '" value="' + m.amount + '" min="0" step="1" aria-label="금액">' +
+        '<span class="viewtoggle" role="group" aria-label="쓴 것인지 번 것인지">' +
+          '<button type="button" data-mkind="out" data-at="' + at + '" aria-pressed="' +
+            (m.kind !== "in") + '">쓴 것</button>' +
+          '<button type="button" data-mkind="in" data-at="' + at + '" aria-pressed="' +
+            (m.kind === "in") + '">번 것</button>' +
+        "</span></div>" +
+      '<div class="mt-row"><span class="mt-key">분류</span>' +
+        '<input data-money="cat" data-at="' + at + '" value="' + esc(m.cat) +
+        '" placeholder="식비, 교통, 의료…" aria-label="분류"></div>' +
+    "</div>";
+  }
+
+  function moneyAt(date, id) {
+    var list = day(date).money;
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+    return null;
+  }
+
+  function renderMoney() {
+    renderMoneySum();
+    var host = document.getElementById("moneyList");
+    if (!host) return;
+
+    var finding = !!(findWord.money || "").trim();
+    var all = [];
+    for (var date in state.days) {
+      moneyOf(date).forEach(function (m) { all.push({ date: date, m: m }); });
+    }
+    var rows = all.filter(function (r) {
+      if (!finding && r.date !== selected) return false;
+      return hitWord("money", r.m.note + " " + r.m.cat);
+    });
+    rows.sort(function (a, b) { return b.date.localeCompare(a.date); });
+
+    dayBarPaint("money", rows.length, all.length);
+
+    if (!all.length) {
+      host.innerHTML = '<div class="wk-empty">아직 적어 둔 것이 없습니다.</div>';
+      return;
+    }
+    if (!rows.length) {
+      host.innerHTML = '<div class="wk-empty">' +
+        (finding ? "찾는 것이 없습니다." : "이 날에 적어 둔 것이 없습니다.") + "</div>";
+      return;
+    }
+    host.innerHTML = rows.map(function (r) { return moneyCard(r.date, r.m); }).join("");
+  }
+
+  var moneyHost = document.getElementById("moneyList");
+
+  moneyHost.addEventListener("change", function (e) {
+    var f = e.target.closest("[data-money]");
+    if (f) {
+      var k = f.getAttribute("data-at").split("|");
+      var m = moneyAt(k[0], k[1]);
+      if (!m) return;
+      var field = f.getAttribute("data-money");
+      m[field] = field === "amount" ? Math.max(0, Math.round(+f.value || 0)) : f.value.trim();
+      save();
+      renderMoneySum();          /* 합계는 바로 따라가야 한다 */
+      return;
+    }
+    var dbox = e.target.closest("input[data-moneydate]");
+    if (!dbox) return;
+    var a = dbox.getAttribute("data-moneydate").split("|");
+    var to = dbox.value;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(to) || to === a[0]) return;
+    var mv = moneyAt(a[0], a[1]);
+    if (!mv) return;
+    state.days[a[0]].money = state.days[a[0]].money.filter(function (x) { return x.id !== a[1]; });
+    day(to).money.push(mv);
+    save();
+    if (to !== selected) goToDate(to); else renderMoney();
+  });
+
+  moneyHost.addEventListener("click", function (e) {
+    var kb = e.target.closest("button[data-mkind]");
+    if (kb) {
+      var k2 = kb.getAttribute("data-at").split("|");
+      var m2 = moneyAt(k2[0], k2[1]);
+      if (!m2) return;
+      m2.kind = kb.getAttribute("data-mkind");
+      save(); renderMoney();
+      return;
+    }
+    var del = e.target.closest("button[data-moneydel]");
+    if (!del) return;
+    var k3 = del.getAttribute("data-moneydel").split("|");
+    var m3 = moneyAt(k3[0], k3[1]);
+    if (m3 && (m3.note || m3.amount) &&
+        !confirm("이 기록을 지울까요?\n\n" + (m3.note || "내용 없음") + " " + wonText(m3.amount))) return;
+    state.days[k3[0]].money = state.days[k3[0]].money.filter(function (x) { return x.id !== k3[1]; });
+    save(); renderMoney();
+  });
+
+  document.getElementById("moneyAdd").addEventListener("click", function () {
+    var mf = document.querySelector('input[data-find="money"]');
+    if (mf) { mf.value = ""; findWord.money = ""; }
+    day(selected).money.push({ id: uid(), kind: "out", amount: 0, cat: "", note: "" });
+    save();
+    renderMoney();
+    var box = moneyHost.querySelector('input[data-money="note"]');
+    if (box) box.focus();
+  });
+
   /* ---------- 미팅 화면 ----------
      이번 주 것만 날짜 순으로 보여준다. 칸을 고치면 그 자리에서 저장하고,
      화면은 다시 그리지 않는다 — 적는 도중에 글자가 튀지 않게 하려는 것이다. */
@@ -4637,6 +4921,7 @@
              : kind === "faith"     ? parseNote("faith")
              : kind === "prayer"    ? parseNote("prayer")
              : kind === "visit"     ? parseVisit
+             : kind === "money"     ? parseMoney
              : parseWork;
       var one = fn(t.rest, selected);
       if (one && one.full) {
@@ -4688,7 +4973,8 @@
     "일정": "schedule", "할 일": "work", "미팅": "meeting",
     "병원": "health", "묵상일기": "faith", "기도": "faith",
     "나의역사": "history", "지식창고": "knowledge",
-    "메모": "health", "식단": "health", "복약": "health", "운동": "health"
+    "메모": "health", "식단": "health", "복약": "health", "운동": "health",
+    "가계부": "money"
   };
 
   function findAllRecords(q) {
@@ -4722,6 +5008,10 @@
         (d[pair[0]] || []).forEach(function (n) {
           hit(date, pair[1], [n.title, n.notes].filter(Boolean).join(" · "));
         });
+      });
+      (d.money || []).forEach(function (m) {
+        hit(date, "가계부", (m.kind === "in" ? "번 것 " : "쓴 것 ") + wonText(m.amount) +
+          " " + [m.note, m.cat].filter(Boolean).join(" · "));
       });
       hit(date, "메모", d.note);
       if (d.menu) MEALS.forEach(function (m) { hit(date, "식단", d.menu[m[0]]); });
@@ -4794,6 +5084,7 @@
     { id: "work",      label: "업무" },
     { id: "faith",     label: "신앙" },
     { id: "health",    label: "건강" },
+    { id: "money",     label: "가계부" },
     { id: "history",   label: "나의역사" },
     { id: "meeting",   label: "미팅" },
     { id: "knowledge", label: "지식창고" }
