@@ -1356,7 +1356,7 @@
       <span class="hint">적어 둔 모든 것에서 찾습니다</span>
     </header>
     <div class="findbar">
-      <input type="search" id="findAll" placeholder="단어나 문장으로 (예: 혈압약, 법무팀, 어머니 건강)"
+      <input type="search" id="findAll" placeholder="단어나 문장으로"
         aria-label="모든 기록에서 찾기">
       <span class="visit-count" id="findCount"></span>
     </div>
@@ -3406,7 +3406,9 @@
     }
     function inRange(n, lo, hi) { return n >= lo && n <= hi ? n : null; }
 
-    var T = "(?:(오전|오후)\\s*)?(\\d{1,2})\\s*(?:시|:)\\s*(\\d{1,2})?\\s*분?";
+    /* "9시부터" 처럼 조사가 붙어 있어도 시각으로 읽는다.
+       붙은 조사를 안 먹으면 낱말 경계를 못 찾아 그 시각을 통째로 놓친다. */
+    var T = "(?:(오전|오후)\\s*)?(\\d{1,2})\\s*(?:시|:)\\s*(\\d{1,2})?\\s*분?(?:부터|까지|에|경)?";
 
     /* 낱말이 앞에 오든 뒤에 오든 같게 읽는다 — "취침 23시" 와 "23시에 취침" */
     function takeClock(words, apply) {
@@ -3617,7 +3619,7 @@
   /* ---------- 시각 ---------- */
   function takeClockOnce(text) {
     var t = null;
-    var re = new RegExp("\\s(?:(오전|오후)\\s*)?(\\d{1,2})\\s*(?:시|:)\\s*(\\d{1,2})?\\s*분?(?=\\s)");
+    var re = new RegExp("\\s(?:(오전|오후)\\s*)?(\\d{1,2})\\s*(?:시|:)\\s*(\\d{1,2})?\\s*분?(?:부터|까지|에|경)?(?=\\s)");
     var out = text.replace(re, function (all, ap, h, m) {
       var v = quickTime(ap, h, m);
       if (v == null) return all;
@@ -3758,7 +3760,7 @@
      쓰면 고른 자리도 함께 바뀌므로 어디로 갔는지 눈에 보인다. */
   /* 차례는 왼쪽 페이지 막대와 같게 둔다. 두 곳의 차례가 다르면 손이 헷갈린다. */
   var QUICK_PICKS = [
-    { id: "schedule",  label: "일정",   ph: "금요일 오후 2시 법무회의 1시간" },
+    { id: "schedule",  label: "일정",   ph: "월요일 오전 9시부터 오후 6시 까지 업무" },
     { id: "work",      label: "업무",   ph: "기획서 초안 (금요일까지)" },
     { id: "faith",     label: "신앙",   ph: "오늘 말씀에서 마음에 남은 것  ·  기도는 #기도" },
     { id: "health",    label: "건강",   ph: "혈압 120/80  물 5잔  기분 4  아침 현미밥" },
