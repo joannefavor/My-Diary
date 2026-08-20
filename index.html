@@ -418,7 +418,18 @@
     display: flex; align-items: center; justify-content: space-between;
     gap: 6px; margin-bottom: 8px;
   }
-  .dp-head .t { font-weight: 700; font-size: 14px; }
+  .dp-head .t { font-weight: 700; font-size: 14px; flex: 1; text-align: center; }
+  .dp-today { font-size: 11.5px; padding: 3px 9px; flex: none; }
+
+  /* 왼쪽에 한 달 달력, 오른쪽에 그날 기록 */
+  .withcal { display: grid; gap: 14px 18px; padding: 0 16px 8px; }
+  @media (min-width: 860px) { .withcal { grid-template-columns: 264px minmax(0, 1fr); } }
+  .panelcal {
+    background: var(--surface-2); border: 1px solid var(--hair);
+    border-radius: 10px; padding: 10px; align-self: start;
+  }
+  .panelcal .dp-grid button { padding: 7px 0; }
+  .withcal .notelist, .withcal .meetlist { padding: 0; }
   .dp-dow, .dp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
   .dp-dow div {
     text-align: center; font-size: 10.5px; color: var(--muted); padding-bottom: 4px;
@@ -1560,17 +1571,13 @@
       <button class="ghost" data-noteadd="worklog">+ 새로 적기</button>
     </header>
     <div class="daybar">
-      <span class="dayspin">
-        <button type="button" class="icon-btn" data-daystep="-1" aria-label="하루 전">&lt;</button>
-        <input type="date" data-dayof="worklog" aria-label="어느 날을 볼지">
-          <button type="button" class="cal-btn" data-daypick title="달력에서 고르기" aria-label="달력에서 고르기">▦</button>
-        <button type="button" class="dot-btn" data-daytoday title="오늘로" aria-label="오늘로"></button>
-        <button type="button" class="icon-btn" data-daystep="1" aria-label="하루 뒤">&gt;</button>
-      </span>
       <input type="search" data-find="worklog" placeholder="단어로 찾기" aria-label="업무일지 찾기">
       <span class="visit-count" data-count="worklog"></span>
     </div>
-    <div class="notelist" id="worklogList"></div>
+    <div class="withcal">
+      <div class="panelcal" data-cal="worklog"></div>
+      <div class="notelist" id="worklogList"></div>
+    </div>
   </section>
 
   <section class="panel" data-page="work">
@@ -1599,19 +1606,15 @@
       <button class="ghost" data-noteadd="faith">+ 새로 적기</button>
     </header>
       <div class="daybar">
-        <span class="dayspin">
-          <button type="button" class="icon-btn" data-daystep="-1" aria-label="하루 전">&lt;</button>
-          <input type="date" data-dayof="faith" aria-label="어느 날을 볼지">
-          <button type="button" class="cal-btn" data-daypick title="달력에서 고르기" aria-label="달력에서 고르기">▦</button>
-          <button type="button" class="dot-btn" data-daytoday title="오늘로" aria-label="오늘로"></button>
-          <button type="button" class="icon-btn" data-daystep="1" aria-label="하루 뒤">&gt;</button>
-        </span>
         <input type="search" data-find="faith" placeholder="단어로 찾기"
           aria-label="묵상일기 찾기">
         <span class="visit-count" data-count="faith"></span>
       </div>
 
-    <div class="notelist" id="faithList"></div>
+    <div class="withcal">
+      <div class="panelcal" data-cal="faith"></div>
+      <div class="notelist" id="faithList"></div>
+    </div>
   </section>
 
   <section class="panel" data-page="faith">
@@ -1620,19 +1623,15 @@
       <button class="ghost" data-noteadd="prayer">+ 새로 적기</button>
     </header>
       <div class="daybar">
-        <span class="dayspin">
-          <button type="button" class="icon-btn" data-daystep="-1" aria-label="하루 전">&lt;</button>
-          <input type="date" data-dayof="prayer" aria-label="어느 날을 볼지">
-          <button type="button" class="cal-btn" data-daypick title="달력에서 고르기" aria-label="달력에서 고르기">▦</button>
-          <button type="button" class="dot-btn" data-daytoday title="오늘로" aria-label="오늘로"></button>
-          <button type="button" class="icon-btn" data-daystep="1" aria-label="하루 뒤">&gt;</button>
-        </span>
         <input type="search" data-find="prayer" placeholder="단어로 찾기"
           aria-label="기도 찾기">
         <span class="visit-count" data-count="prayer"></span>
       </div>
 
-    <div class="notelist" id="prayerList"></div>
+    <div class="withcal">
+      <div class="panelcal" data-cal="prayer"></div>
+      <div class="notelist" id="prayerList"></div>
+    </div>
   </section>
 
   <section class="panel" data-page="money">
@@ -1678,19 +1677,15 @@
       <button class="ghost" id="meetAdd">+ 새 미팅</button>
     </header>
       <div class="daybar">
-        <span class="dayspin">
-          <button type="button" class="icon-btn" data-daystep="-1" aria-label="하루 전">&lt;</button>
-          <input type="date" data-dayof="meeting" aria-label="어느 날을 볼지">
-          <button type="button" class="cal-btn" data-daypick title="달력에서 고르기" aria-label="달력에서 고르기">▦</button>
-          <button type="button" class="dot-btn" data-daytoday title="오늘로" aria-label="오늘로"></button>
-          <button type="button" class="icon-btn" data-daystep="1" aria-label="하루 뒤">&gt;</button>
-        </span>
         <input type="search" data-find="meeting" placeholder="단어로 찾기"
           aria-label="미팅 찾기">
         <span class="visit-count" data-count="meeting"></span>
       </div>
 
-    <div class="meetlist" id="meetList"></div>
+    <div class="withcal">
+      <div class="panelcal" data-cal="meeting"></div>
+      <div class="meetlist" id="meetList"></div>
+    </div>
   </section>
 
   <section class="panel" data-page="knowledge">
@@ -3719,15 +3714,15 @@
     return out;
   }
 
-  function dpPaint() {
-    var base = parseISO(dpMonth + "-01");
-    var ym = dpMonth;
+  /* 한 달 달력 하나를 그린다. 눌러서 여는 것과 패널 옆에 늘 펼쳐 두는 것이
+     같은 것을 쓴다. */
+  function calHTML(kind, ym, cur) {
+    var base = parseISO(ym + "-01");
     var first = new Date(base.getFullYear(), base.getMonth(), 1);
     var lead = (first.getDay() + 6) % 7;              /* 월요일 시작 */
     var start = addDays(first, -lead);
-    var marks = dpMarks(dpKind, ym);
+    var marks = dpMarks(kind, ym);
     var today = iso(new Date());
-    var cur = dpBox ? dpBox.value : selected;
 
     var cells = "";
     for (var i = 0; i < 42; i++) {
@@ -3740,15 +3735,53 @@
         dt.getDate() + (marks[ds] ? '<span class="dot"></span>' : "") + "</button>";
     }
 
-    dpEl.innerHTML =
-      '<div class="dp-head">' +
+    return '<div class="dp-head">' +
         '<button type="button" class="icon-btn" data-dpmon="-1" aria-label="지난 달">&lt;</button>' +
         '<span class="t">' + base.getFullYear() + "년 " + (base.getMonth() + 1) + "월</span>" +
         '<button type="button" class="icon-btn" data-dpmon="1" aria-label="다음 달">&gt;</button>' +
+        '<button type="button" class="ghost dp-today">오늘</button>' +
       "</div>" +
       '<div class="dp-dow">' + DOW.map(function (d) { return "<div>" + d + "</div>"; }).join("") + "</div>" +
       '<div class="dp-grid">' + cells + "</div>";
   }
+
+  function dpPaint() {
+    dpEl.innerHTML = calHTML(dpKind, dpMonth, dpBox ? dpBox.value : selected);
+  }
+
+  /* ---------- 패널 옆에 늘 펼쳐 두는 달력 ----------
+     눌러야 나오는 것보다 한 달이 늘 보이고 바로 누를 수 있는 편이 낫다.
+     보고 있는 날이 다른 달로 넘어가면 달력도 따라간다. */
+  var calMonth = {};
+
+  function renderPanelCal(kind) {
+    var host = document.querySelector('[data-cal="' + kind + '"]');
+    if (!host) return;
+    var ym = selected.slice(0, 7);
+    /* 달력에서 달만 넘겨 둔 상태라면 그 달을 그대로 둔다 */
+    if (calMonth[kind] && calMonth[kind + ":day"] === selected) ym = calMonth[kind];
+    calMonth[kind] = ym;
+    calMonth[kind + ":day"] = selected;
+    host.innerHTML = calHTML(kind, ym, selected);
+  }
+
+  document.addEventListener("click", function (e) {
+    var host = e.target.closest("[data-cal]");
+    if (!host) return;
+    var kind = host.getAttribute("data-cal");
+    var mon = e.target.closest("button[data-dpmon]");
+    if (mon) {
+      var m = parseISO(calMonth[kind] + "-01");
+      m.setMonth(m.getMonth() + (+mon.getAttribute("data-dpmon")));
+      calMonth[kind] = iso(m).slice(0, 7);
+      calMonth[kind + ":day"] = selected;
+      host.innerHTML = calHTML(kind, calMonth[kind], selected);
+      return;
+    }
+    if (e.target.closest(".dp-today")) return goToDate(iso(new Date()));
+    var dayBtn = e.target.closest("button[data-dpday]");
+    if (dayBtn) goToDate(dayBtn.getAttribute("data-dpday"));
+  });
 
   function dpOpen(btn) {
     var box = btn.parentNode.querySelector('input[type="date"]');
@@ -4184,6 +4217,7 @@
     if (box && box.value !== selected) box.value = selected;
     var dot = box && box.parentNode.querySelector(".dot-btn");
     if (dot) dot.classList.toggle("is-today", selected === iso(new Date()));
+    renderPanelCal(kind);      /* 옆 달력도 함께. 없는 패널이면 그냥 넘어간다 */
     var cnt = document.querySelector('[data-count="' + kind + '"]');
     if (cnt) {
       cnt.textContent = !total ? ""
