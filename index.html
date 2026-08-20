@@ -406,6 +406,41 @@
   .dayspin { display: flex; align-items: center; gap: 5px; flex: 1 1 auto; min-width: 0; }
   .dayspin input[type="date"] { flex: 1 1 auto; min-width: 0; }
   .dayspin .icon-btn { flex: none; padding: 4px 8px; }
+  .cal-btn { flex: none; padding: 4px 8px; line-height: 1.2; }
+
+  /* 달력에서 고르기 — 한 달을 펼쳐 놓고 누른다 */
+  .daypick {
+    position: absolute; z-index: 40; width: 268px;
+    background: var(--surface); border: 1px solid var(--hair);
+    border-radius: 11px; box-shadow: var(--shadow); padding: 10px;
+  }
+  .dp-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 6px; margin-bottom: 8px;
+  }
+  .dp-head .t { font-weight: 700; font-size: 14px; }
+  .dp-dow, .dp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .dp-dow div {
+    text-align: center; font-size: 10.5px; color: var(--muted); padding-bottom: 4px;
+  }
+  .dp-grid button {
+    position: relative; padding: 6px 0; border-color: transparent;
+    background: transparent; font-size: 12.5px; border-radius: 7px;
+    font-variant-numeric: tabular-nums;
+  }
+  .dp-grid button:hover { background: var(--surface-2); border-color: var(--hair); }
+  .dp-grid button.out { color: var(--muted); opacity: .55; }
+  .dp-grid button.hol { color: var(--s2); }
+  .dp-grid button.today { box-shadow: inset 0 0 0 1.5px var(--sage); font-weight: 700; }
+  .dp-grid button.on {
+    background: var(--accent); border-color: var(--accent);
+    color: var(--on-accent); font-weight: 700;
+  }
+  .dp-grid button .dot {
+    position: absolute; left: 50%; bottom: 3px; transform: translateX(-50%);
+    width: 4px; height: 4px; border-radius: 50%; background: var(--accent-ink);
+  }
+  .dp-grid button.on .dot { background: var(--on-accent); }
   /* 가운데 동그라미 — 누르면 오늘로 돌아온다 */
   .dot-btn {
     flex: none; width: 20px; height: 20px; padding: 0; border-radius: 50%;
@@ -1468,6 +1503,7 @@
       <span class="dayspin">
         <button type="button" class="icon-btn" data-daystep="-1" aria-label="하루 전">&lt;</button>
         <input type="date" data-dayof="visit" aria-label="어느 날을 볼지">
+          <button type="button" class="cal-btn" data-daypick title="달력에서 고르기" aria-label="달력에서 고르기">▦</button>
         <button type="button" class="dot-btn" data-daytoday title="오늘로" aria-label="오늘로"></button>
         <button type="button" class="icon-btn" data-daystep="1" aria-label="하루 뒤">&gt;</button>
       </span>
@@ -1520,11 +1556,31 @@
   <!-- 아직 내용을 정하지 않은 페이지들. 무엇을 적을지 정하면 이 자리를 채운다. -->
   <section class="panel" data-page="work">
     <header>
-      <h2>업무</h2>
+      <h2>업무일지</h2>
+      <button class="ghost" data-noteadd="worklog">+ 새로 적기</button>
+    </header>
+    <div class="daybar">
+      <span class="dayspin">
+        <button type="button" class="icon-btn" data-daystep="-1" aria-label="하루 전">&lt;</button>
+        <input type="date" data-dayof="worklog" aria-label="어느 날을 볼지">
+          <button type="button" class="cal-btn" data-daypick title="달력에서 고르기" aria-label="달력에서 고르기">▦</button>
+        <button type="button" class="dot-btn" data-daytoday title="오늘로" aria-label="오늘로"></button>
+        <button type="button" class="icon-btn" data-daystep="1" aria-label="하루 뒤">&gt;</button>
+      </span>
+      <input type="search" data-find="worklog" placeholder="단어로 찾기" aria-label="업무일지 찾기">
+      <span class="visit-count" data-count="worklog"></span>
+    </div>
+    <div class="notelist" id="worklogList"></div>
+  </section>
+
+  <section class="panel" data-page="work">
+    <header>
+      <h2>할 일</h2>
       <div class="datepick">
         <span class="dayspin">
           <button type="button" class="icon-btn" data-daystep="-1" aria-label="하루 전">&lt;</button>
           <input type="date" id="workDate" aria-label="어느 날에 적을지">
+          <button type="button" class="cal-btn" data-daypick title="달력에서 고르기" aria-label="달력에서 고르기">▦</button>
           <button type="button" class="dot-btn" data-daytoday title="오늘로" aria-label="오늘로"></button>
           <button type="button" class="icon-btn" data-daystep="1" aria-label="하루 뒤">&gt;</button>
         </span>
@@ -1546,6 +1602,7 @@
         <span class="dayspin">
           <button type="button" class="icon-btn" data-daystep="-1" aria-label="하루 전">&lt;</button>
           <input type="date" data-dayof="faith" aria-label="어느 날을 볼지">
+          <button type="button" class="cal-btn" data-daypick title="달력에서 고르기" aria-label="달력에서 고르기">▦</button>
           <button type="button" class="dot-btn" data-daytoday title="오늘로" aria-label="오늘로"></button>
           <button type="button" class="icon-btn" data-daystep="1" aria-label="하루 뒤">&gt;</button>
         </span>
@@ -1566,6 +1623,7 @@
         <span class="dayspin">
           <button type="button" class="icon-btn" data-daystep="-1" aria-label="하루 전">&lt;</button>
           <input type="date" data-dayof="prayer" aria-label="어느 날을 볼지">
+          <button type="button" class="cal-btn" data-daypick title="달력에서 고르기" aria-label="달력에서 고르기">▦</button>
           <button type="button" class="dot-btn" data-daytoday title="오늘로" aria-label="오늘로"></button>
           <button type="button" class="icon-btn" data-daystep="1" aria-label="하루 뒤">&gt;</button>
         </span>
@@ -1595,6 +1653,7 @@
       <span class="dayspin">
         <button type="button" class="icon-btn" data-daystep="-1" aria-label="하루 전">&lt;</button>
         <input type="date" data-dayof="money" aria-label="어느 날을 볼지">
+          <button type="button" class="cal-btn" data-daypick title="달력에서 고르기" aria-label="달력에서 고르기">▦</button>
         <button type="button" class="dot-btn" data-daytoday title="오늘로" aria-label="오늘로"></button>
         <button type="button" class="icon-btn" data-daystep="1" aria-label="하루 뒤">&gt;</button>
       </span>
@@ -1622,6 +1681,7 @@
         <span class="dayspin">
           <button type="button" class="icon-btn" data-daystep="-1" aria-label="하루 전">&lt;</button>
           <input type="date" data-dayof="meeting" aria-label="어느 날을 볼지">
+          <button type="button" class="cal-btn" data-daypick title="달력에서 고르기" aria-label="달력에서 고르기">▦</button>
           <button type="button" class="dot-btn" data-daytoday title="오늘로" aria-label="오늘로"></button>
           <button type="button" class="icon-btn" data-daystep="1" aria-label="하루 뒤">&gt;</button>
         </span>
@@ -1882,6 +1942,7 @@
     if (!d.prayer) d.prayer = [];
     if (!d.visits) d.visits = [];
     if (!d.money) d.money = [];
+    if (!d.worklog) d.worklog = [];
     return d;
   }
   function peek(date) { return state.days[date] || null; }
@@ -3451,6 +3512,7 @@
     renderNotes("knowledge");
     renderNotes("faith");
     renderNotes("prayer");
+    renderNotes("worklog");
     renderVisits();
     renderMoney();
   }
@@ -3603,6 +3665,8 @@
     return '<span class="dayspin">' +
       '<button type="button" class="icon-btn" data-daystep="-1" aria-label="하루 전">&lt;</button>' +
       '<input type="date" ' + attrs + ' value="' + value + '" aria-label="' + label + '">' +
+      '<button type="button" class="cal-btn" data-daypick title="달력에서 고르기" ' +
+        'aria-label="달력에서 고르기">▦</button>' +
       '<button type="button" class="dot-btn' +
         (value === iso(new Date()) ? " is-today" : "") +
         '" data-daytoday title="오늘로" aria-label="오늘로"></button>' +
@@ -3628,7 +3692,109 @@
     else renderNotes(kind);
   });
 
+  /* ---------- 달력에서 고르기 ----------
+     한 달을 펼쳐 놓고 누른다. 기록이 있는 날에는 점을 찍어, 어느 날에 적어 두었는지
+     달력만 보고 알 수 있게 한다. 어느 갈래의 점인지는 그 패널이 정한다. */
+  var dpEl = null, dpBox = null, dpMonth = null, dpKind = "";
+
+  function dpClose() {
+    if (dpEl) { dpEl.remove(); dpEl = null; dpBox = null; }
+  }
+
+  /* 그 갈래의 기록이 있는 날 */
+  function dpMarks(kind, ym) {
+    var out = {};
+    for (var date in state.days) {
+      if (date.slice(0, 7) !== ym) continue;
+      var d = state.days[date];
+      if (!d) continue;
+      var has =
+        kind === "visit" ? (d.visits || []).length :
+        kind === "meeting" ? (d.meetings || []).length :
+        kind === "money" ? (d.money || []).length :
+        kind === "work" ? (d.todos || []).filter(function (t, i) { return i > 0 && t.text; }).length :
+        (d[kind] || []).length;
+      if (has) out[date] = true;
+    }
+    return out;
+  }
+
+  function dpPaint() {
+    var base = parseISO(dpMonth + "-01");
+    var ym = dpMonth;
+    var first = new Date(base.getFullYear(), base.getMonth(), 1);
+    var lead = (first.getDay() + 6) % 7;              /* 월요일 시작 */
+    var start = addDays(first, -lead);
+    var marks = dpMarks(dpKind, ym);
+    var today = iso(new Date());
+    var cur = dpBox ? dpBox.value : selected;
+
+    var cells = "";
+    for (var i = 0; i < 42; i++) {
+      var dt = addDays(start, i);
+      var ds = iso(dt);
+      var out = ds.slice(0, 7) !== ym;
+      cells += '<button type="button" data-dpday="' + ds + '"' +
+        ' class="' + (out ? "out " : "") + (holidayOf(ds) ? "hol " : "") +
+        (ds === today ? "today " : "") + (ds === cur ? "on" : "") + '">' +
+        dt.getDate() + (marks[ds] ? '<span class="dot"></span>' : "") + "</button>";
+    }
+
+    dpEl.innerHTML =
+      '<div class="dp-head">' +
+        '<button type="button" class="icon-btn" data-dpmon="-1" aria-label="지난 달">&lt;</button>' +
+        '<span class="t">' + base.getFullYear() + "년 " + (base.getMonth() + 1) + "월</span>" +
+        '<button type="button" class="icon-btn" data-dpmon="1" aria-label="다음 달">&gt;</button>' +
+      "</div>" +
+      '<div class="dp-dow">' + DOW.map(function (d) { return "<div>" + d + "</div>"; }).join("") + "</div>" +
+      '<div class="dp-grid">' + cells + "</div>";
+  }
+
+  function dpOpen(btn) {
+    var box = btn.parentNode.querySelector('input[type="date"]');
+    if (!box) return;
+    if (dpBox === box) return dpClose();          /* 같은 단추를 다시 누르면 닫는다 */
+    dpClose();
+
+    dpBox = box;
+    dpKind = box.getAttribute("data-dayof") || "";
+    dpMonth = (box.value || selected).slice(0, 7);
+    dpEl = document.createElement("div");
+    dpEl.className = "daypick";
+    document.body.appendChild(dpEl);
+    dpPaint();
+
+    var r = btn.getBoundingClientRect();
+    var top = r.bottom + window.scrollY + 6;
+    var left = Math.min(r.left + window.scrollX,
+      window.scrollX + document.documentElement.clientWidth - dpEl.offsetWidth - 10);
+    dpEl.style.top = top + "px";
+    dpEl.style.left = Math.max(window.scrollX + 8, left) + "px";
+  }
+
   document.addEventListener("click", function (e) {
+    var open = e.target.closest("button[data-daypick]");
+    if (open) { e.preventDefault(); return dpOpen(open); }
+
+    if (dpEl && dpEl.contains(e.target)) {
+      var mon = e.target.closest("button[data-dpmon]");
+      if (mon) {
+        var m = parseISO(dpMonth + "-01");
+        m.setMonth(m.getMonth() + (+mon.getAttribute("data-dpmon")));
+        dpMonth = iso(m).slice(0, 7);
+        return dpPaint();
+      }
+      var day2 = e.target.closest("button[data-dpday]");
+      if (day2) {
+        var pick = day2.getAttribute("data-dpday");
+        dpBox.value = pick;
+        dpBox.dispatchEvent(new Event("change", { bubbles: true }));
+        dpClose();
+      }
+      return;
+    }
+    dpClose();                                    /* 바깥을 누르면 닫는다 */
+
     var b = e.target.closest("button[data-daystep], button[data-daytoday]");
     if (!b) return;
     var box = b.parentNode.querySelector('input[type="date"]');
@@ -3850,7 +4016,7 @@
   /* 차례는 왼쪽 페이지 막대와 같게 둔다. 두 곳의 차례가 다르면 손이 헷갈린다. */
   var QUICK_PICKS = [
     { id: "schedule",  label: "일정",   ph: "월요일 오전 9시부터 오후 6시 까지 업무" },
-    { id: "work",      label: "업무",   ph: "기획서 초안 (금요일까지)" },
+    { id: "work",      label: "업무",   ph: "오늘 한 일 · 진행 상황" },
     { id: "faith",     label: "신앙",   ph: "오늘 말씀에서 마음에 남은 것  ·  기도는 #기도" },
     { id: "health",    label: "건강",   ph: "혈압 120/80  물 5잔  기분 4  아침 현미밥" },
     { id: "money",     label: "가계부", ph: "점심 12000 식비    ·    수입 월급 3200000" },
@@ -3859,7 +4025,8 @@
     { id: "knowledge", label: "지식창고", ph: "복리 계산법 — 72 법칙" }
   ];
   var QUICK_TAGS = {
-    "일정": "schedule", "업무": "work", "건강": "health",
+    "일정": "schedule", "업무": "worklog", "업무일지": "worklog", "할일": "work",
+    "건강": "health",
     "미팅": "meeting", "회의": "meeting", "todo": "work",
     "나의역사": "history", "역사": "history",
     "지식창고": "knowledge", "지식": "knowledge",
@@ -3872,7 +4039,11 @@
   /* 빠르게 쓰기는 메인화면에만 있다. 고르지 않았으면 일정으로 시작한다 —
      메인이 그날의 일정과 할 일을 보여주는 화면이기 때문이다. */
   var quickPick = null;
-  function quickTarget() { return quickPick || "schedule"; }
+  /* 고르는 단추의 '업무' 는 업무일지로 간다. 요일별 '할 일' 은 #할일 로 넣는다. */
+  function quickTarget() {
+    var k = quickPick || "schedule";
+    return k === "work" ? "worklog" : k;
+  }
 
   function takeTag(text) {
     var tag = null;
@@ -3912,12 +4083,13 @@
      미팅·업무와 달리 이번 주로 끊지 않고 **적어 둔 것을 전부** 보여준다 —
      지난주 것이 안 보이는 창고는 창고가 아니기 때문이다. */
   var NOTE_LABEL = { history: "나의역사", knowledge: "지식창고",
-                     faith: "묵상일기", prayer: "기도" };
+                     faith: "묵상일기", prayer: "기도", worklog: "업무" };
   var NOTE_KINDS = {
     history:   { list: "historyList",   title: "무슨 일이 있었나" },
     knowledge: { list: "knowledgeList", title: "무엇을 알게 되었나" },
     faith:     { list: "faithList",     title: "오늘 마음에 남은 것" },
-    prayer:    { list: "prayerList",    title: "무엇을 위해 기도하는가" }
+    prayer:    { list: "prayerList",    title: "무엇을 위해 기도하는가" },
+    worklog:   { list: "worklogList",   title: "무슨 일을 했나" }
   };
 
   /* 빠르게 쓰기에서 #병원 으로 넣는다. 고르는 단추를 여덟 개로 늘리면
@@ -4122,6 +4294,7 @@
   bindNotes("knowledge");
   bindNotes("faith");
   bindNotes("prayer");
+  bindNotes("worklog");
 
   Array.prototype.forEach.call(
     document.querySelectorAll("button[data-noteadd]"), function (b) {
@@ -4976,6 +5149,7 @@
              : kind === "knowledge" ? parseNote("knowledge")
              : kind === "faith"     ? parseNote("faith")
              : kind === "prayer"    ? parseNote("prayer")
+             : kind === "worklog"   ? parseNote("worklog")
              : kind === "visit"     ? parseVisit
              : kind === "money"     ? parseMoney
              : parseWork;
@@ -5030,7 +5204,7 @@
     "병원": "health", "묵상일기": "faith", "기도": "faith",
     "나의역사": "history", "지식창고": "knowledge",
     "메모": "health", "식단": "health", "복약": "health", "운동": "health",
-    "가계부": "money"
+    "가계부": "money", "업무일지": "work"
   };
 
   function findAllRecords(q) {
@@ -5059,7 +5233,7 @@
       (d.visits || []).forEach(function (v) {
         hit(date, "병원", [v.place, v.notes].filter(Boolean).join(" · "));
       });
-      [["faith", "묵상일기"], ["prayer", "기도"],
+      [["faith", "묵상일기"], ["prayer", "기도"], ["worklog", "업무일지"],
        ["history", "나의역사"], ["knowledge", "지식창고"]].forEach(function (pair) {
         (d[pair[0]] || []).forEach(function (n) {
           hit(date, pair[1], [n.title, n.notes].filter(Boolean).join(" · "));
@@ -5191,6 +5365,7 @@
   });
 
   window.addEventListener("hashchange", applyRoute);
+  window.addEventListener("keydown", function (e) { if (e.key === "Escape") dpClose(); });
 
   /* 보기에 맞춰 하루·한 주·한 달씩 움직인다.
      건강 요약은 늘 선택한 날이 속한 주를 따라간다. */
