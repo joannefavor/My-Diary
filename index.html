@@ -349,6 +349,17 @@
   .mon-sum .out .vl { color: var(--s2); }
   .mon-sum .in .vl { color: var(--s3); }
   .mon-cats { padding: 10px 16px 16px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .mon-line {
+    display: flex; align-items: baseline; gap: 6px 8px;
+    flex-wrap: wrap; margin-bottom: 6px;
+  }
+  .mon-line:last-child { margin-bottom: 0; }
+  .mon-lb {
+    flex: none; font-family: var(--mono); font-size: 10px;
+    letter-spacing: .1em; color: var(--muted); min-width: 26px;
+  }
+  .mon-cat.is-pay { background: var(--accent-soft); border-color: transparent; }
+
   .mon-cat {
     font-size: 12px; padding: 4px 10px; border-radius: 999px;
     background: var(--surface-2); border: 1px solid var(--hair);
@@ -4387,13 +4398,15 @@
     if (!host) return;
     var ym = monthOf(selected);
     var rows = moneyMonth(ym);
-    var inSum = 0, outSum = 0, cats = {};
+    var inSum = 0, outSum = 0, cats = {}, pays = {};
     rows.forEach(function (r) {
       if (r.m.kind === "in") inSum += r.m.amount;
       else {
         outSum += r.m.amount;
         var k = (r.m.cat || "").trim() || "그 밖";
         cats[k] = (cats[k] || 0) + r.m.amount;
+        var pk = (r.m.pay || "").trim() || "적지 않음";
+        pays[pk] = (pays[pk] || 0) + r.m.amount;
       }
     });
 
@@ -4406,13 +4419,40 @@
       '<div class="out"><div class="lb">쓴 것</div><div class="vl">' + wonText(outSum) + "</div></div>" +
       '<div><div class="lb">남은 것</div><div class="vl">' + wonText(inSum - outSum) + "</div></div>";
 
+    /* 분류별 · 결제수단별을 나란히 보여준다. 쓴 것만 센다. */
+    function chips(map, cls) {
+      return Object.keys(map)
+        .sort(function (a, b) { return map[b] - map[a]; })
+        .map(function (k) {
+          return '<span class="mon-cat' + cls + '">' + esc(k) +
+            " <b>" + wonText(map[k]) + "</b></span>";
+        }).join("");
+    }
+
     var catHost = document.getElementById("moneyCats");
-    var keys = Object.keys(cats).sort(function (a, b) { return cats[b] - cats[a]; });
-    catHost.innerHTML = keys.length
-      ? keys.map(function (k) {
-          return '<span class="mon-cat">' + esc(k) + " <b>" + wonText(cats[k]) + "</b></span>";
-        }).join("")
+    catHost.innerHTML = Object.keys(cats).length
+      ? '<div class="mon-line"><span class="mon-lb">분류</span>' + chips(cats, "") + "</div>" +
+        '<div class="mon-line"><span class="mon-lb">결제</span>' + chips(pays, " is-pay") + "</div>"
       : '<div class="mon-empty">이 달에 적어 둔 것이 없습니다.</div>';
+  }
+
+  /* 전에 적어 둔 결제수단을 모아 둔다. 목록을 따로 관리하지 않고
+     쓴 것을 그대로 모으므로, 처음 쓰는 이름도 그냥 적으면 다음부터 골라진다. */
+  function payList() {
+    var seen = {};
+    Object.keys(state.days).forEach(function (d) {
+      (state.days[d].money || []).forEach(function (m) {
+        var v = (m.pay || "").trim();
+        if (v) seen[v] = (seen[v] || 0) + 1;
+      });
+    });
+    return Object.keys(seen).sort(function (a, b) { return seen[b] - seen[a]; });
+  }
+
+  function payOptions() {
+    return '<datalist id="payList">' + payList().map(function (v) {
+      return '<option value="' + esc(v) + '"></option>';
+    }).join("") + "</datalist>";
   }
 
   function moneyCard(date, m) {
@@ -4440,6 +4480,9 @@
       '<div class="mt-row"><span class="mt-key">분류</span>' +
         '<input data-money="cat" data-at="' + at + '" value="' + esc(m.cat) +
         '" placeholder="식비, 교통, 의료…" aria-label="분류"></div>' +
+      '<div class="mt-row"><span class="mt-key">결제</span>' +
+        '<input data-money="pay" data-at="' + at + '" value="' + esc(m.pay || "") +
+        '" list="payList" placeholder="신한카드, 현금, 계좌이체…" aria-label="결제수단"></div>' +
     "</div>";
   }
 
@@ -4476,7 +4519,8 @@
         (finding ? "찾는 것이 없습니다." : "이 날에 적어 둔 것이 없습니다.") + "</div>";
       return;
     }
-    host.innerHTML = rows.map(function (r) { return moneyCard(r.date, r.m); }).join("");
+    host.innerHTML = payOptions() +
+      rows.map(function (r) { return moneyCard(r.date, r.m); }).join("");
   }
 
   var moneyHost = document.getElementById("moneyList");
@@ -4529,7 +4573,7 @@
   document.getElementById("moneyAdd").addEventListener("click", function () {
     var mf = document.querySelector('input[data-find="money"]');
     if (mf) { mf.value = ""; findWord.money = ""; }
-    day(selected).money.push({ id: uid(), kind: "out", amount: 0, cat: "", note: "" });
+    day(selected).money.push({ id: uid(), kind: "out", amount: 0, cat: "", pay: "", note: "" });
     save();
     renderMoney();
     var box = moneyHost.querySelector('input[data-money="note"]');
