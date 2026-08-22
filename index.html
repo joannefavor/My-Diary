@@ -1338,6 +1338,10 @@
     background: var(--plane);
     display: grid; place-items: center; padding: 24px;
   }
+  /* display 를 준 요소는 hidden 속성을 무시한다. 클래스가 UA 규칙을 이기기 때문이다.
+     이 앱에서 세 번째로 밟는 함정이다 (기간 지정 날짜 칸, 그리고 여기).
+     display 를 주는 순간 hidden 도 함께 못 박아야 한다. */
+  .lockveil[hidden] { display: none; }
   .lockbox {
     width: min(340px, 100%); background: var(--surface);
     border: 1px solid var(--hair); border-radius: 14px;
@@ -6119,6 +6123,8 @@
     var msg = document.getElementById("lockMsg");
     var pass = document.getElementById("lockInput").value;
     if (!pass) return;
+    /* 걸어 둔 것이 없으면 물어볼 까닭이 없다. 여기까지 왔다면 뭔가 어긋난 것이니 연다. */
+    if (!lockConf || !lockConf.hash) { lockShow(false); return; }
     hashPass(pass, lockConf.salt).then(function (h) {
       if (h === lockConf.hash) {
         msg.className = "lock-msg";
