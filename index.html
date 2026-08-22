@@ -1332,6 +1332,32 @@
 
   /* ---------- 기기 간 동기화 ---------- */
 
+  /* 잠금 화면 — 앱 위를 완전히 덮는다 */
+  .lockveil {
+    position: fixed; inset: 0; z-index: 100;
+    background: var(--plane);
+    display: grid; place-items: center; padding: 24px;
+  }
+  .lockbox {
+    width: min(340px, 100%); background: var(--surface);
+    border: 1px solid var(--hair); border-radius: 14px;
+    box-shadow: var(--shadow); padding: 26px 22px;
+    display: flex; flex-direction: column; gap: 10px; text-align: center;
+  }
+  .lockbox h2 { font-size: 19px; font-weight: 700; margin: 0 0 2px; }
+  .lock-msg { margin: 0 0 6px; font-size: 12.5px; color: var(--muted); }
+  .lock-msg.bad { color: var(--s2); }
+  .lockbox input {
+    font: inherit; font-size: 16px; text-align: center;
+    color: var(--ink); background: var(--surface);
+    border: 1px solid var(--hair); border-radius: 9px; padding: 10px 12px;
+  }
+  .lockbox input:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 1px; }
+  .lockbox button {
+    font-weight: 600; padding: 10px; border-radius: 9px;
+    background: var(--accent); border-color: var(--accent); color: var(--on-accent);
+  }
+
   .sync-size { font-size: 12px; color: var(--muted); margin-top: 4px; }
   .sync-size b { color: var(--ink-2); font-weight: 600; }
   .sync-size.warn { color: var(--s2); }
@@ -1715,6 +1741,53 @@
     <div class="notelist" id="knowledgeList"></div>
   </section>
 
+  <div class="lockveil" id="lockVeil" hidden>
+    <form class="lockbox" id="lockForm">
+      <h2>주간 기록부</h2>
+      <p class="lock-msg" id="lockMsg">비밀번호를 넣어 주세요.</p>
+      <input type="password" id="lockInput" autocomplete="current-password"
+             aria-label="비밀번호" autofocus>
+      <button type="submit">열기</button>
+    </form>
+  </div>
+
+  <section class="panel" id="lockPanel" hidden>
+    <header>
+      <h2>화면 잠금</h2>
+      <span class="hint">앱을 열 때 비밀번호를 묻습니다</span>
+    </header>
+    <div class="sync-body">
+      <div class="sync-row">
+        <div class="field">
+          <label for="lockNew">비밀번호</label>
+          <input type="password" id="lockNew" autocomplete="new-password"
+                 placeholder="새 비밀번호">
+        </div>
+        <div class="field">
+          <label for="lockNew2">한 번 더</label>
+          <input type="password" id="lockNew2" autocomplete="new-password"
+                 placeholder="같은 비밀번호">
+        </div>
+        <div class="sync-actions">
+          <button type="button" id="lockSet">잠금 켜기</button>
+          <button type="button" id="lockOff" hidden>잠금 끄기</button>
+        </div>
+      </div>
+      <div class="sync-status" id="lockStatus" role="status" aria-live="polite"></div>
+      <p class="sync-note">
+        <strong>이 잠금은 화면을 가리는 것입니다.</strong> 어깨너머로 보거나 잠깐
+        빌려준 상황을 막습니다. 다만 기록 자체는 이 브라우저에 그대로 있어서,
+        마음먹고 개발자도구를 열면 볼 수 있습니다.
+        기기를 통째로 가져가도 못 보게 하려면 기록까지 암호로 잠가야 합니다.
+      </p>
+      <p class="sync-note">
+        비밀번호를 잊으면 이 화면으로는 풀 수 없습니다. 브라우저에서 이 사이트
+        자료를 지우면 잠금이 풀리지만 <strong>기록도 함께 지워집니다</strong> —
+        그러니 <strong>JSON 내보내기로 미리 백업</strong>해 두세요.
+      </p>
+    </div>
+  </section>
+
   <section class="panel" id="syncPanel" hidden>
     <header>
       <h2>기기 간 동기화</h2>
@@ -1757,6 +1830,7 @@
     <a class="ghost foot-link" href="/guestbook">방명록</a>
     -->
 
+    <button class="ghost" id="lockBtn" aria-expanded="false" aria-controls="lockPanel">화면 잠금</button>
     <button class="ghost" id="syncBtn" aria-expanded="false" aria-controls="syncPanel">기기 간 동기화</button>
     <button class="ghost" id="clearAll">전체 지우기</button>
     <button class="ghost" id="exportBtn">JSON 내보내기</button>
@@ -5985,6 +6059,119 @@
     syncEls.code.readOnly = on;
   }
 
+  /* ---------- 화면 잠금 ----------
+     앱을 열 때 비밀번호를 묻는다. 화면을 가리는 것이지 기록을 잠그는 것은 아니다 —
+     기록은 브라우저에 그대로 있어 개발자도구로는 보인다. 그 사실을 설정 칸에 적어 두었다.
+
+     비밀번호는 그대로 두지 않고 PBKDF2 로 해시해서 소금과 함께 둔다.
+     다른 곳에도 쓰는 비밀번호일 수 있어서, 새어 나가면 그쪽까지 위험해진다. */
+  var LOCK_STORE = "weekly-health-ledger-lock";
+  var lockConf = null;
+
+  function loadLock() {
+    try { lockConf = JSON.parse(localStorage.getItem(LOCK_STORE) || "null"); }
+    catch (e) { lockConf = null; }
+    return lockConf;
+  }
+
+  function hashPass(pass, saltHex) {
+    var enc = new TextEncoder();
+    return crypto.subtle
+      .importKey("raw", enc.encode(pass), "PBKDF2", false, ["deriveBits"])
+      .then(function (k) {
+        return crypto.subtle.deriveBits({
+          name: "PBKDF2", salt: fromHex(saltHex), iterations: 120000, hash: "SHA-256"
+        }, k, 256);
+      })
+      .then(function (bits) { return toHex(bits); });
+  }
+
+  function fromHex(h) {
+    var out = new Uint8Array(h.length / 2);
+    for (var i = 0; i < out.length; i++) out[i] = parseInt(h.substr(i * 2, 2), 16);
+    return out;
+  }
+
+  function lockShow(on) {
+    var veil = document.getElementById("lockVeil");
+    if (!veil) return;
+    veil.hidden = !on;
+    document.body.style.overflow = on ? "hidden" : "";
+    if (on) {
+      var el = document.getElementById("lockInput");
+      el.value = "";
+      setTimeout(function () { el.focus(); }, 30);
+    }
+  }
+
+  function lockPaint() {
+    var on = !!(lockConf && lockConf.hash);
+    var st = document.getElementById("lockStatus");
+    if (st) st.textContent = on ? "잠겨 있습니다. 앱을 열 때마다 물어봅니다." : "잠겨 있지 않습니다.";
+    var off = document.getElementById("lockOff");
+    if (off) off.hidden = !on;
+    var set = document.getElementById("lockSet");
+    if (set) set.textContent = on ? "비밀번호 바꾸기" : "잠금 켜기";
+  }
+
+  document.getElementById("lockForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var msg = document.getElementById("lockMsg");
+    var pass = document.getElementById("lockInput").value;
+    if (!pass) return;
+    hashPass(pass, lockConf.salt).then(function (h) {
+      if (h === lockConf.hash) {
+        msg.className = "lock-msg";
+        msg.textContent = "비밀번호를 넣어 주세요.";
+        lockShow(false);
+      } else {
+        msg.className = "lock-msg bad";
+        msg.textContent = "비밀번호가 다릅니다.";
+        document.getElementById("lockInput").value = "";
+      }
+    });
+  });
+
+  document.getElementById("lockBtn").addEventListener("click", function () {
+    var panel = document.getElementById("lockPanel");
+    var show = panel.hidden;
+    panel.hidden = !show;
+    this.setAttribute("aria-expanded", String(show));
+    if (show) document.getElementById("lockNew").focus();
+  });
+
+  document.getElementById("lockSet").addEventListener("click", function () {
+    var a = document.getElementById("lockNew");
+    var b = document.getElementById("lockNew2");
+    var st = document.getElementById("lockStatus");
+    if (a.value.length < 4) { st.textContent = "비밀번호는 네 자 이상으로 해주세요."; return; }
+    if (a.value !== b.value) { st.textContent = "두 번 넣은 것이 다릅니다."; return; }
+
+    var salt = toHex(crypto.getRandomValues(new Uint8Array(16)).buffer);
+    hashPass(a.value, salt).then(function (h) {
+      lockConf = { salt: salt, hash: h };
+      try { localStorage.setItem(LOCK_STORE, JSON.stringify(lockConf)); } catch (e) {}
+      a.value = ""; b.value = "";
+      lockPaint();
+      st.textContent = "잠갔습니다. 다음에 열 때부터 물어봅니다.";
+    });
+  });
+
+  document.getElementById("lockOff").addEventListener("click", function () {
+    var a = document.getElementById("lockNew");
+    var st = document.getElementById("lockStatus");
+    if (!a.value) { st.textContent = "끄려면 지금 비밀번호를 넣어 주세요."; return; }
+    hashPass(a.value, lockConf.salt).then(function (h) {
+      if (h !== lockConf.hash) { st.textContent = "비밀번호가 다릅니다."; return; }
+      lockConf = null;
+      try { localStorage.removeItem(LOCK_STORE); } catch (e) {}
+      a.value = "";
+      document.getElementById("lockNew2").value = "";
+      lockPaint();
+      st.textContent = "잠금을 껐습니다.";
+    });
+  });
+
   /* ---------- 기록 크기 ----------
      동기화는 기록을 통째로 암호로 잠가 올린다. 서버가 900KB 까지만 받으므로
      쌓이다 보면 어느 날 갑자기 올리지 못하게 된다. 그 전에 미리 알린다.
@@ -6518,6 +6705,10 @@
       }).catch(function () { /* 없어도 앱은 돌아간다 */ });
     });
   }
+
+  loadLock();
+  lockPaint();
+  if (lockConf && lockConf.hash) lockShow(true);
 
   load();
   render();
