@@ -5,7 +5,7 @@
 <!-- 이게 없으면 휴대폰이 데스크톱 폭으로 그린 뒤 통째로 축소해 버려서,
      좁은 화면용으로 만들어 둔 배치가 전혀 쓰이지 않는다. -->
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>주간 기록부 — 일정과 건강</title>
+<title>연's 하루책 — 나의 하루하루</title>
 <meta name="description" content="일주일 일정과 건강 상태를 한 화면에서 기록하고 추이로 보는 개인 대시보드">
 
 <!-- 주소 표시줄·상태 표시줄 색. 테마 변수와 같은 값을 쓴다. -->
@@ -21,7 +21,7 @@
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon-2.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="주간 기록부">
+<meta name="apple-mobile-web-app-title" content="연's 하루책">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
 <style>
@@ -194,10 +194,11 @@
     font-size: 30px; font-weight: 700; line-height: 1.15;
     letter-spacing: -.01em; margin: 0; text-wrap: balance;
   }
+  /* 부제가 한글이 되었다. 대문자 변환은 뜻이 없고, 자간을 넓게 벌리면
+     한글은 오히려 읽기 나빠진다. */
   .eyebrow {
-    font-family: var(--mono); font-size: 10.5px;
-    letter-spacing: .14em; text-transform: uppercase;
-    color: var(--muted); margin: 0 0 6px;
+    font-size: 11.5px; letter-spacing: .02em;
+    color: var(--muted); margin: 0 0 5px;
   }
   .weeknav { display: flex; align-items: center; gap: 8px; }
   /* ---------- 페이지 탭 ---------- */
@@ -1304,13 +1305,22 @@
   .meal-rows { display: flex; flex-direction: column; gap: 6px; }
   /* 끼니 버튼 · 먹은 것 · 먹은 약 */
   .meal-row {
-    display: grid; grid-template-columns: 64px minmax(0, 1.6fr) minmax(0, 1fr);
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr);
     gap: 7px; align-items: center;
   }
-  @media (max-width: 720px) {
-    /* 좁으면 약 칸을 아랫줄로 내려 두 칸이 찌그러지지 않게 */
+  /* 어느 칸이 무엇인지 위에 한 번만 적는다. 칸마다 안내 글씨를 넣으면 좁아진다 */
+  .meal-head {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr);
+    gap: 7px; font-size: 10.5px; color: var(--muted); padding: 0 2px 3px;
+  }
+  @media (max-width: 900px) {
+    /* 좁으면 약·증상을 아랫줄로 내려 네 칸이 찌그러지지 않게 */
+    .meal-head { display: none; }
     .meal-row { grid-template-columns: 64px minmax(0, 1fr); }
-    .meal-row .pill-in { grid-column: 2; }
+    .meal-row .pill-in, .meal-row .sym-in { grid-column: 2; }
+    .meal-rows { gap: 12px; }
   }
   .meal-row button {
     padding: 7px 0; font-size: 12.5px; background: var(--surface);
@@ -1450,8 +1460,8 @@
 
   <header class="masthead">
     <div>
-      <p class="eyebrow">Weekly ledger · 일정과 건강</p>
-      <h1>주간 기록부</h1>
+      <p class="eyebrow">나의 하루하루</p>
+      <h1>연&#39;s 하루책</h1>
     </div>
     <div class="weeknav">
       <button class="icon-btn" id="prevWeekTop" aria-label="지난 주">&lt;</button>
@@ -1747,7 +1757,7 @@
 
   <div class="lockveil" id="lockVeil" hidden>
     <form class="lockbox" id="lockForm">
-      <h2>주간 기록부</h2>
+      <h2>연&#39;s 하루책</h2>
       <p class="lock-msg" id="lockMsg">비밀번호를 넣어 주세요.</p>
       <input type="password" id="lockInput" autocomplete="current-password"
              aria-label="비밀번호" autofocus>
@@ -1897,7 +1907,7 @@
     "2028-12-25": "성탄절"
   };
   function holidayOf(date) { return HOLIDAYS[date] || ""; }
-  var MEALS = [["b", "아침"], ["l", "점심"], ["d", "저녁"]];
+  var MEALS = [["b", "아침"], ["l", "점심"], ["d", "저녁"], ["s", "간식"]];
 
   /* ============================ 판정 기준 ============================ */
 
@@ -2022,6 +2032,11 @@
     if (!d.meals) d.meals = { b: false, l: false, d: false };
     if (!d.menu) d.menu = { b: "", l: "", d: "" };
     if (!d.pill) d.pill = { b: "", l: "", d: "" };
+    /* 간식과 끼니별 증상은 나중에 생긴 항목이라 예전 기록에는 없다 */
+    if (d.meals.s == null) d.meals.s = false;
+    if (d.menu.s == null) d.menu.s = "";
+    if (d.pill.s == null) d.pill.s = "";
+    if (!d.sym) d.sym = { b: "", l: "", d: "", s: "" };
     if (!d.medTaken) d.medTaken = {};
     if (!d.schedule) d.schedule = [];
     if (!d.todos) d.todos = [];
@@ -2042,6 +2057,8 @@
   function menuOf(d, k) { return (d && d.menu && d.menu[k]) || ""; }
   /* 끼니별로 적어둔 약. 나중에 생긴 항목이라 예전 기록에는 없다 */
   function pillOf(d, k) { return (d && d.pill && d.pill[k]) || ""; }
+  /* 끼니별 증상. 나중에 생긴 항목이라 예전 기록에는 없다 */
+  function symOf(d, k) { return (d && d.sym && d.sym[k]) || ""; }
   function pillMeals(x) {
     return MEALS.filter(function (m) { return pillOf(x, m[0]); });
   }
@@ -2253,6 +2270,8 @@
     var exTotal = s.ex.reduce(function (p, c) { return p + (c || 0); }, 0);
     var exDays = s.ex.filter(function (v) { return v > 0; }).length;
 
+    /* 규칙성은 세 끼 기준이다. 간식은 끼니가 아니므로 세지 않는다 —
+       간식을 세면 챙겨 먹을수록 규칙성이 높아 보이는 엉뚱한 셈이 된다. */
     var mealDays = weekDates().filter(function (d) {
       var x = peek(d);
       return x && (x.meals.b || x.meals.l || x.meals.d);
@@ -3337,23 +3356,27 @@
       "</div>" +
 
       '<div class="field meals-field">' +
-        '<span class="flabel">식사 · 식단 · 복약</span>' +
+        '<span class="flabel">식사 · 식단 · 복약 · 증상</span>' +
+        '<div class="meal-head">' +
+          "<span></span><span>식단</span><span>복약</span><span>증상</span>" +
+        "</div>" +
         '<div class="meal-rows" id="mealRows">' +
           MEALS.map(function (m) {
             return '<div class="meal-row">' +
               '<button type="button" data-m="' + m[0] + '" aria-pressed="' + (!!d.meals[m[0]]) + '">' +
                 m[1] + "</button>" +
               '<input type="text" data-menu="' + m[0] + '" placeholder="' + m[1] +
-                '에 먹은 것 (예: 현미밥, 된장국, 나물)" value="' + esc(menuOf(d, m[0])) +
+                '에 먹은 것" value="' + esc(menuOf(d, m[0])) +
                 '" aria-label="' + m[1] + ' 식단">' +
-              '<input type="text" class="pill-in" data-pill="' + m[0] + '" placeholder="' + m[1] +
-                '에 먹은 약" value="' + esc(pillOf(d, m[0])) +
-                '" aria-label="' + m[1] + ' 복약">' +
+              '<input type="text" class="pill-in" data-pill="' + m[0] + '" placeholder="먹은 약" value="' +
+                esc(pillOf(d, m[0])) + '" aria-label="' + m[1] + ' 복약">' +
+              '<input type="text" class="sym-in" data-sym="' + m[0] + '" placeholder="속쓰림, 두통…" value="' +
+                esc(symOf(d, m[0])) + '" aria-label="' + m[1] + ' 증상">' +
             "</div>";
           }).join("") +
         "</div>" +
         '<span class="note">끼니를 누르면 먹은 것으로 기록됩니다. 식단을 적으면 자동으로 체크됩니다. ' +
-        '오른쪽 칸에는 그 끼니에 먹은 약을 적습니다</span>' +
+        '증상 칸에는 그 끼니 뒤에 있었던 것을 적습니다 — 나중에 무엇을 먹고 그랬는지 찾을 단서가 됩니다</span>' +
       "</div>" +
 
       '<div class="field">' +
@@ -3453,6 +3476,13 @@
       if (pillEl) {
         var pk = pillEl.getAttribute("data-pill");
         day(selected).pill[pk] = pillEl.value.trim();
+        return persist();
+      }
+      /* 증상은 끼니를 걸러도 있을 수 있으므로 식사 체크를 건드리지 않는다 */
+      var symEl = e.target.closest("input[data-sym]");
+      if (symEl) {
+        var sk = symEl.getAttribute("data-sym");
+        day(selected).sym[sk] = symEl.value.trim();
         return persist();
       }
     });
@@ -5335,6 +5365,7 @@
     "병원": "health", "묵상일기": "faith", "기도": "faith",
     "나의역사": "history", "지식창고": "knowledge",
     "메모": "health", "식단": "health", "복약": "health", "운동": "health",
+    "증상": "health",
     "가계부": "money", "업무일지": "work"
   };
 
@@ -5377,6 +5408,9 @@
       hit(date, "메모", d.note);
       if (d.menu) MEALS.forEach(function (m) { hit(date, "식단", d.menu[m[0]]); });
       if (d.pill) MEALS.forEach(function (m) { hit(date, "복약", d.pill[m[0]]); });
+      if (d.sym) MEALS.forEach(function (m) {
+        if (d.sym[m[0]]) hit(date, "증상", m[1] + " 뒤 " + d.sym[m[0]]);
+      });
       if (d.exercise) hit(date, "운동", d.exercise.kind);
     }
 
@@ -5483,7 +5517,7 @@
 
     var label = "";
     for (var i = 0; i < PAGES.length; i++) if (PAGES[i].id === now) label = PAGES[i].label;
-    document.title = now === "main" ? "주간 기록부" : "주간 기록부 · " + label;
+    document.title = now === "main" ? "연's 하루책" : "연's 하루책 · " + label;
 
     renderPicks();
   }
