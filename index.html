@@ -1694,7 +1694,7 @@
 
   <section class="panel" data-page="money">
     <header>
-      <h2 id="moneyTitle">가계부</h2>
+      <h2 id="moneyTitle">이 달</h2>
       <span class="hint">이 달을 모아 보여줍니다</span>
     </header>
     <div class="mon-sum" id="moneySum"></div>
@@ -1714,7 +1714,7 @@
         <button type="button" class="dot-btn" data-daytoday title="오늘로" aria-label="오늘로"></button>
         <button type="button" class="icon-btn" data-daystep="1" aria-label="하루 뒤">&gt;</button>
       </span>
-      <input type="search" data-find="money" placeholder="단어로 찾기" aria-label="가계부 찾기">
+      <input type="search" data-find="money" placeholder="단어로 찾기" aria-label="돈 기록 찾기">
       <span class="visit-count" data-count="money"></span>
     </div>
     <div class="notelist" id="moneyList"></div>
@@ -1722,7 +1722,7 @@
 
   <section class="panel" data-page="history">
     <header>
-      <h2>나의 역사</h2>
+      <h2>발자취</h2>
       <span class="hint">지나온 일을 적어 둡니다 · 최근 것이 위로</span>
       <button class="ghost" data-noteadd="history">+ 새로 적기</button>
     </header>
@@ -1731,12 +1731,12 @@
 
   <section class="panel" data-page="meeting">
     <header>
-      <h2>미팅</h2>
-      <button class="ghost" id="meetAdd">+ 새 미팅</button>
+      <h2>만남 기록</h2>
+      <button class="ghost" id="meetAdd">+ 새로 적기</button>
     </header>
       <div class="daybar">
         <input type="search" data-find="meeting" placeholder="단어로 찾기"
-          aria-label="미팅 찾기">
+          aria-label="만남 기록 찾기">
         <span class="visit-count" data-count="meeting"></span>
       </div>
 
@@ -1748,7 +1748,7 @@
 
   <section class="panel" data-page="knowledge">
     <header>
-      <h2>지식창고</h2>
+      <h2>배운 것</h2>
       <span class="hint">배운 것과 찾아본 것 · 최근 것이 위로</span>
       <button class="ghost" data-noteadd="knowledge">+ 새로 적기</button>
     </header>
@@ -4175,22 +4175,24 @@
      쓰면 고른 자리도 함께 바뀌므로 어디로 갔는지 눈에 보인다. */
   /* 차례는 왼쪽 페이지 막대와 같게 둔다. 두 곳의 차례가 다르면 손이 헷갈린다. */
   var QUICK_PICKS = [
-    { id: "schedule",  label: "일정",   ph: "월요일 오전 9시부터 오후 6시 까지 업무" },
-    { id: "work",      label: "업무",   ph: "오늘 한 일 · 진행 상황" },
-    { id: "faith",     label: "신앙",   ph: "오늘 말씀에서 마음에 남은 것  ·  기도는 #기도" },
-    { id: "health",    label: "건강",   ph: "혈압 120/80  물 5잔  기분 4  아침 현미밥" },
-    { id: "money",     label: "가계부", ph: "점심 12000 식비    ·    수입 월급 3200000" },
-    { id: "history",   label: "나의역사", ph: "첫 직장 입사" },
-    { id: "meeting",   label: "미팅",   ph: "오후 2시 법무팀 정기회의" },
-    { id: "knowledge", label: "지식창고", ph: "복리 계산법 — 72 법칙" }
+    { id: "schedule",  label: "달력",   ph: "월요일 오전 9시부터 오후 6시 까지 업무" },
+    { id: "work",      label: "일",     ph: "오늘 한 일 · 진행 상황" },
+    { id: "faith",     label: "마음",   ph: "오늘 말씀에서 마음에 남은 것  ·  기도는 #기도" },
+    { id: "health",    label: "몸",     ph: "혈압 120/80  물 5잔  기분 4  아침 현미밥" },
+    { id: "money",     label: "돈",     ph: "점심 12000 식비    ·    수입 월급 3200000" },
+    { id: "history",   label: "발자취", ph: "첫 직장 입사" },
+    { id: "meeting",   label: "만남",   ph: "오후 2시 법무팀 정기회의" },
+    { id: "knowledge", label: "배움",   ph: "복리 계산법 — 72 법칙" }
   ];
+  /* 새 이름과 예전 이름을 함께 받는다. 손에 익은 말을 못 쓰게 하면 안 된다. */
   var QUICK_TAGS = {
-    "일정": "schedule", "업무": "worklog", "업무일지": "worklog", "할일": "work",
-    "건강": "health",
-    "미팅": "meeting", "회의": "meeting", "todo": "work",
-    "나의역사": "history", "역사": "history",
-    "지식창고": "knowledge", "지식": "knowledge",
-    "신앙": "faith", "묵상": "faith", "묵상일기": "faith",
+    "일정": "schedule", "달력": "schedule",
+    "업무": "worklog", "업무일지": "worklog", "일": "worklog", "할일": "work",
+    "건강": "health", "몸": "health",
+    "미팅": "meeting", "회의": "meeting", "만남": "meeting", "todo": "work",
+    "나의역사": "history", "역사": "history", "발자취": "history",
+    "지식창고": "knowledge", "지식": "knowledge", "배움": "knowledge",
+    "신앙": "faith", "묵상": "faith", "묵상일기": "faith", "마음": "faith",
     "기도": "prayer", "기도제목": "prayer",
     "병원": "visit", "진료": "visit",
     "가계부": "money", "지출": "money", "수입": "money", "돈": "money"
@@ -4746,7 +4748,7 @@
 
     var dt = parseISO(selected);
     document.getElementById("moneyTitle").textContent =
-      dt.getFullYear() + "년 " + (dt.getMonth() + 1) + "월 가계부";
+      dt.getFullYear() + "년 " + (dt.getMonth() + 1) + "월";
 
     host.innerHTML =
       '<div class="in"><div class="lb">번 것</div><div class="vl">' + wonText(inSum) + "</div></div>" +
@@ -5473,16 +5475,18 @@
      그래야 새로고침해도 보던 페이지가 그대로고, 뒤로 가기도 뜻대로 동작한다.
      그리기는 모든 페이지 것을 늘 해 둔다 — 주간 데이터라 양이 적고,
      차트 좌표도 화면 크기가 아니라 값에서 나오므로 감춰진 채 그려도 어긋나지 않는다. */
+  /* 주소(id)는 바꾸지 않는다. 이미 홈 화면에 추가해 둔 바로가기가 #/health 같은
+     주소를 가리키고 있어서, 주소를 바꾸면 그 바로가기가 엉뚱한 데로 간다. */
   var PAGES = [
-    { id: "main",      label: "메인화면" },
-    { id: "schedule",  label: "일정" },
-    { id: "work",      label: "업무" },
-    { id: "faith",     label: "신앙" },
-    { id: "health",    label: "건강" },
-    { id: "money",     label: "가계부" },
-    { id: "history",   label: "나의역사" },
-    { id: "meeting",   label: "미팅" },
-    { id: "knowledge", label: "지식창고" }
+    { id: "main",      label: "오늘" },
+    { id: "schedule",  label: "달력" },
+    { id: "work",      label: "일" },
+    { id: "faith",     label: "마음" },
+    { id: "health",    label: "몸" },
+    { id: "money",     label: "돈" },
+    { id: "history",   label: "발자취" },
+    { id: "meeting",   label: "만남" },
+    { id: "knowledge", label: "배움" }
   ];
 
   function currentPage() {
