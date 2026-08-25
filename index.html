@@ -392,6 +392,16 @@
     flex: 1 1 160px; min-width: 0;
   }
   .daybar input[type="search"]:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 1px; }
+  /* 찾을 기간 — 비워 두면 처음부터 끝까지 */
+  .findrange { display: flex; align-items: center; gap: 4px; flex: none; }
+  .findrange input[type="date"] {
+    font: inherit; font-size: 11.5px; font-family: var(--mono);
+    color: var(--ink); background: var(--surface);
+    border: 1px solid var(--hair); border-radius: 7px; padding: 3px 6px;
+  }
+  .findrange input:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 1px; }
+  .findrange .tilde { color: var(--muted); font-size: 11px; }
+  .daybar .viewtoggle { flex: none; }
   .daybar .dayspin { flex: 0 1 240px; }
 
   .visit-bar {
@@ -591,10 +601,14 @@
 
   /* ---------- 요약 타일 ---------- */
 
+  /* 통계는 세 칸뿐이라 한 줄에 나란히 둔다. 전체평가가 조금 넓다. */
   .tiles {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(146px, 1fr));
+    grid-template-columns: 1.4fr 1fr 1fr;
     gap: 11px;
+  }
+  @media (max-width: 640px) {
+    .tiles { grid-template-columns: repeat(auto-fit, minmax(146px, 1fr)); }
   }
   .tile {
     background: var(--surface);
@@ -619,7 +633,7 @@
   .tile .sub { font-size: 11.5px; color: var(--ink-2); }
 
   .tile.hero {
-    grid-column: span 2;
+    /* 한 줄 배치에서는 칸 너비를 그리드가 정한다 (예전엔 두 칸을 차지했다) */
     background: var(--accent); border-color: var(--accent); color: var(--on-accent);
   }
   .tile.hero .label { color: color-mix(in srgb, var(--on-accent) 62%, transparent); }
@@ -1643,6 +1657,11 @@
     </header>
     <div class="daybar">
       <input type="search" data-find="worklog" placeholder="단어로 찾기" aria-label="업무일지 찾기">
+      <span class="findrange">
+        <input type="date" data-findfrom="worklog" aria-label="찾을 기간 시작">
+        <span class="tilde">~</span>
+        <input type="date" data-findto="worklog" aria-label="찾을 기간 끝">
+      </span>
       <span class="visit-count" data-count="worklog"></span>
     </div>
     <div class="withcal">
@@ -1655,20 +1674,28 @@
     <header>
       <h2>할 일</h2>
       <div class="datepick">
-        <span class="dayspin">
-          <button type="button" class="icon-btn" data-daystep="-1" aria-label="하루 전">&lt;</button>
-          <input type="date" id="workDate" aria-label="어느 날에 적을지">
-          <button type="button" class="cal-btn" data-daypick title="달력에서 고르기" aria-label="달력에서 고르기">▦</button>
-          <button type="button" class="dot-btn" data-daytoday title="오늘로" aria-label="오늘로"></button>
-          <button type="button" class="icon-btn" data-daystep="1" aria-label="하루 뒤">&gt;</button>
-        </span>
         <input type="text" id="workNew" placeholder="할 일" aria-label="할 일 내용">
         <button class="ghost" id="workAdd">+ 넣기</button>
-        <input type="search" data-find="work" placeholder="단어로 찾기" aria-label="업무 찾기">
-        <span class="visit-count" data-count="work"></span>
       </div>
     </header>
-    <div class="worklist" id="workList"></div>
+    <div class="daybar">
+      <span class="viewtoggle" id="workDone" role="group" aria-label="완료 여부">
+        <button type="button" data-wd="all" aria-pressed="true">전체</button>
+        <button type="button" data-wd="todo" aria-pressed="false">미완료</button>
+        <button type="button" data-wd="done" aria-pressed="false">완료</button>
+      </span>
+      <input type="search" data-find="work" placeholder="단어로 찾기" aria-label="할 일 찾기">
+      <span class="findrange">
+        <input type="date" data-findfrom="work" aria-label="찾을 기간 시작">
+        <span class="tilde">~</span>
+        <input type="date" data-findto="work" aria-label="찾을 기간 끝">
+      </span>
+      <span class="visit-count" data-count="work"></span>
+    </div>
+    <div class="withcal">
+      <div class="panelcal" data-cal="work"></div>
+      <div class="worklist" id="workList"></div>
+    </div>
   </section>
 
   <section class="panel" data-page="faith">
@@ -2223,6 +2250,31 @@
     });
   }
 
+  /* 지금 고른 기간의 날짜 전부. 연도 보기는 한 점이 한 달이므로 펴서 센다.
+     타일이 이 기간을 따라가야 위아래가 같은 기간을 말하게 된다. */
+  function trendDates() {
+    var out = [];
+    trendPoints().forEach(function (pt) {
+      pt.dates.forEach(function (d) { out.push(d); });
+    });
+    return out;
+  }
+
+  function trendLabel() {
+    if (trendMode === "month") {
+      var d = parseISO(selected);
+      return d.getFullYear() + "년 " + (d.getMonth() + 1) + "월";
+    }
+    if (trendMode === "year") return parseISO(selected).getFullYear() + "년";
+    if (trendMode === "range" && trendFrom && trendTo) {
+      var lo = trendFrom, hi = trendTo;
+      if (lo > hi) { var t = lo; lo = hi; hi = t; }
+      var a = parseISO(lo), b = parseISO(hi);
+      return (a.getMonth() + 1) + "/" + a.getDate() + " – " + (b.getMonth() + 1) + "/" + b.getDate();
+    }
+    return "이번 주";
+  }
+
   /* 점 하나의 값 — 하루면 그 값, 여러 날이면 적은 날만 평균 */
   function ptVal(pt, fn) {
     var vals = [];
@@ -2257,7 +2309,7 @@
 
   // 기록이 있는 날만 이행률의 분모로 센다
   function loggedDays() {
-    return weekDates().filter(function (d) {
+    return trendDates().filter(function (d) {
       var x = peek(d);
       if (!x) return false;
       return sleepHours(x) != null || x.bp || x.glucose != null || x.overall != null ||
@@ -2285,7 +2337,7 @@
 
     /* 규칙성은 세 끼 기준이다. 간식은 끼니가 아니므로 세지 않는다 —
        간식을 세면 챙겨 먹을수록 규칙성이 높아 보이는 엉뚱한 셈이 된다. */
-    var mealDays = weekDates().filter(function (d) {
+    var mealDays = trendDates().filter(function (d) {
       var x = peek(d);
       return x && (x.meals.b || x.meals.l || x.meals.d);
     });
@@ -2295,12 +2347,12 @@
     }, 0);
     var mealRate = mealDays.length ? mealsEaten / (mealDays.length * 3) * 100 : null;
 
-    var medsTaken = weekDates().filter(function (d) {
+    var medsTaken = trendDates().filter(function (d) {
       return medDone(peek(d));      // 끼니별 기록·약 목록 체크·예전 방식을 모두 센다
     }).length;
 
     var totalItems = 0, doneItems = 0;
-    weekDates().forEach(function (d) {
+    trendDates().forEach(function (d) {
       var x = peek(d);
       if (!x) return;
       totalItems += x.schedule.length;
@@ -2314,7 +2366,7 @@
     var html = "";
 
     html += '<div class="tile hero">' +
-      '<span class="label">전체평가 주간 평균</span>' +
+      '<span class="label">전체평가 · ' + esc(trendLabel()) + "</span>" +
       '<span class="value">' + (avgOv == null ? "—" : r1(avgOv).toFixed(1)) + '<span class="unit">/ 5</span></span>' +
       '<div class="dots" role="img" aria-label="5점 중 ' + (avgOv == null ? 0 : r1(avgOv)) + '점">' + dots + "</div>" +
       '<span class="sub">' + n + "일 기록 · 일정 " + doneItems + "/" + totalItems + "건 완료</span>" +
@@ -3002,7 +3054,7 @@
 
     /* 이번 주 한 줄. 요약 타일에서 쓰던 계산을 그대로 가져온다 */
     function wk(text, st) {
-      return '<span class="wk">이번 주</span> ' + esc(text) + (st ? " " + pill(st) : "");
+      return '<span class="wk">' + esc(trendLabel()) + "</span> " + esc(text) + (st ? " " + pill(st) : "");
     }
 
     chartDefs = [
@@ -3665,12 +3717,6 @@
     renderTabs();
     renderQuick();
     renderToday();
-    var wd = document.getElementById("workDate");
-    if (wd) {
-      if (wd.value !== selected) wd.value = selected;
-      var wdot = wd.parentNode.querySelector(".dot-btn");
-      if (wdot) wdot.classList.toggle("is-today", selected === iso(new Date()));
-    }
     renderWork();
     renderMeetings();
     renderNotes("history");
@@ -3846,15 +3892,41 @@
     if (dbox && dbox.value) goToDate(dbox.value);
   });
 
+  function redrawKind(kind) {
+    if (kind === "meeting") renderMeetings();
+    else if (kind === "work") renderWork();
+    else if (kind === "money") renderMoney();
+    else renderNotes(kind);
+  }
+
   document.addEventListener("input", function (e) {
     var fbox = e.target.closest("input[data-find]");
     if (!fbox) return;
     var kind = fbox.getAttribute("data-find");
     findWord[kind] = fbox.value;
-    if (kind === "meeting") renderMeetings();
-    else if (kind === "work") renderWork();
-    else if (kind === "money") renderMoney();
-    else renderNotes(kind);
+    redrawKind(kind);
+  });
+
+  /* 찾을 기간 */
+  document.addEventListener("change", function (e) {
+    var fr = e.target.closest("input[data-findfrom], input[data-findto]");
+    if (!fr) return;
+    var kind = fr.getAttribute("data-findfrom") || fr.getAttribute("data-findto");
+    if (fr.hasAttribute("data-findfrom")) findFrom[kind] = fr.value;
+    else findTo[kind] = fr.value;
+    redrawKind(kind);
+  });
+
+  /* 완료 여부 거르기 */
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest("#workDone button[data-wd]");
+    if (!b) return;
+    workDone = b.getAttribute("data-wd");
+    Array.prototype.forEach.call(
+      document.querySelectorAll("#workDone button[data-wd]"), function (x) {
+        x.setAttribute("aria-pressed", String(x.getAttribute("data-wd") === workDone));
+      });
+    renderWork();
   });
 
   /* ---------- 달력에서 고르기 ----------
@@ -4384,6 +4456,19 @@
      찾는 말을 적었을 때만 날짜를 넘어 전부 뒤진다 — 찾는 중에 날짜로 잘라내면
      "어제 적은 그것"을 영영 못 찾는다. */
   var findWord = {};
+  var workDone = "all";        /* 전체 · 미완료 · 완료 */
+  /* 찾을 때 기간도 함께 고른다. 비어 있으면 처음부터 끝까지. */
+  var findFrom = {}, findTo = {};
+
+  function inFindRange(kind, date) {
+    var a = findFrom[kind], b = findTo[kind];
+    if (a && date < a) return false;
+    if (b && date > b) return false;
+    return true;
+  }
+  function findingNow(kind) {
+    return !!((findWord[kind] || "").trim() || findFrom[kind] || findTo[kind]);
+  }
 
   function dayBarPaint(kind, shown, total) {
     var box = document.querySelector('input[data-dayof="' + kind + '"]');
@@ -4413,8 +4498,10 @@
     var total = 0;
     all.forEach(function (d0) { total += state.days[d0][kind].length; });
 
-    var finding = !!(findWord[kind] || "").trim();
-    var dates = finding ? all : (all.indexOf(selected) !== -1 ? [selected] : []);
+    var finding = findingNow(kind);
+    var dates = finding
+      ? all.filter(function (d0) { return inFindRange(kind, d0); })
+      : (all.indexOf(selected) !== -1 ? [selected] : []);
 
     var shown = 0;
     dates.forEach(function (d0) {
@@ -5202,19 +5289,30 @@
     if (!host) return;
     var today = iso(new Date()), any = false;
 
-    /* 평소엔 고른 날 것만. 찾는 말이 있을 때만 날짜를 넘어 전부 뒤진다. */
-    var findingW = !!(findWord.work || "").trim();
+    /* 평소엔 고른 날 것만. 찾거나 기간을 고르거나 완료 여부를 고르면
+       날짜를 넘어 뒤진다 — "지난달에 못 끝낸 것" 을 찾으려면 그래야 한다. */
+    var findingW = findingNow("work") || workDone !== "all";
     var wDates = [];
     var wTotal = 0, wShown = 0;
+
+    function keepTodo(t) {
+      if (!t || !t.text) return false;
+      if (!hitWord("work", t.text)) return false;
+      if (workDone === "todo" && t.done) return false;
+      if (workDone === "done" && !t.done) return false;
+      return true;
+    }
+
     for (var wk in state.days) {
       var td = (state.days[wk] && state.days[wk].todos) || [];
       for (var wi = 1; wi < td.length; wi++) if (td[wi] && td[wi].text) wTotal++;
     }
     if (findingW) {
       for (var wk2 in state.days) {
+        if (!inFindRange("work", wk2)) continue;
         var td2 = (state.days[wk2] && state.days[wk2].todos) || [];
         for (var wj = 1; wj < td2.length; wj++) {
-          if (td2[wj] && td2[wj].text && hitWord("work", td2[wj].text)) { wDates.push(wk2); break; }
+          if (keepTodo(td2[wj])) { wDates.push(wk2); break; }
         }
       }
       wDates.sort().reverse();
@@ -5222,9 +5320,7 @@
       wDates = [selected];
     }
     wDates.forEach(function (d0) {
-      todosOf(d0).forEach(function (t, ti) {
-        if (ti > 0 && t.text && hitWord("work", t.text)) wShown++;
-      });
+      todosOf(d0).forEach(function (t, ti) { if (ti > 0 && keepTodo(t)) wShown++; });
     });
     dayBarPaint("work", wShown, wTotal);
 
@@ -5232,7 +5328,7 @@
       var i = (parseISO(date).getDay() + 6) % 7;
       var items = todosOf(date).map(function (s, idx) {
         return { text: s.text, done: s.done, idx: idx };
-      }).filter(function (s) { return s.idx > 0 && s.text && hitWord("work", s.text); });
+      }).filter(function (s) { return s.idx > 0 && keepTodo(s); });
       if (!items.length) return "";
       any = true;
       var dt = parseISO(date);
@@ -5250,8 +5346,8 @@
 
     if (!any) {
       host.innerHTML = '<div class="wk-empty">' +
-        (findingW ? "찾는 업무가 없습니다."
-                  : (wTotal ? "이 날에 적어 둔 업무가 없습니다." : "아직 적어 둔 업무가 없습니다.")) +
+        (findingW ? "찾는 할 일이 없습니다."
+                  : (wTotal ? "이 날에 적어 둔 할 일이 없습니다." : "아직 적어 둔 할 일이 없습니다.")) +
         "</div>";
     }
   }
@@ -5259,9 +5355,9 @@
   /* 업무 페이지에서 날짜를 골라 지난 날에도 적을 수 있게 한다.
      할 일은 그날의 정해진 칸에 들어가므로, 빈 칸이 없으면 넣지 않고 알린다. */
   function workAdd() {
-    var dbox = document.getElementById("workDate");
     var tbox = document.getElementById("workNew");
-    var date = dbox.value, text = tbox.value.trim();
+    /* 넣을 날짜는 옆 달력에서 고른 날이다. 날짜 칸을 따로 두면 둘이 어긋난다. */
+    var date = selected, text = tbox.value.trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !text) return;
     var slot = -1;
     for (var i = 1; i < TODO_SLOTS; i++) {
@@ -5274,11 +5370,9 @@
     day(date).todos[slot].text = text;
     tbox.value = "";
     save();
-    /* 고른 날 것만 보여주므로, 다른 날에 넣었으면 그 날로 옮겨 보여준다 */
     var wf = document.querySelector('input[data-find="work"]');
     if (wf) { wf.value = ""; findWord.work = ""; }
-    if (date !== selected) goToDate(date);
-    else renderWork();
+    renderWork();
   }
 
   document.getElementById("workAdd").addEventListener("click", workAdd);
@@ -5652,6 +5746,7 @@
     }
     saveTrend();
     syncTrendUI();
+    renderTiles();      /* 위 통계도 같은 기간을 말해야 한다 */
     renderCharts();
   });
 
@@ -5659,6 +5754,7 @@
     trendFrom = document.getElementById("trendFrom").value;
     trendTo = document.getElementById("trendTo").value;
     saveTrend();
+    renderTiles();      /* 위 통계도 같은 기간을 말해야 한다 */
     renderCharts();
   });
 
