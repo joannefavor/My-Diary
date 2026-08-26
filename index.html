@@ -871,6 +871,18 @@
   .cal-ad {
     border-left: 1px solid var(--hair); padding: 0;
     display: flex; flex-direction: column; gap: 0; min-width: 0;
+    position: relative;
+  }
+  /* 적어 둔 것이 있으면 입력칸은 높이를 0 으로 접는다. 그래야 하나 적었을 때
+     칸이 하나로 유지된다. 겹쳐 두는 방법도 있지만 그러면 일정을 덮어
+     눌러서 고칠 수 없게 된다 — 접어야 한다.
+     손이 닿거나 글쇠가 오면 다시 펴진다. */
+  .cal-ad.has-ev .ad-in {
+    height: 0; padding: 0; border: 0; opacity: 0; overflow: hidden;
+  }
+  .cal-ad.has-ev:hover .ad-in,
+  .cal-ad.has-ev .ad-in:focus {
+    height: var(--hh); opacity: 1; border-top: 1px solid var(--hair);
   }
   .cal-ad .ev.chip,
   .cal-ad .ad-in {
@@ -881,7 +893,10 @@
   .cal-ad .ev.chip {
     padding: 0 4px; align-items: center; border-radius: 0;
     border-left: 0; border-right: 0; border-top: 0;
+    justify-content: center;            /* 글자를 칸 가운데로 */
   }
+  .cal-ad .ev.chip .txt { text-align: center; min-width: 0; }
+  .cal-ad .ad-in { text-align: center; }
 
   /* 날짜별 할 일 다섯 칸 */
   .cal-todo {
@@ -2622,10 +2637,12 @@
 
     var allday = '<div class="cal-allday"><div class="cal-adlabel">Event</div>' +
       dates.map(function (date) {
-        return '<div class="cal-ad">' + schedOf(date)
-          .filter(function (it) { return toMin(it.time) == null; })
-          .map(function (it) { return evHTML(date, it, { chip: true }); })
-          .join("") +
+        var evs = schedOf(date).filter(function (it) { return toMin(it.time) == null; });
+        /* 적은 것이 없으면 입력칸 한 줄, 있으면 그 수만큼만.
+           입력칸은 맨 아래에 겹쳐 두고 손이 닿을 때만 펴진다 —
+           늘 한 줄을 차지하면 하나만 적어도 두 칸이 된다. */
+        return '<div class="cal-ad' + (evs.length ? " has-ev" : "") + '">' +
+          evs.map(function (it) { return evHTML(date, it, { chip: true }); }).join("") +
           '<input type="text" class="ad-in" data-adnew="' + date + '" placeholder="·"' +
           ' aria-label="' + esc(date) + ' 시간 없는 일정 추가">' +
           "</div>";
