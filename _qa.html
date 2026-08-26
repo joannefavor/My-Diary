@@ -1,0 +1,54 @@
+<!doctype html><meta charset="utf-8"><title>통계/차트</title>
+<style>body{font:13px/1.7 ui-monospace,monospace;padding:18px}.p{color:#137a4b}.f{color:#c02626;font-weight:700}
+iframe{width:1240px;height:180px;border:1px solid #ccc}</style>
+<div id="out">…</div><iframe id="f" src="/#/health"></iframe>
+<script>
+var out=document.getElementById("out"),f=document.getElementById("f"),pass=0,fail=0;
+function log(ok,n,e){(ok?pass++:fail++);out.insertAdjacentHTML("beforeend",
+ '<div class="'+(ok?"p":"f")+'">'+(ok?"통과  ":"X 실패  ")+n+(e?"   "+e:"")+"</div>");}
+function set(w,sel,v){var e=w.document.querySelector(sel);
+ if(e){e.value=v;e.dispatchEvent(new w.Event("change",{bubbles:true}));}}
+function shape(w,k){w.document.querySelector('#trendShape button[data-shape="'+k+'"]').click();}
+function gridH(w){return w.document.getElementById("charts").getBoundingClientRect().height;}
+var phase=1;
+f.onload=function(){var w=f.contentWindow;
+ if(phase===2){setTimeout(function(){
+   var on=w.document.querySelector('#trendShape button[aria-pressed="true"]');
+   log(on&&on.textContent==="차트","새로고침해도 고른 방식이 남는다",on?on.textContent:"(없음)");
+   out.insertAdjacentHTML("beforeend","<h3>통과 "+pass+" · 실패 "+fail+"</h3>");
+ },500);return;}
+ try{w.localStorage.clear();}catch(e){}
+ setTimeout(function(){
+  out.innerHTML="";
+  log(!!w.document.getElementById("trendShape"),"전환 단추가 있다");
+  var on=w.document.querySelector('#trendShape button[aria-pressed="true"]');
+  log(on&&on.textContent==="통계","기본은 통계",on?on.textContent:"(없음)");
+
+  set(w,"#glu","95"); set(w,"#bpS","118"); set(w,"#bpD","76"); set(w,"#weight","62.4");
+  setTimeout(function(){
+   var hStat=gridH(w);
+   var plots=w.document.querySelectorAll("#charts .plot");
+   var vis=[].slice.call(plots).filter(function(p){return p.getBoundingClientRect().height>0;});
+   log(vis.length===0,"통계일 때 그래프가 안 보인다",vis.length+"개 보임");
+   log(/118\/76/.test(w.document.getElementById("charts").textContent),"숫자는 그대로 보인다");
+   log(/정상/.test(w.document.getElementById("charts").textContent),"판정도 보인다");
+
+   shape(w,"chart");
+   setTimeout(function(){
+    var hChart=gridH(w);
+    var vis2=[].slice.call(w.document.querySelectorAll("#charts .plot"))
+      .filter(function(p){return p.getBoundingClientRect().height>0;});
+    log(vis2.length>0,"차트로 바꾸면 그래프가 보인다",vis2.length+"개");
+    log(hChart>hStat*1.5,"통계가 차트보다 훨씬 낮다",
+        Math.round(hStat)+"px → "+Math.round(hChart)+"px");
+    /* 기간을 바꿔도 방식이 유지되는지 */
+    w.document.querySelector('#trendToggle button[data-trend="month"]').click();
+    setTimeout(function(){
+     var on2=w.document.querySelector('#trendShape button[aria-pressed="true"]');
+     log(on2&&on2.textContent==="차트","기간을 바꿔도 방식이 유지된다",on2?on2.textContent:"(없음)");
+     phase=2; w.location.reload();
+    },400);
+   },400);
+  },400);
+ },800);};
+</script>

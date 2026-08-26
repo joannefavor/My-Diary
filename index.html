@@ -1184,12 +1184,29 @@
     line-height: 1.1; letter-spacing: -.01em; margin: 1px 0 5px;
     font-variant-numeric: tabular-nums;
   }
+  /* 통계로 볼 때는 그래프와 범례를 접는다. 숫자와 판정만 남아 카드가 절반이 된다.
+     지우지 않고 접는 이유는, 차트로 되돌릴 때 다시 그리지 않아도 되기 때문이다. */
+  .chart-grid.shape-stat .plot,
+  .chart-grid.shape-stat .legend { display: none; }
+  .chart-grid.shape-stat .chart-week { margin-bottom: 0; }
+  /* 전체평가 카드는 그래프가 없어 접을 것도 없다. 통계로 볼 때 이 카드가
+     예전 높이를 그대로 붙들면 옆 칸들이 따라 늘어나 절반이 되지 않는다. */
+  /* 통계로 볼 때는 전체평가 카드도 한 줄로 눕힌다. 이 카드의 세로 목록이
+     55px 을 차지하면 그래프를 접어도 옆 칸들이 그 높이를 따라간다 —
+     격자는 한 줄에서 가장 높은 칸에 맞춰지기 때문이다. */
+
   /* 차트가 없는 항목(전체평가·식사 규칙성·복약)은 같은 격자에 카드로 선다.
      그래프 자리에 판정과 설명이 대신 들어간다. */
   .chart-block.stat .stat-body {
     display: flex; flex-direction: column; gap: 5px;
     align-items: flex-start; padding-top: 2px;
   }
+  /* 통계로 볼 때는 전체평가 카드의 설명 줄도 접는다. 칸이 좁아 이 문장이
+     두 줄로 감기면서 58px 을 차지하는데, 격자는 한 줄에서 가장 높은 칸에
+     맞춰지므로 그래프를 접어도 옆 칸들이 그 높이를 그대로 따라간다.
+     점수와 점 다섯은 남으니 통계로서 볼 것은 남는다. */
+  .chart-grid.shape-stat .chart-block.stat .sub { display: none; }
+  .chart-grid.shape-stat .chart-block { align-content: start; }
   .chart-block.stat .sub { font-size: 11px; color: var(--muted); }
   .chart-block.stat.hero {
     background: var(--accent); border-color: var(--accent); color: var(--on-accent);
@@ -1549,6 +1566,10 @@
     <header>
       <h2>건강 추이</h2>
       <div class="trendbar">
+        <div class="viewtoggle" id="trendShape" role="group" aria-label="보는 방식">
+          <button type="button" data-shape="stat" aria-pressed="true">통계</button>
+          <button type="button" data-shape="chart" aria-pressed="false">차트</button>
+        </div>
         <div class="viewtoggle" id="trendToggle" role="group" aria-label="건강 추이 기간">
           <button type="button" data-trend="week" aria-pressed="true">주</button>
           <button type="button" data-trend="month" aria-pressed="false">월</button>
@@ -2242,18 +2263,21 @@
      기간 지정은 고른 범위의 하루가 한 점이다. */
   var TREND_STORE = "weekly-health-ledger-trend";
   var trendMode = "week";
+  /* 통계로 볼지 차트로 볼지. 통계일 때는 그래프를 접어 카드가 절반이 된다. */
+  var trendShape = "stat";
   var trendFrom = "", trendTo = "";
   try {
     var tsav = JSON.parse(localStorage.getItem(TREND_STORE) || "null");
     if (tsav && tsav.mode) {
       trendMode = tsav.mode; trendFrom = tsav.from || ""; trendTo = tsav.to || "";
+      if (tsav.shape === "chart" || tsav.shape === "stat") trendShape = tsav.shape;
     }
   } catch (e) { /* 못 읽으면 기본값 */ }
 
   function saveTrend() {
     try {
       localStorage.setItem(TREND_STORE,
-        JSON.stringify({ mode: trendMode, from: trendFrom, to: trendTo }));
+        JSON.stringify({ mode: trendMode, from: trendFrom, to: trendTo, shape: trendShape }));
     } catch (e) { /* 저장 못 해도 화면은 바뀐다 */ }
   }
 
@@ -3198,8 +3222,9 @@
 
     var labs = s.points.map(function (pt) { return pt.label; });
     chartDefs.forEach(function (c) { c.labels = labs; });
-    document.getElementById("charts").innerHTML =
-      statCards() + chartDefs.map(chartBlock).join("");
+    var host = document.getElementById("charts");
+    host.className = "chart-grid shape-" + trendShape;
+    host.innerHTML = statCards() + chartDefs.map(chartBlock).join("");
     chartDefs.forEach(bindHover);
     renderTable(s);
   }
@@ -5739,12 +5764,28 @@
       document.querySelectorAll("#trendToggle button[data-trend]"), function (b) {
         b.setAttribute("aria-pressed", String(b.getAttribute("data-trend") === trendMode));
       });
+    Array.prototype.forEach.call(
+      document.querySelectorAll("#trendShape button[data-shape]"), function (x) {
+        x.setAttribute("aria-pressed", String(x.getAttribute("data-shape") === trendShape));
+      });
     var box = document.getElementById("trendRange");
     if (box) box.hidden = trendMode !== "range";
     var f = document.getElementById("trendFrom"), t = document.getElementById("trendTo");
     if (f && !f.value) f.value = trendFrom || iso(addDays(new Date(), -29));
     if (t && !t.value) t.value = trendTo || TODAY;
   }
+
+  document.getElementById("trendShape").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-shape]");
+    if (!b) return;
+    trendShape = b.getAttribute("data-shape");
+    Array.prototype.forEach.call(
+      document.querySelectorAll("#trendShape button[data-shape]"), function (x) {
+        x.setAttribute("aria-pressed", String(x.getAttribute("data-shape") === trendShape));
+      });
+    saveTrend();
+    renderCharts();
+  });
 
   document.getElementById("trendToggle").addEventListener("click", function (e) {
     var b = e.target.closest("button[data-trend]");
@@ -6903,6 +6944,7 @@
   if (lockConf && lockConf.hash) lockShow(true);
 
   load();
+  syncTrendUI();      /* 지난번에 고른 기간·보는 방식을 단추에 되살린다 */
   render();
   renderPageTabs();
   applyRoute();
