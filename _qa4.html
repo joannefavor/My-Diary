@@ -6,10 +6,19 @@ var out=document.getElementById("out"),f=document.getElementById("f"),pass=0,fai
 function log(ok,n,e){(ok?pass++:fail++);
  out.insertAdjacentHTML("beforeend",(ok?"통과  ":"X 실패  ")+n+(e?"   "+e:"")+"<br>");}
 f.onload=function(){var w=f.contentWindow,d=w.document;
+ fetch("/index.html").then(function(r){return r.text();}).then(function(t){w.__calSrc=t;});
  w.onerror=function(m,s,l){log(false,"앱 오류",m+" ("+l+"줄)");};
  setTimeout(function(){
   var cal=d.querySelector('[data-cal="faith"]');
   log(!!cal,"패널 옆 달력이 있다");
+
+  /* 두 달력이 같은 판단을 쓰는가 — 예전에는 판단이 두 곳에 나뉘어 있어서
+     한쪽에만 '오늘' 갈래가 있었고, 팝업에서 오늘이 안 먹었다. */
+  var src=w.__calSrc||"";
+  log(/function calAct\(/.test(src),"판단이 calAct 한 곳에 있다");
+  log(!/function calPick\(/.test(src),"옛 calPick 은 남아 있지 않다");
+  var calls=(src.match(/calAct\(e, "/g)||[]).length;
+  log(calls===2,"두 달력이 그 한 곳을 함께 쓴다",calls+"곳에서 부름");
 
   /* 주 시작이 일요일인가 */
   var dows=[].map.call(cal.querySelectorAll(".dp-dow div"),function(x){return x.textContent;});

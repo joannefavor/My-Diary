@@ -4394,22 +4394,50 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       "</div>";
   }
 
-  /* 달력 안에서 눌린 것이 고르개와 관련된 것이면 처리하고 보여줄 달을 돌려준다.
-     null 이면 상관없는 곳을 누른 것이니 부른 쪽이 하던 일을 이어서 한다. */
-  function calPick(e, scope, ym) {
+  /* 달력 안에서 무엇을 눌렀는지 판단한다. 여기 한 곳에서만 판단하고,
+     어떻게 반응할지는 부르는 쪽이 정한다 — 패널 옆 달력은 보고 있는 날을 옮기고,
+     팝업 달력은 날짜 칸을 채우고 닫는다. 판단이 두 곳에 나뉘어 있던 때는
+     한쪽에만 '오늘' 갈래가 있어서, 팝업에서 오늘을 눌러도 아무 일이 없었다.
+
+     돌려주는 것:
+       { act: "month", ym }   그 달을 보여 달라
+       { act: "pick", date }  이 날을 골랐다
+       null                   달력과 상관없는 곳을 눌렀다 */
+  function calAct(e, scope, ym) {
+    /* 연·월 고르개 여닫기 */
     if (e.target.closest("[data-dpwhen]")) {
       ymOpen = (ymOpen === scope) ? null : scope;
       ymYear = Number(ym.slice(0, 4));
-      return ym;
+      return { act: "month", ym: ym };
     }
-    if (ymOpen !== scope) return null;
-    var yb = e.target.closest("button[data-ymy]");
-    if (yb) { ymYear += Number(yb.getAttribute("data-ymy")); return ym; }
-    var mb = e.target.closest("button[data-ymm]");
-    if (mb) {
-      ymOpen = null;
-      return ymYear + "-" + pad(Number(mb.getAttribute("data-ymm")));
+    if (ymOpen === scope) {
+      var yb = e.target.closest("button[data-ymy]");
+      if (yb) {
+        ymYear += Number(yb.getAttribute("data-ymy"));
+        return { act: "month", ym: ym };
+      }
+      var mb = e.target.closest("button[data-ymm]");
+      if (mb) {
+        ymOpen = null;
+        return { act: "month", ym: ymYear + "-" + pad(Number(mb.getAttribute("data-ymm"))) };
+      }
+      /* 고르개가 열려 있는 동안에는 그 아래 달력을 누를 수 없다 — 덮여 있다 */
+      return null;
     }
+
+    /* 달 넘기기 */
+    var mon = e.target.closest("button[data-dpmon]");
+    if (mon) {
+      var m = parseISO(ym + "-01");
+      m.setMonth(m.getMonth() + (+mon.getAttribute("data-dpmon")));
+      return { act: "month", ym: iso(m).slice(0, 7) };
+    }
+
+    /* 날짜 고르기. '오늘' 은 오늘을 고른 것과 같다 */
+    if (e.target.closest(".dp-today")) return { act: "pick", date: iso(new Date()) };
+    var dayBtn = e.target.closest("button[data-dpday]");
+    if (dayBtn) return { act: "pick", date: dayBtn.getAttribute("data-dpday") };
+
     return null;
   }
 
@@ -4442,17 +4470,10 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       calMonth[kind + ":day"] = selected;
       host.innerHTML = calHTML(kind, ym, selected, "cal:" + kind);
     }
-    var picked = calPick(e, "cal:" + kind, calMonth[kind]);
-    if (picked) return repaint(picked);
-    var mon = e.target.closest("button[data-dpmon]");
-    if (mon) {
-      var m = parseISO(calMonth[kind] + "-01");
-      m.setMonth(m.getMonth() + (+mon.getAttribute("data-dpmon")));
-      return repaint(iso(m).slice(0, 7));
-    }
-    if (e.target.closest(".dp-today")) return goToDate(iso(new Date()));
-    var dayBtn = e.target.closest("button[data-dpday]");
-    if (dayBtn) goToDate(dayBtn.getAttribute("data-dpday"));
+    var a = calAct(e, "cal:" + kind, calMonth[kind]);
+    if (!a) return;
+    if (a.act === "month") return repaint(a.ym);
+    goToDate(a.date);        /* 이 달력은 보고 있는 날을 옮긴다 */
   });
 
   /* 달력 위에 띄운 고르개는 바깥을 누르면 닫는다. 격자를 덮고 있으므로
@@ -4506,25 +4527,13 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     if (open) { e.preventDefault(); return dpOpen(open); }
 
     if (dpEl && dpEl.contains(e.target)) {
-      var picked = calPick(e, "pop", dpMonth);
-      if (picked) { dpMonth = picked; return dpPaint(); }
-      var mon = e.target.closest("button[data-dpmon]");
-      if (mon) {
-        var m = parseISO(dpMonth + "-01");
-        m.setMonth(m.getMonth() + (+mon.getAttribute("data-dpmon")));
-        dpMonth = iso(m).slice(0, 7);
-        return dpPaint();
-      }
-      /* '오늘' 은 오늘을 고른 것과 같다. 이 갈래가 빠져 있어서, 팝업 달력에서
-         오늘을 눌러도 아무 일이 없었다 — 날짜도 안 바뀌고 창도 안 닫혔다. */
-      var td = e.target.closest(".dp-today");
-      var day2 = e.target.closest("button[data-dpday]");
-      if (td || day2) {
-        var pick = td ? iso(new Date()) : day2.getAttribute("data-dpday");
-        dpBox.value = pick;
-        dpBox.dispatchEvent(new Event("change", { bubbles: true }));
-        dpClose();
-      }
+      var a = calAct(e, "pop", dpMonth);
+      if (!a) return;
+      if (a.act === "month") { dpMonth = a.ym; return dpPaint(); }
+      /* 이 달력은 날짜 칸을 채우고 닫는다 */
+      dpBox.value = a.date;
+      dpBox.dispatchEvent(new Event("change", { bubbles: true }));
+      dpClose();
       return;
     }
     dpClose();                                    /* 바깥을 누르면 닫는다 */
