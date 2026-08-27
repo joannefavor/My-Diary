@@ -197,6 +197,68 @@
   .starpick button[aria-pressed="false"] { opacity: .28; }
   .starpick .clear { font-size: 11px; color: var(--muted); margin-left: 6px; }
 
+  /* ---------- 습관 ---------- */
+  /* 한 달이 가로로 서른한 칸이라 좁은 화면에서는 옆으로 민다. 줄바꿈은 안 된다 —
+     한 습관이 두 줄로 갈라지면 이어서 했는지가 눈에 안 들어온다. */
+  .habwrap { overflow-x: auto; padding: 12px 16px 16px; }
+  .habgrid { display: grid; gap: 3px 2px; align-items: center; min-width: max-content; }
+  .hab-name {
+    position: sticky; left: 0; z-index: 1; background: var(--surface);
+    padding-right: 10px; display: flex; align-items: center; gap: 4px;
+  }
+  .hab-name input {
+    border: 0; background: none; font: inherit; font-size: 12.5px; color: inherit;
+    padding: 2px 4px; border-radius: 5px; min-width: 82px; width: 96px;
+  }
+  .hab-name input:hover { background: var(--surface-2); }
+  .hab-del {
+    border: 0; background: none; cursor: pointer; color: var(--muted);
+    font-size: 12px; padding: 0 3px; opacity: 0; flex: none;
+  }
+  .hab-name:hover .hab-del, .hab-del:focus { opacity: 1; }
+
+  /* min-width 를 0 으로 못 박는다. 격자 칸은 기본이 auto 라서, 오늘 날짜를
+     굵게 하면 그 칸만 넓어져 뒤 날짜들이 통째로 밀린다 — 달력 날짜 칸에서도
+     같은 함정을 밟은 적이 있다. */
+  .hab-dh {
+    font-size: 8.5px; color: var(--muted); text-align: center;
+    font-family: var(--mono); min-width: 0; overflow: hidden;
+  }
+  .hab-dh.wknd { color: var(--s2); }
+  /* 오늘은 색으로만 알린다. 굵게 하면 그 칸만 넓어져 뒤 날짜가 밀리는데,
+     바로 아래 칸에 이미 테두리 표시가 있어 색만으로 충분하다. */
+  .hab-dh.today { color: var(--accent-ink); }
+
+  /* 해낸 날은 채우고 안 한 날은 테두리만. 앞으로 올 날은 아예 비운다 —
+     아직 오지 않은 날을 '못 한 날'로 보이게 하면 셈이 틀려 보인다. */
+  .hab-c {
+    width: 17px; height: 17px; border-radius: 5px; cursor: pointer;
+    border: 1px solid var(--hair); background: none; padding: 0;
+  }
+  .hab-c:hover { border-color: var(--accent-ink); }
+  .hab-c.on { background: var(--accent); border-color: var(--accent); }
+  .hab-c.future { border-style: dashed; opacity: .4; cursor: default; }
+  .hab-c.today { box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--accent-ink); }
+
+  .hab-n { font-size: 11px; color: var(--muted); text-align: right; padding-left: 12px;
+           white-space: nowrap; font-family: var(--mono); }
+  .hab-s { font-size: 11px; padding-left: 8px; white-space: nowrap; }
+  .hab-s b { font-family: var(--mono); }
+  .hab-s .cold { color: var(--muted); }
+
+  /* 오늘 페이지의 짧은 체크줄 */
+  .habnow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  #habNow:not(:empty) { padding: 0 16px 14px; margin-top: -4px; }
+  .habnow button {
+    display: flex; align-items: center; gap: 5px; cursor: pointer;
+    border: 1px solid var(--hair); background: var(--surface);
+    border-radius: 999px; padding: 3px 11px; font-size: 12.5px; color: inherit;
+  }
+  .habnow button[aria-pressed="true"] {
+    background: var(--accent); border-color: var(--accent); color: var(--on-accent);
+  }
+  .habnow .tally { font-size: 11.5px; color: var(--muted); font-family: var(--mono); }
+
   .sidebyside { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 20px; }
   .sidebyside > .panel { min-width: 0; }
   @media (max-width: 860px) { .sidebyside { grid-template-columns: minmax(0, 1fr); } }
@@ -1671,6 +1733,7 @@
       </div>
     </header>
     <div class="today" id="todayBody"></div>
+    <div class="habnow" id="habNow"></div>
   </section>
 
   <div class="sidebyside" data-page="main">
@@ -1811,6 +1874,19 @@
       <span class="visit-count" id="seenCount"></span>
     </div>
     <div class="notelist" id="seenList"></div>
+  </section>
+
+  <section class="panel" data-page="habit">
+    <header>
+      <div class="calnav">
+        <button class="icon-btn" id="habPrev" aria-label="지난 달">&lt;</button>
+        <h2 id="habTitle">습관</h2>
+        <button class="icon-btn" id="habNext" aria-label="다음 달">&gt;</button>
+      </div>
+      <span class="hint" id="habHint"></span>
+      <button class="ghost" id="habAdd">+ 습관 추가</button>
+    </header>
+    <div class="habwrap"><div class="habgrid" id="habGrid"></div></div>
   </section>
 
   <!-- 아직 내용을 정하지 않은 페이지들. 무엇을 적을지 정하면 이 자리를 채운다. -->
@@ -2228,8 +2304,21 @@
 
   /* ============================ 상태 ============================ */
 
-  /* days는 날짜별 기록, meds는 "내가 먹는 약" 목록(설정) */
-  var state = { days: {}, meds: [] };
+  /* days는 날짜별 기록, meds·habits 는 목록(설정).
+     설정 목록은 날짜에 매이지 않으므로 days 와 따로 합쳐야 한다. */
+  var state = { days: {}, meds: [], habits: [] };
+
+  /* 읽어들인 것을 state 모양으로 세운다. 저장본·가져온 JSON·동기화가 모두
+     state 를 통째로 갈아끼우는데, 여기 안 적은 것은 그때마다 조용히 사라진다.
+     실제로 습관 목록이 저장은 되는데 읽히지 않는 일이 있었다.
+     설정 목록을 새로 만들면 여기 한 곳만 고치면 된다. */
+  function asState(p, days, meds, habits) {
+    return {
+      days: days !== undefined ? days : ((p && p.days) || {}),
+      meds: Array.isArray(meds) ? meds : (Array.isArray(p && p.meds) ? p.meds : []),
+      habits: Array.isArray(habits) ? habits : (Array.isArray(p && p.habits) ? p.habits : [])
+    };
+  }
   var weekStart = weekStartOf(new Date());
   var selected = TODAY;
 
@@ -2243,9 +2332,11 @@
       meds: false, medTaken: {}, mood: null, condition: null, overall: null, note: ""
     };
   }
-  function day(date) {
-    if (!state.days[date]) state.days[date] = blank();
-    var d = state.days[date];
+  /* 빠진 자리를 채운다. 항목이 나중에 늘어나므로 예전 기록에는 없는 것이 있고,
+     가져온 JSON 이나 다른 기기에서 온 기록도 마찬가지다. 채우지 않고 읽으면
+     그 한 줄에서 앱 전체가 하얗게 멈춘다.
+     새 자리를 만들면 여기에 적을 것 — day() 와 peek() 이 함께 쓴다. */
+  function fill(d) {
     if (!d.meals) d.meals = { b: false, l: false, d: false };
     if (!d.menu) d.menu = { b: "", l: "", d: "" };
     if (!d.pill) d.pill = { b: "", l: "", d: "" };
@@ -2255,6 +2346,9 @@
     if (d.pill.s == null) d.pill.s = "";
     if (!d.sym) d.sym = { b: "", l: "", d: "", s: "" };
     if (!d.medTaken) d.medTaken = {};
+    /* 그날 해낸 습관. 목록은 설정에 있고 여기엔 해냈다는 표시만 둔다 —
+       약 목록과 같은 방식이라, 이름을 고쳐도 지난 기록이 따라 바뀐다. */
+    if (!d.habitDone) d.habitDone = {};
     if (!d.schedule) d.schedule = [];
     if (!d.todos) d.todos = [];
     /* 미팅·나의역사·지식창고는 나중에 생긴 항목이라 예전 기록에는 없다 */
@@ -2271,7 +2365,19 @@
     if (!d.seen) d.seen = [];
     return d;
   }
-  function peek(date) { return state.days[date] || null; }
+
+  function day(date) {
+    if (!state.days[date]) state.days[date] = blank();
+    return fill(state.days[date]);
+  }
+  /* 없는 날은 만들지 않고 null 을 준다. 있는 날은 채워서 준다 —
+     예전에는 그대로 줘서, 항목이 빠진 기록 하나가 앱을 멈추게 했다. */
+  function peek(date) { return state.days[date] ? fill(state.days[date]) : null; }
+
+  /* 끼니를 챙겼는지. peek() 은 날짜 기록을 다듬지 않고 그대로 돌려주므로,
+     예전 기록이나 가져온 JSON 에는 meals 자체가 없을 수 있다. 지키지 않고
+     x.meals.b 를 읽으면 그 한 줄에서 앱 전체가 멈춘다. */
+  function mealOn(d, k) { return !!(d && d.meals && d.meals[k]); }
 
   /* 식단은 나중에 생긴 항목이라 예전 기록에는 없다 */
   function menuOf(d, k) { return (d && d.menu && d.menu[k]) || ""; }
@@ -2287,6 +2393,7 @@
      약 목록을 만들기 전에는 하루 한 번 눌러 두는 방식이었다.
      목록이 생긴 뒤에도 그때 '복용함'으로 적어둔 날은 복용한 날로 남긴다. */
   function medList() { return state.meds || (state.meds = []); }
+  function habitList() { return state.habits || (state.habits = []); }
   function medTakenCount(x) {
     if (!x || !x.medTaken) return 0;
     return medList().filter(function (m) { return x.medTaken[m.id]; }).length;
@@ -2319,7 +2426,7 @@
       if (raw) {
         var p = JSON.parse(raw);
         if (p && typeof p === "object" && p.days) {
-          state = { days: p.days, meds: Array.isArray(p.meds) ? p.meds : [] };
+          state = asState(p);
           normalize();
           return true;
         }
@@ -2501,7 +2608,7 @@
       return sleepHours(x) != null || x.bp || x.glucose != null || x.overall != null ||
         x.condition != null ||
         x.water != null || x.exercise || x.mood != null ||
-        x.meals.b || x.meals.l || x.meals.d || medDone(x);
+        mealOn(x, "b") || mealOn(x, "l") || mealOn(x, "d") || medDone(x);
     });
   }
 
@@ -3426,7 +3533,7 @@
     var mealVals = s.dates.map(function (d) {
       var x = peek(d);
       if (!x) return null;
-      var on = MEALS.filter(function (m) { return x.meals[m[0]]; }).map(function (m) { return m[1]; });
+      var on = MEALS.filter(function (m) { return mealOn(x, m[0]); }).map(function (m) { return m[1]; });
       return on.length ? on.join("·") : null;
     });
     var medVals = s.dates.map(function (d) {
@@ -3611,7 +3718,7 @@
         '<div class="meal-rows" id="mealRows">' +
           MEALS.map(function (m) {
             return '<div class="meal-row">' +
-              '<button type="button" data-m="' + m[0] + '" aria-pressed="' + (!!d.meals[m[0]]) + '">' +
+              '<button type="button" data-m="' + m[0] + '" aria-pressed="' + mealOn(d, m[0]) + '">' +
                 m[1] + "</button>" +
               '<input type="text" data-menu="' + m[0] + '" placeholder="' + m[1] +
                 '에 먹은 것" value="' + esc(menuOf(d, m[0])) +
@@ -3877,6 +3984,8 @@
     renderNotes("worklog");
     renderVisits();
     renderSeen();
+    renderHabits();
+    renderHabitNow();
     renderMoney();
   }
 
@@ -5094,6 +5203,191 @@
     if (box) box.focus();
   });
 
+  /* ============================ 습관 ============================
+
+     목록은 설정(state.habits)에 두고, 날짜 밑에는 해냈다는 표시만 둔다.
+     "내가 먹는 약"과 같은 방식이다 — 이름을 고쳐도 지난 기록이 따라 바뀌고,
+     동기화는 날짜와 목록을 따로 합치므로 두 기기에서 각각 습관을 만들어도
+     둘 다 남는다.
+
+     달성률(%) 대신 횟수와 연속 일수를 보여준다. 퍼센트는 달이 끝나야 뜻이
+     생기는 숫자인데, 습관은 오늘 이어갈지 말지가 궁금한 것이라서. */
+  var habMonth = null;   /* 보고 있는 달. 비어 있으면 이번 달 */
+
+  function habOn(date, id) {
+    var d = state.days[date];
+    return !!(d && d.habitDone && d.habitDone[id]);
+  }
+
+  /* 오늘까지 며칠째 이어서 했나. 오늘 아직 안 했으면 어제까지로 센다 —
+     아침에 열었을 때 어제까지 쌓은 것이 0 으로 보이면 맥이 빠진다. */
+  function habStreak(id) {
+    var at = parseISO(TODAY);
+    if (!habOn(TODAY, id)) at = addDays(at, -1);
+    var n = 0;
+    while (habOn(iso(at), id)) { n++; at = addDays(at, -1); }
+    return n;
+  }
+
+  /* 지금까지 가장 길게 이어갔던 날수 */
+  function habBest(id) {
+    var dates = Object.keys(state.days).filter(function (d0) { return habOn(d0, id); }).sort();
+    var best = 0, run = 0, prev = null;
+    dates.forEach(function (d0) {
+      run = (prev && iso(addDays(parseISO(prev), 1)) === d0) ? run + 1 : 1;
+      if (run > best) best = run;
+      prev = d0;
+    });
+    return best;
+  }
+
+  function habMonthDates(ym) {
+    var y = Number(ym.slice(0, 4)), m = Number(ym.slice(5, 7));
+    var last = new Date(y, m, 0).getDate();
+    var out = [];
+    for (var i = 1; i <= last; i++) out.push(ym + "-" + pad(i));
+    return out;
+  }
+
+  function renderHabits() {
+    var host = document.getElementById("habGrid");
+    if (!host) return;
+    var ym = habMonth || selected.slice(0, 7);
+    var dates = habMonthDates(ym);
+    var list = habitList();
+
+    document.getElementById("habTitle").textContent =
+      Number(ym.slice(0, 4)) + "년 " + Number(ym.slice(5, 7)) + "월 습관";
+    document.getElementById("habHint").textContent =
+      list.length ? "칸을 눌러 해낸 날을 표시합니다" : "";
+
+    if (!list.length) {
+      host.style.gridTemplateColumns = "1fr";
+      host.innerHTML = '<div class="wk-empty">아직 정한 습관이 없습니다. ' +
+        "<b>+ 습관 추가</b>로 시작하세요. 이름은 나중에 고칠 수 있고, " +
+        "고쳐도 지난 기록은 그대로 따라옵니다.</div>";
+      return;
+    }
+
+    /* 이름 + 날짜들 + 이달 횟수 + 연속 */
+    host.style.gridTemplateColumns =
+      "auto repeat(" + dates.length + ", 17px) auto auto";
+
+    var html = '<div></div>' + dates.map(function (d0) {
+      var dt = parseISO(d0);
+      return '<div class="hab-dh' + (isWeekendDate(d0) ? " wknd" : "") +
+        (d0 === TODAY ? " today" : "") + '">' + dt.getDate() + "</div>";
+    }).join("") + '<div class="hab-n">이달</div><div class="hab-s">연속</div>';
+
+    list.forEach(function (h) {
+      html += '<div class="hab-name">' +
+        '<input data-habname="' + h.id + '" value="' + esc(h.name) +
+          '" placeholder="습관 이름" aria-label="습관 이름">' +
+        '<button type="button" class="hab-del" data-habdel="' + h.id +
+          '" title="지우기" aria-label="' + esc(h.name) + ' 지우기">✕</button>' +
+      "</div>";
+      var n = 0;
+      dates.forEach(function (d0) {
+        var on = habOn(d0, h.id);
+        if (on) n++;
+        var future = d0 > TODAY;
+        html += '<button type="button" class="hab-c' + (on ? " on" : "") +
+          (future ? " future" : "") + (d0 === TODAY ? " today" : "") + '"' +
+          (future ? " disabled" : "") +
+          ' data-habcell="' + d0 + "|" + h.id + '"' +
+          ' aria-pressed="' + on + '" aria-label="' + d0 + " " + esc(h.name) + '"></button>';
+      });
+      var st = habStreak(h.id), best = habBest(h.id);
+      html += '<div class="hab-n">' + n + "회</div>" +
+        '<div class="hab-s' + (st ? "" : " cold") + '">' +
+          (st ? "<b>" + st + "</b>일" + (st >= 3 ? " 🔥" : "") : "—") +
+          (best > st ? ' <span class="cold">최장 ' + best + "일</span>" : "") +
+        "</div>";
+    });
+    host.innerHTML = html;
+  }
+
+  /* 오늘 페이지의 짧은 체크줄. 매일 누르는 것이라 손이 닿는 곳에 있어야 한다 */
+  function renderHabitNow() {
+    var host = document.getElementById("habNow");
+    if (!host) return;
+    var list = habitList();
+    if (!list.length) { host.innerHTML = ""; return; }
+    var done = list.filter(function (h) { return habOn(selected, h.id); }).length;
+    host.innerHTML = list.map(function (h) {
+      var on = habOn(selected, h.id);
+      return '<button type="button" data-habnow="' + h.id + '" aria-pressed="' + on + '">' +
+        (on ? "☑" : "☐") + " " + esc(h.name) + "</button>";
+    }).join("") + '<span class="tally">' + done + " / " + list.length + "</span>";
+  }
+
+  function habToggle(date, id) {
+    var d = day(date);
+    if (d.habitDone[id]) delete d.habitDone[id];
+    else d.habitDone[id] = true;
+    save();
+  }
+
+  document.addEventListener("click", function (e) {
+    var cell = e.target.closest("button[data-habcell]");
+    if (cell) {
+      var k = cell.getAttribute("data-habcell").split("|");
+      if (k[0] > TODAY) return;                 /* 오지 않은 날은 못 누른다 */
+      habToggle(k[0], k[1]);
+      renderHabits(); renderHabitNow();
+      return;
+    }
+    var now = e.target.closest("button[data-habnow]");
+    if (now) {
+      habToggle(selected, now.getAttribute("data-habnow"));
+      renderHabitNow(); renderHabits();
+      return;
+    }
+    var del = e.target.closest("button[data-habdel]");
+    if (del) {
+      var id = del.getAttribute("data-habdel");
+      var h = habitList().filter(function (x) { return x.id === id; })[0];
+      if (!confirm("'" + (h ? h.name : "") + "' 습관을 지울까요?\n\n" +
+                   "지금까지 표시해 둔 날들도 함께 사라집니다.")) return;
+      state.habits = habitList().filter(function (x) { return x.id !== id; });
+      /* 날짜 밑에 남은 표시도 함께 지운다. 안 지우면 빈 날 판정이 어긋나
+         아무것도 없는 날이 '적은 날'로 남는다. */
+      Object.keys(state.days).forEach(function (d0) {
+        var dd = state.days[d0];
+        if (dd && dd.habitDone) delete dd.habitDone[id];
+      });
+      save(); renderHabits(); renderHabitNow();
+    }
+  });
+
+  document.addEventListener("change", function (e) {
+    var nm = e.target.closest("input[data-habname]");
+    if (!nm) return;
+    var id = nm.getAttribute("data-habname");
+    habitList().forEach(function (h) { if (h.id === id) h.name = nm.value.trim(); });
+    save(); renderHabitNow();
+  });
+
+  var habAddBtn = document.getElementById("habAdd");
+  if (habAddBtn) habAddBtn.addEventListener("click", function () {
+    habitList().push({ id: uid(), name: "" });
+    save(); renderHabits(); renderHabitNow();
+    var boxes = document.querySelectorAll("#habGrid input[data-habname]");
+    if (boxes.length) boxes[boxes.length - 1].focus();
+  });
+
+  ["habPrev", "habNext"].forEach(function (id) {
+    var b = document.getElementById(id);
+    if (!b) return;
+    b.addEventListener("click", function () {
+      var ym = habMonth || selected.slice(0, 7);
+      var m = parseISO(ym + "-01");
+      m.setMonth(m.getMonth() + (id === "habNext" ? 1 : -1));
+      habMonth = iso(m).slice(0, 7);
+      renderHabits();
+    });
+  });
+
   /* ============================ 본 것 ============================
 
      여행·영화·공연·강의를 한 목록에 담는다. 넷을 페이지 셋으로 나누지 않은 것은
@@ -6108,7 +6402,8 @@
     { id: "history",   label: "발자취" },
     { id: "meeting",   label: "만남" },
     { id: "knowledge", label: "배움" },
-    { id: "seen",      label: "본 것" }
+    { id: "seen",      label: "본 것" },
+    { id: "habit",     label: "습관" }
   ];
 
   function currentPage() {
@@ -6871,7 +7166,7 @@
       if (!emptyDay(state.days[d])) days[d] = state.days[d];
     });
     var plain = new TextEncoder().encode(
-      JSON.stringify({ days: days, meds: medList() }));
+      JSON.stringify({ days: days, meds: medList(), habits: habitList() }));
     /* base64(iv 12 + 암호문 + 태그 16) */
     var est = function (n) { return Math.ceil((n + 28) / 3) * 4; };
     sizeCache = { at: Date.now(), blob: est(plain.length) };
@@ -7081,6 +7376,7 @@
     if (d.sym && (d.sym.b || d.sym.l || d.sym.d || d.sym.s)) return false;
     if (d.meds) return false;
     if (d.medTaken && Object.keys(d.medTaken).some(function (k) { return d.medTaken[k]; })) return false;
+    if (d.habitDone && Object.keys(d.habitDone).some(function (k) { return d.habitDone[k]; })) return false;
     if (d.mood != null || d.condition != null || d.overall != null) return false;
     if (d.note) return false;
     return true;
@@ -7102,16 +7398,18 @@
     return { days: out, conflicts: conflicts };
   }
 
-  function mergeMeds(base, local, remote) {
+  /* 설정 목록(약·습관)을 합친다. 날짜 밑에 있지 않아서 mergeDays 가 못 다룬다.
+     key 를 받는 것은 갈래마다 같은 셈을 되풀이하지 않기 위해서다. */
+  function mergeNamedList(base, local, remote, key) {
     function byId(list) {
       var m = {};
       (list || []).forEach(function (x) { if (x && x.id) m[x.id] = x; });
       return m;
     }
-    var B = byId(base.meds), L = byId(local.meds), R = byId(remote.meds);
+    var B = byId(base[key]), L = byId(local[key]), R = byId(remote[key]);
     var order = [], seen = {};
-    /* 이 기기의 순서를 지키고, 저쪽에만 있는 약을 뒤에 붙인다 */
-    (local.meds || []).concat(remote.meds || []).forEach(function (x) {
+    /* 이 기기의 순서를 지키고, 저쪽에만 있는 것을 뒤에 붙인다 */
+    (local[key] || []).concat(remote[key] || []).forEach(function (x) {
       if (x && x.id && !seen[x.id]) { seen[x.id] = 1; order.push(x.id); }
     });
     Object.keys(B).forEach(function (id) { if (!seen[id]) { seen[id] = 1; order.push(id); } });
@@ -7125,10 +7423,14 @@
 
   function mergeInto(remote) {
     var base = loadBase();
-    var local = { days: state.days, meds: medList() };
-    var safe = { days: (remote && remote.days) || {}, meds: (remote && remote.meds) || [] };
+    var local = { days: state.days, meds: medList(), habits: habitList() };
+    var safe = { days: (remote && remote.days) || {},
+                 meds: (remote && remote.meds) || [],
+                 habits: (remote && remote.habits) || [] };
     var d = mergeDays(base, local, safe);
-    state = { days: d.days, meds: mergeMeds(base, local, safe) };
+    state = asState(null, d.days,
+      mergeNamedList(base, local, safe, "meds"),
+      mergeNamedList(base, local, safe, "habits"));
     normalize();
     return d.conflicts;
   }
@@ -7180,7 +7482,7 @@
     Object.keys(state.days).forEach(function (d) {
       if (!emptyDay(state.days[d])) days[d] = state.days[d];
     });
-    var snapshot = { days: days, meds: medList() };
+    var snapshot = { days: days, meds: medList(), habits: habitList() };
     return seal(sync.key, snapshot).then(function (blob) {
       return syncApi("PUT", { blob: blob, rev: sync.rev });
     }).then(function (r) {
@@ -7343,7 +7645,7 @@
       try {
         var p = JSON.parse(String(reader.result));
         if (!p || !p.days) throw new Error("형식이 다릅니다");
-        state = { days: p.days, meds: Array.isArray(p.meds) ? p.meds : [] };
+        state = asState(p);
         normalize();
         persist();
         stamp("가져왔습니다.");

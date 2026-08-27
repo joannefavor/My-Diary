@@ -1,0 +1,80 @@
+<!doctype html><meta charset="utf-8"><title>습관 시험</title>
+<div id="out" style="font:13px/1.7 ui-monospace"></div>
+<iframe id="f" src="/#/habit" style="width:1240px;height:100px;border:0"></iframe>
+<script>
+var out=document.getElementById("out"),f=document.getElementById("f"),pass=0,fail=0;
+function log(ok,n,e){(ok?pass++:fail++);
+ out.insertAdjacentHTML("beforeend",(ok?"통과  ":"X 실패  ")+n+(e?"   "+e:"")+"<br>");}
+function done(){out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");}
+f.onload=function(){var w=f.contentWindow,d=w.document;
+ w.onerror=function(m,s,l){log(false,"앱 오류",m+" ("+l+"줄)");};
+ setTimeout(function(){
+  try{w.localStorage.removeItem("weekly-health-ledger-v3");}catch(e){}
+  log(!!d.querySelector('#pageTabs button[data-goto="habit"]'),"'습관' 탭이 있다");
+  log(!!d.getElementById("habGrid"),"습관 화면이 있다");
+  log(d.getElementById("habGrid").textContent.indexOf("아직 정한 습관이 없습니다")!==-1,
+    "처음엔 안내가 나온다");
+
+  /* 습관 두 개 만들기 */
+  d.getElementById("habAdd").click();
+  d.getElementById("habAdd").click();
+  setTimeout(function(){
+   var names=d.querySelectorAll("#habGrid input[data-habname]");
+   log(names.length===2,"습관 둘이 생겼다",names.length+"개");
+   names[0].value="운동"; names[0].dispatchEvent(new w.Event("change",{bubbles:true}));
+   names[1].value="일기쓰기"; names[1].dispatchEvent(new w.Event("change",{bubbles:true}));
+   setTimeout(function(){
+    var st=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3"));
+    log(st.habits&&st.habits.length===2,"목록이 설정에 저장된다",
+      st.habits&&st.habits.map(function(h){return h.name;}).join(","));
+
+    /* 한 달 격자에 칸이 있나 */
+    var cells=d.querySelectorAll("#habGrid button[data-habcell]");
+    var y=new Date().getFullYear(),m=new Date().getMonth()+1;
+    var lastDay=new Date(y,m,0).getDate();
+    log(cells.length===lastDay*2,"한 달 × 습관 수 만큼 칸이 있다",cells.length+"개 (기대 "+lastDay*2+")");
+
+    /* 오지 않은 날은 못 누른다 */
+    var fut=d.querySelectorAll("#habGrid button.future");
+    log(!fut.length||fut[0].disabled,"오지 않은 날은 눌리지 않는다",fut.length+"칸");
+
+    /* 사흘 이어서 체크 → 연속 3일 */
+    function isoOf(off){var t=new Date();t.setDate(t.getDate()+off);
+      return t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0");}
+    var hid=st.habits[0].id;
+    [0,-1,-2].forEach(function(o){
+      var b=d.querySelector('[data-habcell="'+isoOf(o)+"|"+hid+'"]');
+      if(b) b.click();
+    });
+    setTimeout(function(){
+     var row=d.getElementById("habGrid").textContent;
+     log(row.indexOf("3일")!==-1,"연속 3일로 센다",row.match(/\d+회/)+" / "+(row.match(/\d+일/)||""));
+     log(row.indexOf("🔥")!==-1,"사흘부터 불꽃이 붙는다");
+
+     /* 오늘 페이지 체크줄 */
+     w.location.hash="#/main";
+     setTimeout(function(){
+      var chips=d.querySelectorAll("#habNow button[data-habnow]");
+      log(chips.length===2,"오늘 페이지에 체크줄이 있다",chips.length+"개");
+      log(chips[0].getAttribute("aria-pressed")==="true","오늘 한 것이 눌린 상태다");
+      log(d.getElementById("habNow").textContent.indexOf("1 / 2")!==-1,"오늘 몇 개 했는지 센다",
+        d.getElementById("habNow").textContent.trim().slice(-8));
+      chips[1].click();
+      setTimeout(function(){
+       log(d.getElementById("habNow").textContent.indexOf("2 / 2")!==-1,"눌러서 켤 수 있다");
+
+       var before=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3"));
+       log(before.habits.length===2,"저장본에 목록이 있다");
+       /* 습관만 적은 날이 '빈 날'로 버려지지 않는가 — 동기화가 그 판정을 쓴다 */
+       log(Object.keys(before.days).some(function(k){
+         var dd=before.days[k];
+         return dd&&dd.habitDone&&Object.keys(dd.habitDone).length;
+       }),"체크한 날이 저장에 남는다");
+       done();
+      },300);
+     },500);
+    },400);
+   },300);
+  },400);
+ },900);};
+</script>

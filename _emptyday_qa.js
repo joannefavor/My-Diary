@@ -36,6 +36,11 @@ t("없는 날도 빈 날", null, true);
   var e = { sym: {} };   e.sym[k] = "속쓰림";   t("sym." + k, e, false);
 });
 
+/* 체크로만 남는 것들 — 목록이 아니라 표시라서 따로 본다 */
+t("습관 하나만 해내도 빈 날이 아니다", { habitDone: { h1: true } }, false);
+t("약 하나만 먹어도 빈 날이 아니다", { medTaken: { m1: true } }, false);
+t("체크가 다 꺼져 있으면 빈 날", { habitDone: { h1: false }, medTaken: {} }, true);
+
 t("빈 할 일만 있으면 빈 날", { todos: [{ text: "", done: false }] }, true);
 t("빈 목록만 있으면 빈 날", { faith: [], prayer: [], seen: [] }, true);
 t("메모", { note: "ㅁ" }, false);
