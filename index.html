@@ -197,6 +197,8 @@
     grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
   }
   .mt-trio input { min-width: 0; }
+  /* 제목이 없는 갈래에서 날짜와 '지우기' 사이를 벌려 준다 */
+  .mt-fill { flex: 1; }
   @media (max-width: 780px) {
     .mt-trio { grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr); }
   }
@@ -2638,6 +2640,17 @@
       moved = true;
     });
 
+    /* 일기에서 제목과 느낌 칸을 없앴다. 적어 둔 것을 잃지 않게 한 칸으로 모은다 —
+       제목이 첫 줄, 그다음 일과, 그다음 느낌 차례로 붙인다. */
+    Object.keys(state.days).forEach(function (date) {
+      (state.days[date] && state.days[date].diary || []).forEach(function (n) {
+        if (!n || (!n.title && !n.feel)) return;
+        n.notes = [n.title, n.notes, n.feel].filter(Boolean).join("\n");
+        n.title = ""; n.feel = "";
+        moved = true;
+      });
+    });
+
     /* 공연을 영화에 합쳤다. 둘 다 "언제 어디서 누구와 무엇을 보았나" 라서
        나눠 둘 까닭이 크지 않았고, 갈래가 많아질수록 어디에 적을지부터 고민하게 된다.
        적어 둔 것은 그대로 옮긴다 — 어디서 칸이 공연장을 말해 준다. */
@@ -5055,11 +5068,10 @@
     prayer:    { list: "prayerList",    title: "무엇을 위해 기도하는가" },
     worklog:   { list: "worklogList",   title: "무슨 일을 했나" },
     memo:      { list: "memoList",      title: "무엇을 남길까" },
-    /* 일기는 하루를 두고 적는다 — 무엇을 했나(일과)와 어땠나(느낌)를 나눠 둔다.
-       묵상일기는 말씀을 두고 적는 것이라 그쪽은 한 칸으로 둔다. */
-    diary:     { list: "diaryList",     title: "오늘 어떤 하루였나",
-                 body: "일과", bodyPh: "무엇을 했나",
-                 feel: "어떤 마음이었나" },
+    /* 일기는 날짜와 마음 한 칸뿐이다. 제목을 두면 적기 전에 제목부터 지어야 해서
+       손이 무거워진다 — 그날 마음을 적는 자리에는 그게 걸림돌이 된다. */
+    diary:     { list: "diaryList",     noTitle: true,
+                 body: "마음", bodyPh: "오늘 어떤 마음이었나" },
     /* feel 을 주면 내용 밑에 '느낌' 칸이 하나 더 붙는다. 무엇을 보았나와
        어땠나는 다른 이야기라 한 칸에 섞으면 나중에 골라 읽기 어렵다. */
     /* trio 를 주면 제목 아래에 언제·어디서·누구랑이 한 줄로 붙는다.
@@ -5212,9 +5224,10 @@
     return '<div class="mt">' +
       '<div class="mt-top">' +
         '<span class="mt-when">' + when + "</span>" +
-        '<input class="mt-title" data-note="title" data-at="' + at +
-          '" value="' + esc(n.title) + '" placeholder="' + conf.title +
-          '" aria-label="제목">' +
+        (conf.noTitle ? '<span class="mt-fill"></span>'
+          : '<input class="mt-title" data-note="title" data-at="' + at +
+            '" value="' + esc(n.title) + '" placeholder="' + conf.title +
+            '" aria-label="제목">') +
         '<button class="ghost mt-del" data-notedel="' + at + '">지우기</button>' +
       "</div>" +
       (conf.trio
@@ -5335,7 +5348,8 @@
         ' aria-expanded="' + open + '">' +
         '<span class="vd">' + (dt.getMonth() + 1) + "." + pad(dt.getDate()) +
           "<small> " + dt.getFullYear() + "</small></span>" +
-        '<span class="vp">' + esc((r.n.title || "").trim() || "제목 없음") + "</span>" +
+        (NOTE_KINDS[kind].noTitle ? ""
+          : '<span class="vp">' + esc((r.n.title || "").trim() || "제목 없음") + "</span>") +
         '<span class="vs">' + esc(noteSummary(r.n)) + "</span>" +
         (r.n.star ? starText(r.n.star) : "") +
         "</button>";
@@ -5435,8 +5449,10 @@
         noteOpen[kind] = kind + "|" + selected + "|" + one.id;
         save();
         renderNotes(kind);
-        var boxes = document.querySelectorAll(
-          "#" + NOTE_KINDS[kind].list + ' input[data-note="title"]');
+        /* 제목이 없는 갈래는 적는 칸으로 바로 간다 */
+        var sel = NOTE_KINDS[kind].noTitle
+          ? ' textarea[data-note="notes"]' : ' input[data-note="title"]';
+        var boxes = document.querySelectorAll("#" + NOTE_KINDS[kind].list + sel);
         if (boxes.length) boxes[0].focus();
       });
     });

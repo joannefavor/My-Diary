@@ -1,0 +1,28 @@
+<!doctype html><meta charset="utf-8"><title>옛 일기 합치기 시험</title>
+<div id="out" style="font:13px/1.7 ui-monospace"></div>
+<iframe id="f" src="/_fix_diary.html#/faith" style="width:1240px;height:100px;border:0"></iframe>
+<script>
+var out=document.getElementById("out"),f=document.getElementById("f"),pass=0,fail=0;
+function log(ok,n,e){(ok?pass++:fail++);
+ out.insertAdjacentHTML("beforeend",(ok?"통과  ":"X 실패  ")+n+(e?"   "+e:"")+"<br>");}
+f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
+ w.onerror=function(m,s,l){log(false,"앱 오류",m+" ("+l+"줄)");};
+ setTimeout(function(){
+  var st=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3"));
+  var v=null;Object.keys(st.days).forEach(function(k){
+   ((st.days[k].diary)||[]).forEach(function(x){v=x;});});
+  log(!!v,"일기가 남아 있다");
+  log(!v.title,"제목 자리가 비워진다");
+  log(!v.feel,"느낌 자리가 비워진다");
+  var lines=String(v.notes).split("\n");
+  log(lines.length===3,"세 칸이 세 줄로 모인다",lines.length+"줄");
+  log(lines[0]==="비가 왔고 오래 걸었다","제목이 첫 줄",lines[0]);
+  log(lines[1]==="오후에 도서관까지 걸어감","일과가 둘째 줄",lines[1]);
+  log(lines[2]==="젖었지만 개운했다","느낌이 셋째 줄",lines[2]);
+  /* 화면에도 그대로 */
+  var row=d.querySelector("#diaryList [data-nrow]");
+  log(!!row&&row.querySelector(".vs").textContent.indexOf("비가 왔고")!==-1,
+    "요약 줄에 보인다",row&&row.querySelector(".vs").textContent.slice(0,20));
+  out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
+ },1300);};
+</script>
