@@ -10,12 +10,11 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
  w.onerror=function(m,s,l){log(false,"앱 오류",m+" ("+l+"줄)");};
  setTimeout(function(){
   var L=d.getElementById("movieList");
-  log(L.querySelectorAll(".mt").length===1,"오늘 것만 펼쳐진다",
-    L.querySelectorAll(".mt").length+"개");
+  log(L.querySelectorAll(".mt").length===0,"평소엔 펼친 칸이 없다");
   var rows=L.querySelectorAll("[data-nrow]");
-  log(rows.length===3,"지난 것은 세 줄까지",rows.length+"줄");
+  log(rows.length===3,"요약이 세 줄",rows.length+"줄");
   log(L.querySelector(".pasttitle .more")&&
-      L.querySelector(".pasttitle .more").textContent.indexOf("2건")!==-1,
+      L.querySelector(".pasttitle .more").textContent.indexOf("3건")!==-1,
     "더 있으면 몇 건인지 알린다",L.querySelector(".pasttitle .more")&&
       L.querySelector(".pasttitle .more").textContent.trim());
 
@@ -23,7 +22,7 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
   rows[0].click();
   setTimeout(function(){
    var opened=L.querySelector(".vopen .mt");
-   log(!!opened,"지난 줄을 누르면 펼쳐진다");
+   log(!!opened,"줄을 누르면 펼쳐진다");
    log(!!opened.querySelector(".mt-trio"),"펼친 것도 오늘 것과 같은 모양");
    /* 다시 누르면 접힌다 */
    L.querySelector("[data-nrow]").click();
@@ -31,6 +30,7 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
     log(!L.querySelector(".vopen"),"다시 누르면 접힌다");
 
     /* 별점 — 영화에는 있고 여행에는 없다 */
+    L.querySelector("[data-nrow]").click();
     var card=L.querySelector(".mt");
     var keys=[].map.call(card.querySelectorAll(".mt-key"),function(x){return x.textContent;});
     log(keys.indexOf("별점")!==-1,"영화에 별점이 있다",keys.join(","));
@@ -55,9 +55,9 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
       q.value="봄"; ev(w,q,"input");
       setTimeout(function(){
        var n=d.getElementById("movieList").querySelectorAll(".mt").length;
-       log(n===5,"찾으면 지난 것이 다 나온다",n+"개");
-       log(!d.getElementById("movieList").querySelector(".pastwrap"),
-         "찾는 중에는 '지난 기록' 을 따로 두지 않는다");
+       log(n===5,"찾으면 걸린 것이 다 펼쳐진다",n+"개");
+       log(!d.getElementById("movieList").querySelector("[data-nrow]"),
+         "찾는 중에는 요약 줄을 두지 않는다");
        out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
       },400);
      },300);

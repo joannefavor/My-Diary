@@ -1950,11 +1950,11 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
 
   <section class="panel" data-page="seen">
     <header>
-      <h2>영화</h2>
+      <h2>영화 · 공연</h2>
       <button class="ghost" data-noteadd="movie">+ 새로 적기</button>
     </header>
     <div class="daybar">
-      <input type="search" data-find="movie" placeholder="제목·내용·느낌으로 찾기" aria-label="영화 찾기">
+      <input type="search" data-find="movie" placeholder="제목·내용·느낌으로 찾기" aria-label="영화·공연 찾기">
       <span class="findrange">
         <input type="date" data-findfrom="movie" aria-label="찾을 기간 시작">
         <span class="tilde">~</span>
@@ -1965,22 +1965,6 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     <div class="notelist" id="movieList"></div>
   </section>
 
-  <section class="panel" data-page="seen">
-    <header>
-      <h2>공연</h2>
-      <button class="ghost" data-noteadd="show">+ 새로 적기</button>
-    </header>
-    <div class="daybar">
-      <input type="search" data-find="show" placeholder="제목·내용·느낌으로 찾기" aria-label="공연 찾기">
-      <span class="findrange">
-        <input type="date" data-findfrom="show" aria-label="찾을 기간 시작">
-        <span class="tilde">~</span>
-        <input type="date" data-findto="show" aria-label="찾을 기간 끝">
-      </span>
-      <span class="visit-count" data-count="show"></span>
-    </div>
-    <div class="notelist" id="showList"></div>
-  </section>
 
   <section class="panel" data-page="seen">
     <header>
@@ -2609,7 +2593,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     /* 본 것을 한 목록(seen)에 담던 것을 갈래마다 나눈다. 여행은 제목이 곧
        가는 곳이었으므로 '어디에' 로 옮기고, 나머지는 어디서·함께가 갈 곳이
        없어져 내용 밑에 붙인다 — 지우는 것보다 낫다. */
-    var SEEN_MOVE = { "여행": "trip", "영화": "movie", "공연": "show",
+    var SEEN_MOVE = { "여행": "trip", "영화": "movie", "공연": "movie",
                       "강의": "lecture", "책": "book" };
     Object.keys(state.days).forEach(function (date) {
       var w = state.days[date];
@@ -2624,7 +2608,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
         } else {
           /* 영화·공연은 어디서·누구랑 칸이 따로 있다. 강의·책은 그 칸이 없어
              내용 밑에 붙인다 — 지우는 것보다 낫다. */
-          var hasWhere = (key === "movie" || key === "show");
+          var hasWhere = (key === "movie");
           var tail = [];
           if (!hasWhere && v.place) tail.push("어디서 " + v.place);
           if (!hasWhere && v.who) tail.push("함께 " + v.who);
@@ -2639,10 +2623,22 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       moved = true;
     });
 
+    /* 공연을 영화에 합쳤다. 둘 다 "언제 어디서 누구와 무엇을 보았나" 라서
+       나눠 둘 까닭이 크지 않았고, 갈래가 많아질수록 어디에 적을지부터 고민하게 된다.
+       적어 둔 것은 그대로 옮긴다 — 어디서 칸이 공연장을 말해 준다. */
+    Object.keys(state.days).forEach(function (date) {
+      var w = state.days[date];
+      if (!w || !w.show || !w.show.length) return;
+      if (!w.movie) w.movie = [];
+      w.show.forEach(function (v) { w.movie.push(v); });
+      w.show = [];
+      moved = true;
+    });
+
     /* 영화·공연에 어디서·누구랑 칸이 없던 잠깐 동안, 그 둘을 내용 끝에
        "어디서 X · 함께 Y" 로 붙여 두었다. 형식을 내가 정했으니 정확히 되돌린다.
        칸이 이미 차 있으면 건드리지 않는다 — 손으로 적은 것을 덮으면 안 된다. */
-    ["movie", "show"].forEach(function (key) {
+    ["movie"].forEach(function (key) {
       Object.keys(state.days).forEach(function (date) {
         (state.days[date] && state.days[date][key] || []).forEach(function (n) {
           if (!n || !n.notes || (n.place && n.who)) return;
@@ -4253,7 +4249,6 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     renderVisits();
     renderTrips();
     renderNotes("movie");
-    renderNotes("show");
     renderNotes("lecture");
     renderNotes("book");
     renderHabits();
@@ -4946,7 +4941,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
   /* 새 이름과 예전 이름을 함께 받는다. 손에 익은 말을 못 쓰게 하면 안 된다. */
   var QUICK_TAGS = {
     "일정": "schedule", "달력": "schedule", "일기": "diary",
-    "여행": "trip", "영화": "movie", "공연": "show", "강의": "lecture", "책": "book",
+    "여행": "trip", "영화": "movie", "공연": "movie", "강의": "lecture", "책": "book",
     "업무": "worklog", "업무일지": "worklog", "일": "worklog", "할일": "work",
     "건강": "health", "몸": "health",
     "미팅": "meeting", "회의": "meeting", "만남": "meeting", "todo": "work",
@@ -5008,7 +5003,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
   var NOTE_LABEL = { history: "나의역사", knowledge: "지식창고",
                      faith: "묵상일기", prayer: "기도", worklog: "업무",
                      memo: "메모", diary: "일기",
-                     movie: "영화", show: "공연", lecture: "강의", book: "책" };
+                     movie: "영화·공연", lecture: "강의", book: "책" };
   var NOTE_KINDS = {
     history:   { list: "historyList",   title: "무슨 일이 있었나" },
     knowledge: { list: "knowledgeList", title: "무엇을 알게 되었나" },
@@ -5026,8 +5021,6 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     /* trio 를 주면 제목 아래에 언제·어디서·누구랑이 한 줄로 붙는다.
        영화와 공연은 그 셋이 기억을 되살리는 실마리라 내용보다 먼저 온다. */
     movie:     { list: "movieList",   title: "무슨 영화", feel: "어땠나",
-                 trio: true, star: true },
-    show:      { list: "showList",    title: "무슨 공연", feel: "어땠나",
                  trio: true, star: true },
     lecture:   { list: "lectureList", title: "무슨 강의", feel: "무엇이 남았나" },
     book:      { list: "bookList",    title: "무슨 책",   feel: "무엇이 남았나" }
@@ -5246,20 +5239,25 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       return;
     }
 
-    host.innerHTML = dates.map(function (date) {
-      return state.days[date][kind].filter(function (n) {
-        return hitWord(kind, [n.title, n.place, n.who, n.notes, n.feel].filter(Boolean).join(" "));
-      }).map(function (n) {
-        return noteCard(kind, date, n);
+    /* 찾는 중이면 걸린 것을 다 펼쳐 보여준다. 그때는 전부가 답이라서. */
+    if (finding) {
+      host.innerHTML = dates.map(function (date) {
+        return state.days[date][kind].filter(function (n) {
+          return hitWord(kind, [n.title, n.place, n.who, n.notes, n.feel].filter(Boolean).join(" "));
+        }).map(function (n) {
+          return noteCard(kind, date, n);
+        }).join("");
       }).join("");
-    }).join("");
+      return;
+    }
 
-    if (!finding) host.innerHTML += pastNotes(kind);
+    host.innerHTML = recentNotes(kind);
   }
 
-  /* 지난 날에 적어 둔 것을 줄로만 몇 개. 누르면 그 자리에서 펼쳐진다.
-     더 있으면 개수만 알린다 — 끝없이 늘어놓는 대신 찾기로 보내는 편이 낫다. */
-  var PAST_MAX = 3;
+  /* 평소 화면. 펼친 칸은 하나뿐이고 나머지는 한 줄 요약으로 세 개 보인다.
+     적을수록 칸이 늘어나 오늘 적을 자리가 저 아래로 밀리던 것을 막는다.
+     날짜는 펼친 칸 안에서 고르므로, 지난 날 것도 여기서 그대로 적는다. */
+  var RECENT_MAX = 3;
   var noteOpen = {};
 
   function noteSummary(n) {
@@ -5268,20 +5266,28 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     return t || "적은 것 없음";
   }
 
-  function pastNotes(kind) {
+  function recentNotes(kind) {
     var rows = [];
     noteDates(kind).forEach(function (d0) {
-      if (d0 === selected) return;
       (state.days[d0][kind] || []).forEach(function (n) { rows.push({ date: d0, n: n }); });
     });
-    if (!rows.length) return "";
+    if (!rows.length) return '<div class="wk-empty">아직 적어 둔 것이 없습니다.</div>';
 
-    var more = rows.length - PAST_MAX;
-    var out = rows.slice(0, PAST_MAX).map(function (r) {
-      var at = kind + "|" + r.date + "|" + r.n.id;
+    var at = noteOpen[kind];
+    var show = rows.slice(0, RECENT_MAX);
+    /* 펼쳐 둔 것이 최근 셋에 안 들면 맨 위에 끼워 넣는다 — 지난 날짜로 적으면
+       그 자리가 아래로 밀려, 적던 칸이 눈앞에서 사라져 버린다. */
+    if (at && !show.some(function (r) { return keyOf(kind, r) === at; })) {
+      var found = rows.filter(function (r) { return keyOf(kind, r) === at; })[0];
+      if (found) show = [found].concat(show.slice(0, RECENT_MAX - 1));
+    }
+
+    var more = rows.length - show.length;
+    var out = show.map(function (r) {
+      var k = keyOf(kind, r);
       var dt = parseISO(r.date);
-      var open = noteOpen[kind] === at;
-      var html = '<button type="button" class="vrow" data-nrow="' + at + '"' +
+      var open = at === k;
+      var html = '<button type="button" class="vrow" data-nrow="' + k + '"' +
         ' aria-expanded="' + open + '">' +
         '<span class="vd">' + (dt.getMonth() + 1) + "." + pad(dt.getDate()) +
           "<small> " + dt.getFullYear() + "</small></span>" +
@@ -5293,11 +5299,13 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       return html;
     }).join("");
 
-    return '<div class="pastwrap">' +
-      '<div class="pasttitle">지난 기록' +
-        (more > 0 ? ' <span class="more">그 밖에 ' + more + "건 — 위에서 찾아보세요</span>" : "") +
-      "</div>" + out + "</div>";
+    return out + (more > 0
+      ? '<div class="pasttitle"><span class="more">그 밖에 ' + more +
+        "건 — 위에서 찾아보세요</span></div>"
+      : "");
   }
+
+  function keyOf(kind, r) { return kind + "|" + r.date + "|" + r.n.id; }
 
   function bindNotes(kind) {
     var host = document.getElementById(NOTE_KINDS[kind].list);
@@ -5321,6 +5329,11 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       if (!moved) return;
       state.days[a[1]][a[0]] = state.days[a[1]][a[0]].filter(function (x) { return x.id !== a[2]; });
       day(to)[a[0]].push(moved);
+      /* 옮기면 자리 이름이 바뀐다. 펼쳐 둔 표시도 새 자리로 옮겨야 접히지 않는다 —
+         날짜를 고르는 중에 적던 칸이 눈앞에서 사라지면 안 된다. */
+      if (noteOpen[a[0]] === a[0] + "|" + a[1] + "|" + a[2]) {
+        noteOpen[a[0]] = a[0] + "|" + to + "|" + a[2];
+      }
       save(); renderNotes(a[0]);
     });
 
@@ -5361,7 +5374,6 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
   bindNotes("diary");
   bindNotes("memo");
   bindNotes("movie");
-  bindNotes("show");
   bindNotes("lecture");
   bindNotes("book");
 
@@ -5372,7 +5384,11 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
         /* 찾는 중이면 새로 만든 빈 것이 조건에 안 걸려 사라진다 */
         var fbox = document.querySelector('input[data-find="' + kind + '"]');
         if (fbox) { fbox.value = ""; findWord[kind] = ""; }
-        day(selected)[kind].push({ id: uid(), title: "", notes: "" });
+        var one = { id: uid(), title: "", notes: "" };
+        day(selected)[kind].push(one);
+        /* 만든 것을 펼쳐 둔다. 평소 화면은 한 칸만 펼치므로, 안 열어 두면
+           새로 만든 빈 칸이 요약 줄로만 보여 어디에 적어야 할지 알 수 없다. */
+        noteOpen[kind] = kind + "|" + selected + "|" + one.id;
         save();
         renderNotes(kind);
         var boxes = document.querySelectorAll(
@@ -6679,7 +6695,6 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
              : kind === "worklog"   ? parseNote("worklog")
              : kind === "trip"      ? parseTrip
              : kind === "movie"     ? parseNote("movie")
-             : kind === "show"      ? parseNote("show")
              : kind === "lecture"   ? parseNote("lecture")
              : kind === "book"      ? parseNote("book")
              : kind === "visit"     ? parseVisit
@@ -6738,7 +6753,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     "메모": "health", "식단": "health", "복약": "health", "운동": "health",
     "증상": "health",
     "가계부": "money", "업무일지": "work", "일 메모": "work",
-    "여행": "seen", "영화": "seen", "공연": "seen", "강의": "seen", "책": "seen"
+    "여행": "seen", "영화·공연": "seen", "강의": "seen", "책": "seen"
   };
 
   function findAllRecords(q) {
@@ -6769,7 +6784,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       });
       [["faith", "묵상일기"], ["prayer", "기도"], ["worklog", "업무일지"],
        ["history", "나의역사"], ["knowledge", "지식창고"],
-       ["memo", "일 메모"], ["diary", "일기"], ["movie", "영화"], ["show", "공연"],
+       ["memo", "일 메모"], ["diary", "일기"], ["movie", "영화·공연"],
        ["lecture", "강의"], ["book", "책"]].forEach(function (pair) {
         (d[pair[0]] || []).forEach(function (n) {
           hit(date, pair[1],

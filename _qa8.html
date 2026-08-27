@@ -11,9 +11,9 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
  setTimeout(function(){
   /* 다섯 패널이 세로로 */
   var ps=d.querySelectorAll('section.panel[data-page="seen"]:not(.is-off)');
-  log(ps.length===5,"다섯 갈래가 따로 선다",ps.length+"개");
+  log(ps.length===4,"네 갈래가 따로 선다",ps.length+"개");
   var titles=[].map.call(ps,function(p){return p.querySelector("h2").textContent;});
-  log(titles.join(",")==="여행,영화,공연,강의,책","차례가 여행·영화·공연·강의·책",titles.join(","));
+  log(titles.join(",")==="여행,영화 · 공연,강의,책","차례가 여행·영화공연·강의·책",titles.join(","));
   var tops=[].map.call(ps,function(p){return p.getBoundingClientRect().top;});
   log(tops.every(function(v,i){return i===0||v>tops[i-1];}),"세로로 쌓인다");
 

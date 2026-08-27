@@ -1,0 +1,77 @@
+<!doctype html><meta charset="utf-8"><title>한 칸 + 세 줄 · 공연 합치기 시험</title>
+<div id="out" style="font:13px/1.7 ui-monospace"></div>
+<iframe id="f" src="/_fix_recent.html#/seen" style="width:1240px;height:100px;border:0"></iframe>
+<script>
+var out=document.getElementById("out"),f=document.getElementById("f"),pass=0,fail=0;
+function log(ok,n,e){(ok?pass++:fail++);
+ out.insertAdjacentHTML("beforeend",(ok?"통과  ":"X 실패  ")+n+(e?"   "+e:"")+"<br>");}
+function ev(w,el,t){el.dispatchEvent(new w.Event(t,{bubbles:true}));}
+f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
+ w.onerror=function(m,s,l){log(false,"앱 오류",m+" ("+l+"줄)");};
+ setTimeout(function(){
+  var names=[].map.call(d.querySelectorAll('section.panel[data-page="seen"] h2'),
+    function(h){return h.textContent;});
+  log(names.length===4,"패널이 넷이 된다",names.join(" | "));
+  log(names[1]==="영화 · 공연","영화와 공연이 한 자리",names[1]);
+
+  var st=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3"));
+  var mv=0,sh=0;Object.keys(st.days).forEach(function(k){
+   mv+=((st.days[k].movie)||[]).length; sh+=((st.days[k].show)||[]).length;});
+  log(sh===0,"공연 자리가 비워진다",sh+"건");
+  log(mv===7,"공연이 영화로 옮겨진다",mv+"건");
+  var moved=false;Object.keys(st.days).forEach(function(k){
+   ((st.days[k].movie)||[]).forEach(function(v){
+    if(v.title==="김광석 다시부르기"&&v.place==="세종문화회관")moved=true;});});
+  log(moved,"옮겨도 어디서·누구랑이 남는다");
+
+  var L=d.getElementById("movieList");
+  log(L.querySelectorAll("[data-nrow]").length===3,"요약이 세 줄",
+    L.querySelectorAll("[data-nrow]").length+"줄");
+  log(L.querySelectorAll(".mt").length===0,"평소엔 펼친 칸이 없다");
+  log(L.querySelector(".pasttitle .more").textContent.indexOf("4건")!==-1,
+    "나머지는 몇 건인지만",L.querySelector(".pasttitle .more").textContent.trim());
+
+  /* 한 줄 요약이 한 줄인가 */
+  var vs=L.querySelector("[data-nrow] .vs").textContent;
+  log(vs.indexOf("\n")===-1&&vs.length>0,"요약은 한 줄",vs.slice(0,30));
+
+  /* 새로 적기 → 그 칸만 펼쳐진다 */
+  d.querySelector('button[data-noteadd="movie"]').click();
+  setTimeout(function(){
+   log(L.querySelectorAll(".mt").length===1,"새로 적으면 한 칸만 펼쳐진다",
+     L.querySelectorAll(".mt").length+"개");
+   log(L.querySelectorAll("[data-nrow]").length===3,"요약은 여전히 세 줄",
+     L.querySelectorAll("[data-nrow]").length+"줄");
+   var card=L.querySelector(".mt");
+   log(!!card.querySelector('input[data-notedate]'),"펼친 칸에서 날짜를 고른다");
+
+   /* 지난 날짜로 옮겨도 그 칸이 안 사라진다 */
+   var db=card.querySelector('input[data-notedate]');
+   var old=new Date(); old.setDate(old.getDate()-30);
+   var oi=old.getFullYear()+"-"+String(old.getMonth()+1).padStart(2,"0")+
+          "-"+String(old.getDate()).padStart(2,"0");
+   db.value=oi; ev(w,db,"change");
+   setTimeout(function(){
+    log(d.getElementById("movieList").querySelectorAll(".mt").length===1,
+      "지난 날짜로 옮겨도 적던 칸이 남는다");
+    /* 다른 줄을 누르면 그쪽이 펼쳐지고 하나만 열린다 */
+    var rows=d.getElementById("movieList").querySelectorAll("[data-nrow]");
+    rows[rows.length-1].click();
+    setTimeout(function(){
+     log(d.getElementById("movieList").querySelectorAll(".mt").length===1,
+       "언제나 한 칸만 열린다",
+       d.getElementById("movieList").querySelectorAll(".mt").length+"개");
+     /* 찾으면 다 나온다 */
+     var q=d.querySelector('input[data-find="movie"]');
+     q.value="봄"; ev(w,q,"input");
+     setTimeout(function(){
+      log(d.getElementById("movieList").querySelectorAll(".mt").length===4,
+        "찾으면 걸린 것이 다 펼쳐진다",
+        d.getElementById("movieList").querySelectorAll(".mt").length+"개");
+      out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
+     },400);
+    },300);
+   },400);
+  },400);
+ },1200);};
+</script>

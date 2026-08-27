@@ -29,10 +29,12 @@ f.onload=function(){var w=f.contentWindow,d=w.document;
    Object.keys(st.days||{}).forEach(function(k){
     Object.keys(got).forEach(function(g){
      ((st.days[k][g])||[]).forEach(function(v){got[g].push(v.place||v.title);});});});
-   log(got.movie.length===1&&got.movie[0]==="오펜하이머","갈래를 안 적으면 영화로",got.movie.join(","));
+   log(got.movie.indexOf("오펜하이머")!==-1,"갈래를 안 적으면 영화로",got.movie.join(","));
    log(got.trip.length===1&&got.trip[0]==="속초","#여행 은 여행으로, 가는 곳이 '어디에'",got.trip.join(","));
    log(got.book.length===1&&got.book[0]==="총, 균, 쇠","#책 은 책으로",got.book.join(","));
-   log(got.show.length===1,"#공연 은 공연으로",got.show.join(","));
+   /* 공연은 영화에 합쳐졌다 — 같은 자리에 들어간다 */
+   log(got.show.length===0&&got.movie.indexOf("김광석 다시부르기")!==-1,
+     "#공연 도 영화 자리로",got.movie.join(","));
    log(got.lecture.length===1,"#강의 는 강의로",got.lecture.join(","));
 
    /* 빠르게 찾기에 다섯 갈래가 다 걸리나 */
@@ -45,7 +47,7 @@ f.onload=function(){var w=f.contentWindow,d=w.document;
      var t2=d.getElementById("findList").textContent;
      log(t2.indexOf("책")!==-1,"책이 찾기에 걸린다",t2.slice(0,34).trim());
      find("김광석",function(){
-      log(d.getElementById("findList").textContent.indexOf("공연")!==-1,"공연이 찾기에 걸린다");
+      log(d.getElementById("findList").textContent.indexOf("김광석")!==-1,"공연도 찾기에 걸린다");
       out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
      });
     });

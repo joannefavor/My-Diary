@@ -34,9 +34,12 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
   var b1=pick("lecture","파이썬 기초 3강");
   log(b1&&b1.place===undefined||b1&&!b1.place,"강의에는 어디서 칸이 없다");
 
-  /* 화면 — 제목 아래 세 칸 */
+  /* 화면 — 평소엔 요약 줄이므로 하나 펼쳐서 본다 */
+  var row=d.querySelector("#movieList [data-nrow]");
+  log(!!row,"요약 줄이 있다");
+  row.click();
   var card=d.querySelector("#movieList .mt");
-  log(!!card,"영화 칸이 보인다");
+  log(!!card,"누르면 칸이 펼쳐진다");
   var trio=card.querySelector(".mt-trio");
   log(!!trio,"제목 아래 한 줄이 있다");
   var keys=[].map.call(trio.querySelectorAll(".mt-key"),function(x){return x.textContent;});
@@ -49,8 +52,11 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
   log(tt<trio.getBoundingClientRect().top,"제목이 맨 위에 있다");
 
   /* 강의는 예전 그대로 */
+  var lrow=d.querySelector("#lectureList [data-nrow]");
+  if(lrow) lrow.click();
   var lc=d.querySelector("#lectureList .mt");
-  log(lc&&!lc.querySelector(".mt-trio"),"강의는 세 칸을 쓰지 않는다");
+  log(!!lc&&!lc.querySelector(".mt-trio"),"강의는 세 칸을 쓰지 않는다",
+    lc?"칸 펼침":"칸 없음");
 
   /* 적으면 저장되나 */
   var wi=trio.querySelector('input[data-note="who"]');

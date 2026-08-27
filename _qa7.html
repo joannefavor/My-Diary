@@ -18,14 +18,16 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
   log(Object.keys(st.days).every(function(k){return !st.days[k].workNote;}),
     "옮긴 뒤 예전 자리는 비워진다");
 
-  log(d.querySelectorAll("#memoList .mt").length===1,"평소엔 고른 날 것만 보인다",
-    d.querySelectorAll("#memoList .mt").length+"개");
+  /* 평소엔 펼친 칸 없이 요약 줄만 */
+  log(d.querySelectorAll("#memoList .mt").length===0,"평소엔 펼친 칸이 없다");
+  log(d.querySelectorAll("#memoList [data-nrow]").length===2,"요약 줄로 보인다",
+    d.querySelectorAll("#memoList [data-nrow]").length+"줄");
 
   /* 새로 적기 */
   d.querySelector('button[data-noteadd="memo"]').click();
   setTimeout(function(){
    var ti=d.querySelectorAll('#memoList input[data-note="title"]');
-   log(ti.length===2,"새로 적기로 하나 더 는다",ti.length+"개");
+   log(ti.length===1,"새로 적으면 그 칸만 펼쳐진다",ti.length+"개");
    ti[0].value="다음 주 워크숍 준비"; ev(w,ti[0],"change");
 
    /* 날짜를 옮길 수 있나 */
