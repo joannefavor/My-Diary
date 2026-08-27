@@ -1701,6 +1701,19 @@
 
 </head>
 <body>
+<script>
+window.addEventListener("error",function(e){document.title="오류: "+e.message+" ("+e.lineno+")";});
+try{
+var t=new Date(), iso=function(x){return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0");};
+var b=new Date(t); b.setDate(b.getDate()-5);
+var st={days:{},meds:[],habits:[]};
+st.days[iso(t)]={workNote:"이번 주는 계약 건이 몰려 있다.\n월요일에 법무팀 회신 확인할 것."};
+st.days[iso(b)]={workNote:"서버 이전 일정 조율"};
+localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
+
+}catch(e){document.title="씨앗 오류: "+e.message;}
+</script>
+
 
 <div class="wrap">
 

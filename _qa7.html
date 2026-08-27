@@ -1,0 +1,76 @@
+<!doctype html><meta charset="utf-8"><title>일 메모 시험</title>
+<div id="out" style="font:13px/1.7 ui-monospace"></div>
+<iframe id="f" src="/_fix_memo.html#/work" style="width:1240px;height:100px;border:0"></iframe>
+<script>
+var out=document.getElementById("out"),f=document.getElementById("f"),pass=0,fail=0;
+function log(ok,n,e){(ok?pass++:fail++);
+ out.insertAdjacentHTML("beforeend",(ok?"통과  ":"X 실패  ")+n+(e?"   "+e:"")+"<br>");}
+function ev(w,el,t){el.dispatchEvent(new w.Event(t,{bubbles:true}));}
+function iso(o){var t=new Date();t.setDate(t.getDate()+o);
+ return t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0");}
+f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
+ w.onerror=function(m,s,l){log(false,"앱 오류",m+" ("+l+"줄)");};
+ setTimeout(function(){
+  var st=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3"));
+  /* 예전 한 칸짜리 메모가 옮겨졌나 */
+  var moved=Object.keys(st.days).filter(function(k){return (st.days[k].memo||[]).length;});
+  log(moved.length===2,"예전 메모가 두 날 모두 옮겨졌다",moved.length+"날");
+  log(Object.keys(st.days).every(function(k){return !st.days[k].workNote;}),
+    "옮긴 뒤 예전 자리는 비워진다");
+
+  log(d.querySelectorAll("#memoList .mt").length===1,"평소엔 고른 날 것만 보인다",
+    d.querySelectorAll("#memoList .mt").length+"개");
+
+  /* 새로 적기 */
+  d.querySelector('button[data-noteadd="memo"]').click();
+  setTimeout(function(){
+   var ti=d.querySelectorAll('#memoList input[data-note="title"]');
+   log(ti.length===2,"새로 적기로 하나 더 는다",ti.length+"개");
+   ti[0].value="다음 주 워크숍 준비"; ev(w,ti[0],"change");
+
+   /* 날짜를 옮길 수 있나 */
+   var db=d.querySelector("#memoList input[data-notedate]");
+   log(!!db,"항목마다 날짜 칸이 있다");
+   db.value=iso(-10); ev(w,db,"change");
+   setTimeout(function(){
+    var st2=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3"));
+    log(((st2.days[iso(-10)]||{}).memo||[]).length===1,"날짜를 바꾸면 그 날로 옮겨간다");
+
+    /* 단어로 찾기 — 날짜를 넘어 뒤진다 */
+    var q=d.querySelector('input[data-find="memo"]');
+    q.value="서버"; ev(w,q,"input");
+    setTimeout(function(){
+     var n=d.querySelectorAll("#memoList .mt").length;
+     log(n===1,"단어로 찾으면 지난 날 것도 걸린다",n+"개");
+     log(d.getElementById("memoList").textContent.indexOf("서버 이전")!==-1,"찾은 것이 맞다");
+
+     /* 기간으로 찾기 */
+     q.value=""; ev(w,q,"input");
+     var fr=d.querySelector('input[data-findfrom="memo"]');
+     var to=d.querySelector('input[data-findto="memo"]');
+     fr.value=iso(-12); to.value=iso(-8); ev(w,fr,"change"); ev(w,to,"change");
+     setTimeout(function(){
+      var n2=d.querySelectorAll("#memoList .mt").length;
+      log(n2===1,"기간으로 좁히면 그 안의 것만",n2+"개");
+      var titles=[].map.call(d.querySelectorAll('#memoList input[data-note="title"]'),
+        function(x){return x.value;}).join(" ");
+      log(titles.indexOf("워크숍")!==-1,"기간 안의 것이 맞다",titles);
+      fr.value=""; to.value=""; ev(w,fr,"change"); ev(w,to,"change");
+
+      /* 빠르게 찾기에도 */
+      w.location.hash="#/main";
+      setTimeout(function(){
+       var fi=d.getElementById("findAll");
+       fi.value="법무팀"; ev(w,fi,"input");
+       setTimeout(function(){
+        log(d.getElementById("findList").textContent.indexOf("법무팀")!==-1,
+          "빠르게 찾기에도 걸린다");
+        out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
+       },300);
+      },500);
+     },400);
+    },400);
+   },400);
+  },400);
+ },1100);};
+</script>

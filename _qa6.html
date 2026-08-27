@@ -10,17 +10,8 @@ f.onload=function(){var w=f.contentWindow,d=w.document;
  w.onerror=function(m,s,l){log(false,"앱 오류",m+" ("+l+"줄)");};
  setTimeout(function(){
   try{w.localStorage.removeItem("weekly-health-ledger-v3");}catch(e){}
-  /* 메모란 */
-  var nb=d.getElementById("workNote");
-  log(!!nb,"일 페이지에 메모란이 있다");
-  log(d.getElementById("wnoteHint").textContent.length>0,"어느 날 메모인지 보인다",
-    d.getElementById("wnoteHint").textContent);
-  nb.value="다음에 계약서 검토"; ev(w,nb,"change");
+  /* 메모 목록은 _qa7 이 맡는다. 여기서는 할 일만 본다 */
   setTimeout(function(){
-   var st=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3"));
-   var saved=Object.keys(st.days).some(function(k){return st.days[k].workNote==="다음에 계약서 검토";});
-   log(saved,"메모가 저장된다");
-
    /* 할 일 넣고 체크 */
    var nw=d.getElementById("workNew"); nw.value="계약서 초안"; ev(w,nw,"input");
    d.getElementById("workAdd").click();
@@ -69,12 +60,7 @@ f.onload=function(){var w=f.contentWindow,d=w.document;
         setTimeout(function(){
          log(d.getElementById("findList").textContent.indexOf("법무팀")!==-1,
            "할 일 메모가 찾기에 걸린다");
-         fi.value="계약서 검토"; ev(w,fi,"input");
-         setTimeout(function(){
-          log(d.getElementById("findList").textContent.indexOf("계약서 검토")!==-1,
-            "일 메모도 찾기에 걸린다");
-          out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
-         },300);
+         out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
         },300);
        },500);
       },300);
