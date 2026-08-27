@@ -560,6 +560,19 @@
   .dp-when small { font-size: 10.5px; color: var(--muted); font-family: var(--mono); }
   .dp-when b { font-size: 16px; font-weight: 700; }
 
+  /* 연·월 고르개는 달력 위에 뜬다 */
+  .panelcal, .daypick { position: relative; }
+  /* 머리(연도·달) 바로 아래에 세운다. 머리까지 덮으면 어느 달을 보다가 왔는지
+     사라져서, 고르고 나서야 어디서 왔는지 알게 된다. 재어 보니 머리는
+     팝업 달력이 43.5px, 패널 옆 작은 달력이 32.6px 이다. */
+  .ympop {
+    position: absolute; left: 0; right: 0; top: 46px; z-index: 20;
+    background: var(--surface); border: 1px solid var(--hair);
+    border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, .16);
+    padding: 8px 9px 9px;
+  }
+  .panelcal .ympop { top: 35px; padding: 6px 7px 7px; }
+
   /* 연·월 고르개 */
   .ym-y {
     display: flex; align-items: center; justify-content: space-between;
@@ -4346,13 +4359,13 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
         '<button type="button" class="ghost dp-today">오늘</button>' +
       "</div>";
 
-    /* 고르개를 열면 날짜 격자 대신 그 자리에 놓는다. 위에 띄우지 않는 것은
-       패널 옆 달력이 작아서, 띄우면 달력 밖으로 삐져나가기 때문이다. */
-    if (ymOpen === scope) return head + ymHTML(ym);
-
+    /* 고르개는 달력 위에 띄운다. 달력을 걷어내고 그 자리에 놓으면 지금 무슨 달을
+       보고 있었는지가 사라져서, 옮기고 나서야 어디서 왔는지 알게 된다.
+       달력 폭 안에만 놓으므로 패널이 잘라내지 않는다. */
     return head +
       '<div class="dp-dow">' + DOW.map(function (d) { return "<div>" + d + "</div>"; }).join("") + "</div>" +
-      '<div class="dp-grid">' + cells + "</div>";
+      '<div class="dp-grid">' + cells + "</div>" +
+      (ymOpen === scope ? ymHTML(ym) : "");
   }
 
   /* ---------- 연·월 고르개 ----------
@@ -4375,7 +4388,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
         ' aria-label="' + ymYear + "년 " + m + '월">' +
         "<b>" + m + "</b><small>" + MONTH_EN[m - 1] + "</small></button>";
     }
-    return '<div class="ympick">' +
+    return '<div class="ympop">' +
         '<div class="ym-y"><span>' + ymYear + "년</span>" +
           '<span class="ym-spin">' +
             '<button type="button" data-ymy="1" aria-label="다음 해">▲</button>' +
@@ -4447,6 +4460,30 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
     if (dayBtn) goToDate(dayBtn.getAttribute("data-dpday"));
   });
 
+  /* 달력 위에 띄운 고르개는 바깥을 누르면 닫는다. 격자를 덮고 있으므로
+     닫을 길이 없으면 날짜를 못 고른다. Esc 로도 닫는다. */
+  function ymClose() {
+    if (!ymOpen) return;
+    var was = ymOpen;
+    ymOpen = null;
+    if (was === "pop") { if (dpEl) dpPaint(); }
+    else renderPanelCal(was.slice(4));
+  }
+
+  /* 잡아채기 단계(세 번째 인자 true)로 듣는다. 거품 단계로 두면 달력이 먼저
+     다시 그려지는데, 그러면 눌린 단추가 문서에서 떨어져 나가 closest() 가
+     조상을 못 찾는다 — 달력 안을 눌렀는데도 바깥으로 보여 곧바로 닫혔다.
+     잡아채기는 다시 그리기 전에 도니 그때는 조상이 아직 붙어 있다. */
+  document.addEventListener("click", function (e) {
+    if (!ymOpen) return;
+    /* 달력 안을 누른 것은 각 달력의 처리기가 맡는다 */
+    if (e.target.closest("[data-cal]") || e.target.closest(".daypick")) return;
+    ymClose();
+  }, true);
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && ymOpen) ymClose();
+  });
+
   function dpOpen(btn) {
     var box = btn.parentNode.querySelector('input[type="date"]');
     if (!box) return;
@@ -4483,9 +4520,12 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
         dpMonth = iso(m).slice(0, 7);
         return dpPaint();
       }
+      /* '오늘' 은 오늘을 고른 것과 같다. 이 갈래가 빠져 있어서, 팝업 달력에서
+         오늘을 눌러도 아무 일이 없었다 — 날짜도 안 바뀌고 창도 안 닫혔다. */
+      var td = e.target.closest(".dp-today");
       var day2 = e.target.closest("button[data-dpday]");
-      if (day2) {
-        var pick = day2.getAttribute("data-dpday");
+      if (td || day2) {
+        var pick = td ? iso(new Date()) : day2.getAttribute("data-dpday");
         dpBox.value = pick;
         dpBox.dispatchEvent(new Event("change", { bubbles: true }));
         dpClose();

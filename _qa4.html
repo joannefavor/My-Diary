@@ -70,6 +70,24 @@ f.onload=function(){var w=f.contentWindow,d=w.document;
        var pd=pop?[].map.call(pop.querySelectorAll(".dp-dow div"),
          function(x){return x.textContent;}).join(""):"";
        log(pd==="일월화수목금토","팝업 달력도 일요일 시작",pd);
+       /* 팝업 달력의 '오늘' — 이 갈래가 빠져 있어서 아무 일도 안 일어났었다 */
+       if(pop){
+        var pbox=d.querySelector('input[data-dayof]');
+        pop.querySelector('[data-dpmon="-1"]').click();
+        var cel=d.querySelector(".daypick").querySelectorAll(
+          '.dp-grid button[data-dpday]:not(.out)');
+        cel[9].click();
+        var moved=pbox.value;
+        d.querySelector("button[data-daypick]").click();
+        var p9=d.querySelector(".daypick");
+        if(p9) p9.querySelector(".dp-today").click();
+        var t9=new Date();
+        var today9=t9.getFullYear()+"-"+String(t9.getMonth()+1).padStart(2,"0")+
+                   "-"+String(t9.getDate()).padStart(2,"0");
+        log(moved!==today9,"팝업에서 다른 날로 옮겨진다",moved);
+        log(pbox.value===today9,"팝업의 '오늘' 을 누르면 오늘로 온다",pbox.value);
+        log(!d.querySelector(".daypick"),"'오늘' 을 누르면 창도 닫힌다");
+       }
        /* 바깥을 누르면 닫힌다 — 창이 격자를 덮고 있으니 닫을 길이 있어야 한다 */
        w.location.hash="#/faith";
        setTimeout(function(){

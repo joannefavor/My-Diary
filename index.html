@@ -4507,9 +4507,12 @@
         dpMonth = iso(m).slice(0, 7);
         return dpPaint();
       }
+      /* '오늘' 은 오늘을 고른 것과 같다. 이 갈래가 빠져 있어서, 팝업 달력에서
+         오늘을 눌러도 아무 일이 없었다 — 날짜도 안 바뀌고 창도 안 닫혔다. */
+      var td = e.target.closest(".dp-today");
       var day2 = e.target.closest("button[data-dpday]");
-      if (day2) {
-        var pick = day2.getAttribute("data-dpday");
+      if (td || day2) {
+        var pick = td ? iso(new Date()) : day2.getAttribute("data-dpday");
         dpBox.value = pick;
         dpBox.dispatchEvent(new Event("change", { bubbles: true }));
         dpClose();
