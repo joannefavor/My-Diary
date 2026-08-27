@@ -177,6 +177,15 @@
   /* 빠르게 쓰기와 빠르게 찾기를 한 줄에 나란히 둔다. 적는 쪽이 더 넓은 건
      넣을 곳 고르는 단추가 여덟 개라서다 — 반씩 나누면 두 줄로 감긴다.
      묶는 div 에 data-page 를 옮겨 달아서 페이지를 옮기면 둘이 함께 사라진다. */
+  /* 지난 기록은 줄로만. 카드와 사이를 띄워, 오늘 적는 자리와 지난 것이
+     한 덩어리로 보이지 않게 한다. */
+  .pastwrap { margin-top: 10px; border-top: 1px solid var(--hair); padding-top: 8px; }
+  .pasttitle {
+    font-size: 11px; color: var(--muted); padding: 0 2px 4px;
+    display: flex; gap: 8px; align-items: baseline;
+  }
+  .pasttitle .more { color: var(--accent-ink); }
+
   /* 언제·어디서·누구랑을 한 줄에. 좁아지면 두 줄로 접힌다 —
      세 칸을 억지로 한 줄에 두면 글자가 서너 자밖에 안 보인다. */
   .mt-trio {
@@ -4995,8 +5004,10 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
        어땠나는 다른 이야기라 한 칸에 섞으면 나중에 골라 읽기 어렵다. */
     /* trio 를 주면 제목 아래에 언제·어디서·누구랑이 한 줄로 붙는다.
        영화와 공연은 그 셋이 기억을 되살리는 실마리라 내용보다 먼저 온다. */
-    movie:     { list: "movieList",   title: "무슨 영화", feel: "어땠나", trio: true },
-    show:      { list: "showList",    title: "무슨 공연", feel: "어땠나", trio: true },
+    movie:     { list: "movieList",   title: "무슨 영화", feel: "어땠나",
+                 trio: true, star: true },
+    show:      { list: "showList",    title: "무슨 공연", feel: "어땠나",
+                 trio: true, star: true },
     lecture:   { list: "lectureList", title: "무슨 강의", feel: "무엇이 남았나" },
     book:      { list: "bookList",    title: "무슨 책",   feel: "무엇이 남았나" }
   };
@@ -5132,6 +5143,54 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
     return String(text || "").toLowerCase().indexOf(q) !== -1;
   }
 
+  /* 펼친 카드. 고른 날 것과 지난 것을 펼쳤을 때가 같은 모양이라야 하므로
+     한 곳에서 만든다 — 두 곳에 적어 두면 한쪽만 고쳐져 갈라진다. */
+  function noteCard(kind, date, n) {
+    var conf = NOTE_KINDS[kind];
+    var at = kind + "|" + date + "|" + n.id;
+    var dt = parseISO(date);
+    var when = dt.getFullYear() + "." + pad(dt.getMonth() + 1) + "." + pad(dt.getDate()) +
+      " " + dowOf(date);
+    return '<div class="mt">' +
+      '<div class="mt-top">' +
+        '<span class="mt-when">' + when + "</span>" +
+        '<input class="mt-title" data-note="title" data-at="' + at +
+          '" value="' + esc(n.title) + '" placeholder="' + conf.title +
+          '" aria-label="제목">' +
+        '<button class="ghost mt-del" data-notedel="' + at + '">지우기</button>' +
+      "</div>" +
+      (conf.trio
+        ? '<div class="mt-row mt-trio">' +
+            '<span class="mt-key">언제</span>' +
+            '<input type="date" data-notedate="' + at + '" value="' + date +
+              '" aria-label="언제">' +
+            '<span class="mt-key">어디서</span>' +
+            '<input data-note="place" data-at="' + at + '" value="' +
+              esc(n.place || "") + '" placeholder="극장·공연장" aria-label="어디서">' +
+            '<span class="mt-key">누구랑</span>' +
+            '<input data-note="who" data-at="' + at + '" value="' +
+              esc(n.who || "") + '" placeholder="함께 본 사람" aria-label="누구랑">' +
+          "</div>"
+        : '<div class="mt-row"><span class="mt-key">날짜</span>' +
+            dayField('data-notedate="' + at + '"', date, "적은 날짜") + "</div>") +
+      '<div class="mt-row"><span class="mt-key">내용</span>' +
+        '<textarea data-note="notes" data-at="' + at +
+        '" placeholder="더 적을 것이 있으면" aria-label="내용">' + esc(n.notes) +
+        "</textarea></div>" +
+      (conf.star
+        ? '<div class="mt-row"><span class="mt-key">별점</span>' +
+            '<span class="starpick">' + starPick("notestar", at, n.star) +
+          "</span></div>"
+        : "") +
+      (conf.feel
+        ? '<div class="mt-row"><span class="mt-key">느낌</span>' +
+            '<textarea data-note="feel" data-at="' + at +
+            '" placeholder="' + esc(conf.feel) + '" aria-label="느낌">' +
+            esc(n.feel || "") + "</textarea></div>"
+        : "") +
+    "</div>";
+  }
+
   function renderNotes(kind) {
     var conf = NOTE_KINDS[kind];
     var host = document.getElementById(conf.list);
@@ -5141,6 +5200,8 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
     all.forEach(function (d0) { total += state.days[d0][kind].length; });
 
     var finding = findingNow(kind);
+    /* 찾는 중이 아니면 고른 날 것만 펼친다. 지난 것은 아래에 줄로만 몇 개 보인다 —
+       적을수록 화면이 길어져서, 다 펼쳐 두면 오늘 적을 자리가 저 아래로 밀린다. */
     var dates = finding
       ? all.filter(function (d0) { return inFindRange(kind, d0); })
       : (all.indexOf(selected) !== -1 ? [selected] : []);
@@ -5164,48 +5225,56 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
     }
 
     host.innerHTML = dates.map(function (date) {
-      var dt = parseISO(date);
-      var when = dt.getFullYear() + "." + pad(dt.getMonth() + 1) + "." + pad(dt.getDate()) +
-        " " + dowOf(date);
       return state.days[date][kind].filter(function (n) {
         return hitWord(kind, [n.title, n.place, n.who, n.notes, n.feel].filter(Boolean).join(" "));
       }).map(function (n) {
-        var at = kind + "|" + date + "|" + n.id;
-        return '<div class="mt">' +
-          '<div class="mt-top">' +
-            '<span class="mt-when">' + when + "</span>" +
-            '<input class="mt-title" data-note="title" data-at="' + at +
-              '" value="' + esc(n.title) + '" placeholder="' + conf.title +
-              '" aria-label="제목">' +
-            '<button class="ghost mt-del" data-notedel="' + at + '">지우기</button>' +
-          "</div>" +
-          (conf.trio
-            ? '<div class="mt-row mt-trio">' +
-                '<span class="mt-key">언제</span>' +
-                '<input type="date" data-notedate="' + at + '" value="' + date +
-                  '" aria-label="언제">' +
-                '<span class="mt-key">어디서</span>' +
-                '<input data-note="place" data-at="' + at + '" value="' +
-                  esc(n.place || "") + '" placeholder="극장·공연장" aria-label="어디서">' +
-                '<span class="mt-key">누구랑</span>' +
-                '<input data-note="who" data-at="' + at + '" value="' +
-                  esc(n.who || "") + '" placeholder="함께 본 사람" aria-label="누구랑">' +
-              "</div>"
-            : '<div class="mt-row"><span class="mt-key">날짜</span>' +
-                dayField('data-notedate="' + at + '"', date, "적은 날짜") + "</div>") +
-          '<div class="mt-row"><span class="mt-key">내용</span>' +
-            '<textarea data-note="notes" data-at="' + at +
-            '" placeholder="더 적을 것이 있으면" aria-label="내용">' + esc(n.notes) +
-            "</textarea></div>" +
-          (conf.feel
-            ? '<div class="mt-row"><span class="mt-key">느낌</span>' +
-                '<textarea data-note="feel" data-at="' + at +
-                '" placeholder="' + esc(conf.feel) + '" aria-label="느낌">' +
-                esc(n.feel || "") + "</textarea></div>"
-            : "") +
-        "</div>";
+        return noteCard(kind, date, n);
       }).join("");
     }).join("");
+
+    if (!finding) host.innerHTML += pastNotes(kind);
+  }
+
+  /* 지난 날에 적어 둔 것을 줄로만 몇 개. 누르면 그 자리에서 펼쳐진다.
+     더 있으면 개수만 알린다 — 끝없이 늘어놓는 대신 찾기로 보내는 편이 낫다. */
+  var PAST_MAX = 3;
+  var noteOpen = {};
+
+  function noteSummary(n) {
+    var t = [n.title, n.notes, n.feel].filter(Boolean).join(" · ")
+      .split(/\n/)[0].trim();
+    return t || "적은 것 없음";
+  }
+
+  function pastNotes(kind) {
+    var rows = [];
+    noteDates(kind).forEach(function (d0) {
+      if (d0 === selected) return;
+      (state.days[d0][kind] || []).forEach(function (n) { rows.push({ date: d0, n: n }); });
+    });
+    if (!rows.length) return "";
+
+    var more = rows.length - PAST_MAX;
+    var out = rows.slice(0, PAST_MAX).map(function (r) {
+      var at = kind + "|" + r.date + "|" + r.n.id;
+      var dt = parseISO(r.date);
+      var open = noteOpen[kind] === at;
+      var html = '<button type="button" class="vrow" data-nrow="' + at + '"' +
+        ' aria-expanded="' + open + '">' +
+        '<span class="vd">' + (dt.getMonth() + 1) + "." + pad(dt.getDate()) +
+          "<small> " + dt.getFullYear() + "</small></span>" +
+        '<span class="vp">' + esc((r.n.title || "").trim() || "제목 없음") + "</span>" +
+        '<span class="vs">' + esc(noteSummary(r.n)) + "</span>" +
+        (r.n.star ? starText(r.n.star) : "") +
+        "</button>";
+      if (open) html += '<div class="vopen">' + noteCard(kind, r.date, r.n) + "</div>";
+      return html;
+    }).join("");
+
+    return '<div class="pastwrap">' +
+      '<div class="pasttitle">지난 기록' +
+        (more > 0 ? ' <span class="more">그 밖에 ' + more + "건 — 위에서 찾아보세요</span>" : "") +
+      "</div>" + out + "</div>";
   }
 
   function bindNotes(kind) {
@@ -5234,6 +5303,24 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
     });
 
     host.addEventListener("click", function (e) {
+      var nr = e.target.closest("button[data-nrow]");
+      if (nr) {
+        var at2 = nr.getAttribute("data-nrow");
+        /* 한 번에 하나만 펼친다. 여러 개를 열어두면 다시 길어진다 */
+        noteOpen[kind] = (noteOpen[kind] === at2) ? null : at2;
+        renderNotes(kind);
+        return;
+      }
+      var sb = e.target.closest("button[data-notestar]");
+      if (sb) {
+        var sk = sb.getAttribute("data-at").split("|");
+        var sn = noteAt(sk[0], sk[1], sk[2]);
+        if (!sn) return;
+        var v = Number(sb.getAttribute("data-notestar"));
+        sn.star = (sn.star === v) ? 0 : v;
+        save(); renderNotes(sk[0]);
+        return;
+      }
       var del = e.target.closest("button[data-notedel]");
       if (!del) return;
       var k = del.getAttribute("data-notedel").split("|");
@@ -5704,6 +5791,20 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
      달력에서 떠난 날을 바꾸면 그 날짜 밑으로 옮긴다. */
   var tripOpen = null;
 
+  /* 누를 수 있는 별 다섯. 같은 별을 다시 누르면 지워진다 —
+     잘못 눌렀을 때 되돌릴 길이 있어야 한다. */
+  function starPick(attr, at, star) {
+    var out = "";
+    for (var i = 1; i <= 5; i++) {
+      out += '<button type="button" data-' + attr + '="' + i + '" data-at="' + at +
+        '" aria-pressed="' + (i <= (star || 0)) + '" aria-label="' + i +
+        '점">' + (i <= (star || 0) ? "★" : "☆") + "</button>";
+    }
+    if (star) out += '<button type="button" class="clear" data-' + attr +
+      '="0" data-at="' + at + '">지우기</button>';
+    return out;
+  }
+
   /* 별 다섯. 빈 별도 그려야 몇 점인지 눈으로 세지 않아도 된다 */
   function starText(n) {
     n = Math.max(0, Math.min(5, Number(n) || 0));
@@ -5765,23 +5866,15 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
       '<span class="vp">' + esc((v.place || "").trim() || "어디였더라") + "</span>" +
       '<span class="vs">' + esc((v.who || "").trim()) + "</span>" +
       (span ? '<span class="tspan">' + esc(span) + "</span>" : "") +
-      starText(v.star) +
       "</button>";
     if (open) html += '<div class="vopen">' + tripCard(date, v) + "</div>";
     return html;
   }
 
+  /* 여행에는 별점을 두지 않는다. 어디를 갔고 누구와 며칠이었나가 남는 것이지,
+     몇 점이었나로 견줄 일이 아니다. 영화·공연은 골라 볼 때 견주게 되어 다르다. */
   function tripCard(date, v) {
     var at = date + "|" + v.id;
-    var stars = "";
-    for (var i = 1; i <= 5; i++) {
-      stars += '<button type="button" data-tstar="' + i + '" data-at="' + at +
-        '" aria-pressed="' + (i <= (v.star || 0)) + '" aria-label="' + i +
-        '점">' + (i <= (v.star || 0) ? "★" : "☆") + "</button>";
-    }
-    if (v.star) stars += '<button type="button" class="clear" data-tstar="0" data-at="' +
-      at + '">지우기</button>';
-
     return '<div class="mt">' +
       '<div class="mt-top">' +
         '<input class="mt-title" data-trip="place" data-at="' + at +
@@ -5796,8 +5889,6 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
       '<div class="mt-row"><span class="mt-key">누구랑</span>' +
         '<input data-trip="who" data-at="' + at + '" value="' + esc(v.who || "") +
         '" placeholder="함께 간 사람" aria-label="누구랑"></div>' +
-      '<div class="mt-row"><span class="mt-key">별점</span>' +
-        '<span class="starpick">' + stars + "</span></div>" +
       '<div class="mt-row"><span class="mt-key">느낌</span>' +
         '<textarea data-trip="notes" data-at="' + at +
         '" placeholder="어땠나, 무엇이 남았나" aria-label="느낌">' + esc(v.notes || "") +
@@ -5881,16 +5972,6 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
   });
 
   tripHost.addEventListener("click", function (e) {
-    var st = e.target.closest("button[data-tstar]");
-    if (st) {
-      var ks = st.getAttribute("data-at").split("|");
-      var sv = tripAt(ks[0], ks[1]);
-      if (!sv) return;
-      var n = Number(st.getAttribute("data-tstar"));
-      sv.star = (sv.star === n) ? 0 : n;
-      save(); renderTrips();
-      return;
-    }
     var del = e.target.closest("button[data-tripdel]");
     if (del) {
       var kd = del.getAttribute("data-tripdel").split("|");

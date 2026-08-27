@@ -38,6 +38,17 @@ st.days[iso(t)]={
         {id:"m3",title:"기생충",place:"롯데시네마",who:"혼자",notes:"계단",feel:"",star:5}]};
 localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
 SEED
+python3 _mkdbg.py _fix_past.html <<'SEED'
+var t=new Date(), iso=function(x){return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0");};
+function back(n){var d=new Date(t);d.setDate(d.getDate()-n);return iso(d);}
+var st={days:{},meds:[],habits:[]};
+st.days[iso(t)]={movie:[{id:"m0",title:"오펜하이머",place:"메가박스",who:"동생",notes:"3시간짜리",feel:"길지만 좋았다",star:4}]};
+["듄","기생충","인터스텔라","라라랜드","코코"].forEach(function(nm,i){
+ var k=back(i+2); st.days[k]=st.days[k]||{};
+ st.days[k].movie=[{id:"p"+i,title:nm,place:"CGV",who:"친구",notes:nm+" 봄",feel:"좋았다",star:(i%5)+1}];
+});
+localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
+SEED
 python3 _mkdbg.py _fix_memo.html <<'SEED'
 var t=new Date(), iso=function(x){return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0");};
 var b=new Date(t); b.setDate(b.getDate()-5);
@@ -57,7 +68,7 @@ done
 
 echo
 echo "— 화면 시험"
-for f in _qa.html _qa3.html _qa4.html _qa5.html _qa6.html _qa7.html _qa8.html _qa9.html; do
+for f in _qa.html _qa3.html _qa4.html _qa5.html _qa6.html _qa7.html _qa8.html _qa9.html _qa10.html; do
   printf "%-12s " "$f"
   out=$("$CHROME" --headless --disable-gpu --window-size=1240,900 \
         --virtual-time-budget=20000 --dump-dom "http://localhost:$PORT/$f" 2>/dev/null \

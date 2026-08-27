@@ -43,7 +43,8 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
   log(keys.join(",")==="언제,어디서,누구랑","언제·어디서·누구랑 셋",keys.join(","));
   var rows=[].map.call(card.querySelectorAll(".mt-row"),function(r){
     return r.querySelector(".mt-key").textContent;});
-  log(rows.join(",")==="언제,내용,느낌","차례가 제목 → 셋 → 내용 → 느낌",rows.join(","));
+  log(rows.join(",")==="언제,내용,별점,느낌",
+    "차례가 제목 → 셋 → 내용 → 별점 → 느낌",rows.join(","));
   var tt=card.querySelector(".mt-title").getBoundingClientRect().top;
   log(tt<trio.getBoundingClientRect().top,"제목이 맨 위에 있다");
 
