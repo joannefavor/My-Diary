@@ -197,6 +197,32 @@
   .starpick button[aria-pressed="false"] { opacity: .28; }
   .starpick .clear { font-size: 11px; color: var(--muted); margin-left: 6px; }
 
+  .wnote { padding: 12px 16px 16px; }
+  .wnote textarea {
+    width: 100%; resize: vertical; min-height: 74px;
+    font: inherit; font-size: 13px; line-height: 1.6;
+    padding: 9px 11px; border: 1px solid var(--hair);
+    border-radius: 9px; background: var(--surface-2); color: inherit;
+  }
+
+  /* 할 일 한 줄 — 내용 · 끝낸 날 · 메모 */
+  .wk-line { display: flex; align-items: center; gap: 7px; }
+  .wk-line .wk-item { flex: none; }
+  .wk-at {
+    flex: none; font-size: 11px; color: var(--accent-ink);
+    font-family: var(--mono); white-space: nowrap;
+  }
+  /* 메모는 남는 자리를 다 쓴다. 테두리를 평소엔 감추는 것은, 다섯 줄마다
+     빈 칸이 늘어서 있으면 적어 둔 것보다 빈 칸이 먼저 눈에 들어와서다. */
+  .wk-note {
+    flex: 1; min-width: 0; font: inherit; font-size: 12px;
+    padding: 3px 7px; border: 1px solid transparent; border-radius: 6px;
+    background: none; color: var(--muted);
+  }
+  .wk-note:hover { border-color: var(--hair); }
+  .wk-note:focus { border-color: var(--accent-ink); background: var(--surface); color: inherit; }
+  .wk-note:not(:placeholder-shown) { color: inherit; }
+
   /* ---------- 습관 ---------- */
   /* 한 달이 가로로 서른한 칸이라 좁은 화면에서는 옆으로 민다. 줄바꿈은 안 된다 —
      한 습관이 두 줄로 갈라지면 이어서 했는지가 눈에 안 들어온다. */
@@ -1938,6 +1964,18 @@
     </div>
   </section>
 
+  <section class="panel" data-page="work">
+    <header>
+      <h2>메모</h2>
+      <span class="hint" id="wnoteHint"></span>
+    </header>
+    <div class="wnote">
+      <textarea id="workNote" rows="4"
+        placeholder="그날 남길 말 — 다음에 이어서 할 것, 걸리는 것"
+        aria-label="일 메모"></textarea>
+    </div>
+  </section>
+
   <section class="panel" data-page="faith">
     <header>
       <h2>묵상일기</h2>
@@ -2363,6 +2401,9 @@
     /* 여행·영화·공연·강의를 한 목록에 담는다. 넷 다 날짜·제목·어디서·느낀 점으로
        칸이 같아서, 갈래만 달아 두면 한 그릇에 들어간다. */
     if (!d.seen) d.seen = [];
+    /* 일 페이지의 메모. 하루 기록하기의 메모(d.note)와 따로 두는 것은
+       그쪽은 몸 이야기를 적는 자리라서, 섞이면 나중에 찾기 어렵기 때문이다. */
+    if (d.workNote == null) d.workNote = "";
     return d;
   }
 
@@ -2685,6 +2726,15 @@
 
   var TODO_SLOTS = 5;
   var TODO_FIXED = "QT";   // 첫 칸은 이름 고정
+  /* 끝낸 날을 짧게. 적어 둔 날과 같으면 "그날" 이라고만 쓴다 —
+     날짜가 두 번 나오면 어느 쪽이 무엇인지 되레 헷갈린다. */
+  function doneAtWord(date, at) {
+    if (!at) return "";
+    if (at === date) return "✓ 그날";
+    var dt = parseISO(at);
+    return "✓ " + (dt.getMonth() + 1) + "/" + dt.getDate();
+  }
+
   /* 날짜별 할 일. 항상 다섯 칸을 보여주고 빈 칸은 그대로 둔다. */
   function todosOf(date) {
     var d = peek(date);
@@ -3976,6 +4026,7 @@
     renderQuick();
     renderToday();
     renderWork();
+    renderWorkNote();
     renderMeetings();
     renderNotes("history");
     renderNotes("knowledge");
@@ -6097,7 +6148,7 @@
     host.innerHTML = wDates.map(function (date) {
       var i = dowIndex(parseISO(date));
       var items = todosOf(date).map(function (s, idx) {
-        return { text: s.text, done: s.done, idx: idx };
+        return { text: s.text, done: s.done, doneAt: s.doneAt, note: s.note, idx: idx };
       }).filter(function (s) { return s.idx > 0 && keepTodo(s); });
       if (!items.length) return "";
       any = true;
@@ -6106,10 +6157,18 @@
         '<div class="wk-date' + (date === today ? " today" : "") + '">' +
           (dt.getMonth() + 1) + "/" + dt.getDate() + " " + DOW[i] + "</div>" +
         items.map(function (s) {
-          return '<label class="wk-item' + (s.done ? " done" : "") + '">' +
-            '<input type="checkbox" data-work="' + date + "|" + s.idx + '"' +
-              (s.done ? " checked" : "") + ">" +
-            "<span>" + esc(s.text) + "</span></label>";
+          var at = date + "|" + s.idx;
+          return '<div class="wk-line">' +
+            '<label class="wk-item' + (s.done ? " done" : "") + '">' +
+              '<input type="checkbox" data-work="' + at + '"' +
+                (s.done ? " checked" : "") + ">" +
+              "<span>" + esc(s.text) + "</span></label>" +
+            (s.doneAt ? '<span class="wk-at" title="끝낸 날">' +
+              esc(doneAtWord(date, s.doneAt)) + "</span>" : "") +
+            '<input class="wk-note" data-worknote="' + at +
+              '" value="' + esc(s.note || "") + '" placeholder="메모" ' +
+              'aria-label="' + esc(s.text) + ' 메모">' +
+          "</div>";
         }).join("") +
       "</div>";
     }).join("");
@@ -6121,6 +6180,22 @@
         "</div>";
     }
   }
+
+  function renderWorkNote() {
+    var box = document.getElementById("workNote");
+    if (!box) return;
+    var d = peek(selected);
+    var v = (d && d.workNote) || "";
+    /* 적고 있는 중에는 건드리지 않는다 — 커서가 튀고 적던 것이 밀린다 */
+    if (document.activeElement !== box && box.value !== v) box.value = v;
+    document.getElementById("wnoteHint").textContent = whenWord(selected);
+  }
+
+  var wnoteBox = document.getElementById("workNote");
+  if (wnoteBox) wnoteBox.addEventListener("change", function () {
+    day(selected).workNote = wnoteBox.value;
+    save();
+  });
 
   /* 업무 페이지에서 날짜를 골라 지난 날에도 적을 수 있게 한다.
      할 일은 그날의 정해진 칸에 들어가므로, 빈 칸이 없으면 넣지 않고 알린다. */
@@ -6151,10 +6226,23 @@
   });
 
   document.getElementById("workList").addEventListener("change", function (e) {
+    var nb = e.target.closest("input[data-worknote]");
+    if (nb) {
+      var nk = nb.getAttribute("data-worknote").split("|");
+      todoSlot(nk[0], +nk[1]).note = nb.value.trim();
+      /* 통째로 다시 그리지 않는다 — 적던 자리가 접히고 커서가 튄다 */
+      save();
+      return;
+    }
     var box = e.target.closest("input[data-work]");
     if (!box) return;
     var k = box.getAttribute("data-work").split("|");
-    todoSlot(k[0], +k[1]).done = box.checked;
+    var slot = todoSlot(k[0], +k[1]);
+    slot.done = box.checked;
+    /* 언제 끝냈는지 남긴다. 적어 둔 날과 끝낸 날이 다른 것이 오히려 흔하다.
+       체크를 풀면 지운다 — 안 끝낸 일에 끝낸 날이 남아 있으면 안 된다. */
+    if (box.checked) slot.doneAt = iso(new Date());
+    else delete slot.doneAt;
     persist();
   });
 
@@ -6277,7 +6365,7 @@
     "나의역사": "history", "지식창고": "knowledge",
     "메모": "health", "식단": "health", "복약": "health", "운동": "health",
     "증상": "health",
-    "가계부": "money", "업무일지": "work",
+    "가계부": "money", "업무일지": "work", "일 메모": "work",
     "여행": "seen", "영화": "seen", "공연": "seen", "강의": "seen"
   };
 
@@ -6323,6 +6411,10 @@
           (v.star ? " ★" + v.star : ""));
       });
       hit(date, "메모", d.note);
+      hit(date, "일 메모", d.workNote);
+      /* 할 일에 남긴 메모도 걸리게 한다. 적어 둔 곳이 어디든 찾히는 것이
+         이 화면을 여는 까닭이다. */
+      (d.todos || []).forEach(function (t, i) { if (i > 0 && t) hit(date, "할 일", t.note); });
       if (d.menu) MEALS.forEach(function (m) { hit(date, "식단", d.menu[m[0]]); });
       if (d.pill) MEALS.forEach(function (m) { hit(date, "복약", d.pill[m[0]]); });
       if (d.sym) MEALS.forEach(function (m) {
@@ -7378,7 +7470,7 @@
     if (d.medTaken && Object.keys(d.medTaken).some(function (k) { return d.medTaken[k]; })) return false;
     if (d.habitDone && Object.keys(d.habitDone).some(function (k) { return d.habitDone[k]; })) return false;
     if (d.mood != null || d.condition != null || d.overall != null) return false;
-    if (d.note) return false;
+    if (d.note || d.workNote) return false;
     return true;
   }
   /* 빈 칸은 '그 날짜가 없는 것'과 같게 다룬다.

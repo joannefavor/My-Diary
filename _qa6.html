@@ -1,0 +1,84 @@
+<!doctype html><meta charset="utf-8"><title>일 메모·완료일 시험</title>
+<div id="out" style="font:13px/1.7 ui-monospace"></div>
+<iframe id="f" src="/#/work" style="width:1240px;height:100px;border:0"></iframe>
+<script>
+var out=document.getElementById("out"),f=document.getElementById("f"),pass=0,fail=0;
+function log(ok,n,e){(ok?pass++:fail++);
+ out.insertAdjacentHTML("beforeend",(ok?"통과  ":"X 실패  ")+n+(e?"   "+e:"")+"<br>");}
+function ev(w,el,t){el.dispatchEvent(new w.Event(t,{bubbles:true}));}
+f.onload=function(){var w=f.contentWindow,d=w.document;
+ w.onerror=function(m,s,l){log(false,"앱 오류",m+" ("+l+"줄)");};
+ setTimeout(function(){
+  try{w.localStorage.removeItem("weekly-health-ledger-v3");}catch(e){}
+  /* 메모란 */
+  var nb=d.getElementById("workNote");
+  log(!!nb,"일 페이지에 메모란이 있다");
+  log(d.getElementById("wnoteHint").textContent.length>0,"어느 날 메모인지 보인다",
+    d.getElementById("wnoteHint").textContent);
+  nb.value="다음에 계약서 검토"; ev(w,nb,"change");
+  setTimeout(function(){
+   var st=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3"));
+   var saved=Object.keys(st.days).some(function(k){return st.days[k].workNote==="다음에 계약서 검토";});
+   log(saved,"메모가 저장된다");
+
+   /* 할 일 넣고 체크 */
+   var nw=d.getElementById("workNew"); nw.value="계약서 초안"; ev(w,nw,"input");
+   d.getElementById("workAdd").click();
+   setTimeout(function(){
+    var boxes=d.querySelectorAll('#workList input[data-work]');
+    log(boxes.length>0,"할 일이 들어갔다",boxes.length+"개");
+    var line=d.querySelector("#workList .wk-line");
+    log(!!line,"할 일이 한 줄로 선다");
+    log(!!line.querySelector("input.wk-note"),"메모 칸이 있다");
+    log(!line.querySelector(".wk-at"),"아직 안 끝냈으니 완료일이 없다");
+
+    boxes[0].checked=true; ev(w,boxes[0],"change");
+    setTimeout(function(){
+     var at=d.querySelector("#workList .wk-at");
+     log(!!at,"체크하면 완료일이 붙는다",at&&at.textContent);
+     log(at&&at.textContent.indexOf("그날")!==-1,"같은 날이면 '그날'로 쓴다",at&&at.textContent);
+
+     /* 할 일 메모 적기 */
+     var wn=d.querySelector("#workList input.wk-note");
+     wn.value="법무팀 확인 필요"; ev(w,wn,"change");
+     setTimeout(function(){
+      var st2=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3"));
+      var hit=null,dat=null;
+      for(var k in st2.days)(st2.days[k].todos||[]).forEach(function(t){
+        if(t&&t.note==="법무팀 확인 필요"){hit=t;dat=k;}});
+      log(!!hit,"할 일 메모가 저장된다");
+      log(hit&&!!hit.doneAt,"완료일도 함께 저장된다",hit&&hit.doneAt);
+
+      /* 체크를 풀면 완료일이 지워진다 */
+      var b2=d.querySelector('#workList input[data-work]');
+      b2.checked=false; ev(w,b2,"change");
+      setTimeout(function(){
+       var st3=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3"));
+       var t3=null; for(var k in st3.days)(st3.days[k].todos||[]).forEach(function(t){
+         if(t&&t.text==="계약서 초안")t3=t;});
+       log(t3&&!t3.doneAt,"체크를 풀면 완료일이 지워진다");
+       log(t3&&t3.note==="법무팀 확인 필요","메모는 그대로 남는다",t3&&t3.note);
+
+       /* 빠르게 찾기에 걸리나 */
+       w.location.hash="#/main";
+       setTimeout(function(){
+        var fi=d.getElementById("findAll");
+        fi.value="법무팀"; ev(w,fi,"input");
+        setTimeout(function(){
+         log(d.getElementById("findList").textContent.indexOf("법무팀")!==-1,
+           "할 일 메모가 찾기에 걸린다");
+         fi.value="계약서 검토"; ev(w,fi,"input");
+         setTimeout(function(){
+          log(d.getElementById("findList").textContent.indexOf("계약서 검토")!==-1,
+            "일 메모도 찾기에 걸린다");
+          out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
+         },300);
+        },300);
+       },500);
+      },300);
+     },300);
+    },400);
+   },400);
+  },400);
+ },900);};
+</script>

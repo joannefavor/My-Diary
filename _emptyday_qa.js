@@ -44,6 +44,8 @@ t("체크가 다 꺼져 있으면 빈 날", { habitDone: { h1: false }, medTaken
 t("빈 할 일만 있으면 빈 날", { todos: [{ text: "", done: false }] }, true);
 t("빈 목록만 있으면 빈 날", { faith: [], prayer: [], seen: [] }, true);
 t("메모", { note: "ㅁ" }, false);
+t("일 메모만 있어도 빈 날이 아니다", { workNote: "이어서 할 것" }, false);
+t("빈 일 메모는 빈 날", { workNote: "" }, true);
 t("혈압", { bp: "120/80" }, false);
 
 console.log("\n통과 " + pass + " · 실패 " + fail);
