@@ -177,6 +177,26 @@
   /* 빠르게 쓰기와 빠르게 찾기를 한 줄에 나란히 둔다. 적는 쪽이 더 넓은 건
      넣을 곳 고르는 단추가 여덟 개라서다 — 반씩 나누면 두 줄로 감긴다.
      묶는 div 에 data-page 를 옮겨 달아서 페이지를 옮기면 둘이 함께 사라진다. */
+  /* 갈래 딱지. 한 줄에서 갈래가 먼저 눈에 들어와야 "영화만 훑기"가 된다 */
+  .skind {
+    flex: none; min-width: 40px; text-align: center;
+    font-size: 11px; padding: 2px 7px; border-radius: 999px;
+    background: var(--accent-soft, var(--hair)); color: var(--accent-ink);
+  }
+  /* 별점. 빈 별도 자리를 지켜야 줄이 흔들리지 않는다 */
+  .stars { flex: none; letter-spacing: 1px; color: var(--accent-ink); font-size: 12px; }
+  /* 한 줄에서는 오른쪽 끝에 세운다. 제목 뒤에 붙여 두면 제목 길이에 따라
+     별이 들쭉날쭉해서 점수끼리 눈으로 견줄 수가 없다. */
+  .vrow .stars { margin-left: auto; }
+  .stars .off { opacity: .28; }
+  .starpick { display: flex; gap: 2px; align-items: center; }
+  .starpick button {
+    background: none; border: 0; cursor: pointer; padding: 1px 2px;
+    font-size: 17px; line-height: 1; color: var(--accent-ink);
+  }
+  .starpick button[aria-pressed="false"] { opacity: .28; }
+  .starpick .clear { font-size: 11px; color: var(--muted); margin-left: 6px; }
+
   .sidebyside { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 20px; }
   .sidebyside > .panel { min-width: 0; }
   @media (max-width: 860px) { .sidebyside { grid-template-columns: minmax(0, 1fr); } }
@@ -1726,6 +1746,32 @@
     <div class="notelist" id="visitList"></div>
   </section>
 
+  <section class="panel" data-page="seen">
+    <header>
+      <h2>본 것</h2>
+      <span class="hint">여행 · 영화 · 공연 · 강의</span>
+      <button class="ghost" id="seenAdd">+ 새로 적기</button>
+    </header>
+    <div class="visit-bar">
+      <div class="viewtoggle" id="seenKinds" role="group" aria-label="갈래 고르기">
+        <button type="button" data-sk="" aria-pressed="true">전체</button>
+        <button type="button" data-sk="여행" aria-pressed="false">여행</button>
+        <button type="button" data-sk="영화" aria-pressed="false">영화</button>
+        <button type="button" data-sk="공연" aria-pressed="false">공연</button>
+        <button type="button" data-sk="강의" aria-pressed="false">강의</button>
+      </div>
+      <input type="search" id="seenQuery" placeholder="제목·어디서·느낀 점으로 찾기"
+        aria-label="본 것 찾기">
+      <span class="findrange">
+        <input type="date" id="seenFrom" aria-label="찾을 기간 시작">
+        <span class="tilde">~</span>
+        <input type="date" id="seenTo" aria-label="찾을 기간 끝">
+      </span>
+      <span class="visit-count" id="seenCount"></span>
+    </div>
+    <div class="notelist" id="seenList"></div>
+  </section>
+
   <!-- 아직 내용을 정하지 않은 페이지들. 무엇을 적을지 정하면 이 자리를 채운다. -->
   <section class="panel" data-page="work">
     <header>
@@ -2166,6 +2212,9 @@
     if (!d.visits) d.visits = [];
     if (!d.money) d.money = [];
     if (!d.worklog) d.worklog = [];
+    /* 여행·영화·공연·강의를 한 목록에 담는다. 넷 다 날짜·제목·어디서·느낀 점으로
+       칸이 같아서, 갈래만 달아 두면 한 그릇에 들어간다. */
+    if (!d.seen) d.seen = [];
     return d;
   }
   function peek(date) { return state.days[date] || null; }
@@ -3769,6 +3818,7 @@
     renderNotes("prayer");
     renderNotes("worklog");
     renderVisits();
+    renderSeen();
     renderMoney();
   }
 
@@ -4342,11 +4392,13 @@
     { id: "money",     label: "돈",     ph: "점심 12000 식비    ·    수입 월급 3200000" },
     { id: "history",   label: "발자취", ph: "첫 직장 입사" },
     { id: "meeting",   label: "만남",   ph: "오후 2시 법무팀 정기회의" },
-    { id: "knowledge", label: "배움",   ph: "복리 계산법 — 72 법칙" }
+    { id: "knowledge", label: "배움",   ph: "복리 계산법 — 72 법칙" },
+    { id: "seen",      label: "본 것", ph: "영화 오펜하이머 4점    ·    여행 속초 2박3일" }
   ];
   /* 새 이름과 예전 이름을 함께 받는다. 손에 익은 말을 못 쓰게 하면 안 된다. */
   var QUICK_TAGS = {
     "일정": "schedule", "달력": "schedule",
+    "여행": "seen", "영화": "seen", "공연": "seen", "강의": "seen", "본것": "seen",
     "업무": "worklog", "업무일지": "worklog", "일": "worklog", "할일": "work",
     "건강": "health", "몸": "health",
     "미팅": "meeting", "회의": "meeting", "만남": "meeting", "todo": "work",
@@ -4368,13 +4420,14 @@
   }
 
   function takeTag(text) {
-    var tag = null;
+    var tag = null, word = null;
     var rest = text.replace(/\s#(\S+)(?=\s)/, function (all, w) {
       var k = QUICK_TAGS[w];
       if (!k) return all;
-      tag = k; return " ";
+      tag = k; word = w; return " ";
     });
-    return { tag: tag, rest: rest };
+    /* 걸린 말도 함께 돌려준다. 본 것은 #영화 처럼 그 말이 곧 갈래이기 때문이다 */
+    return { tag: tag, rest: rest, word: word };
   }
 
   function renderPicks() {
@@ -4413,6 +4466,30 @@
     prayer:    { list: "prayerList",    title: "무엇을 위해 기도하는가" },
     worklog:   { list: "worklogList",   title: "무슨 일을 했나" }
   };
+
+  /* "영화 오펜하이머 4점" 처럼 갈래를 앞에 적는다. #영화 로 적었으면 그 말이
+     이미 갈래라서 앞말을 찾지 않는다. 갈래를 안 적었으면 영화로 둔다 —
+     가장 자주 적을 것이고, 목록에서 한 번에 고쳐진다. */
+  function parseSeen(text, base, tagWord) {
+    var w = takeWhen(" " + String(text).replace(/\s+/g, " ").trim() + " ", base);
+    var rest = w.rest.replace(/\s+/g, " ").trim();
+    var kind = SEEN_KINDS.indexOf(tagWord) !== -1 ? tagWord : "";
+    if (!kind) {
+      rest = rest.replace(/^(여행|영화|공연|강의)\s+/, function (all, k) {
+        kind = k; return "";
+      });
+    }
+    /* 별점: "4점", "★4", "별점 4" 를 받는다 */
+    var star = 0;
+    rest = rest.replace(/(?:^|\s)(?:별점\s*)?★?\s*([1-5])\s*점?(?=\s|$)/, function (all, n) {
+      star = Number(n); return " ";
+    });
+    var title = rest.replace(/\s+/g, " ").trim();
+    if (!title) return null;
+    day(w.date).seen.push({ id: uid(), kind: kind || "영화", title: title,
+                            place: "", who: "", notes: "", star: star });
+    return { date: w.date, label: (kind || "영화") + " " + title };
+  }
 
   /* 빠르게 쓰기에서 #병원 으로 넣는다. 고르는 단추를 여덟 개로 늘리면
      왼쪽 페이지 막대와 차례가 어긋나므로 태그로만 받는다. */
@@ -4885,6 +4962,232 @@
     save();
     renderVisits();
     var box = visitHost.querySelector('input[data-visit="place"]');
+    if (box) box.focus();
+  });
+
+  /* ============================ 본 것 ============================
+
+     여행·영화·공연·강의를 한 목록에 담는다. 넷을 페이지 셋으로 나누지 않은 것은
+     칸이 서로 같기 때문이고 — 날짜·제목·어디서·함께·느낀 점·별점 —
+     "올해 뭐 봤지"처럼 갈래를 넘나드는 물음이 한 목록이라야 답이 되기 때문이다.
+
+     병원기록과 달리 처음부터 **전부** 보여준다. 병원은 "그날 무슨 진료를 받았나"라
+     하루에 매여 있지만, 본 것은 어쩌다 한 번이라 그날만 보이면 늘 비어 있다. */
+  var SEEN_KINDS = ["여행", "영화", "공연", "강의"];
+  var seenOpen = null;   /* 펼쳐 둔 한 줄 */
+  var seenKind = "";     /* 고른 갈래. 빈 값이면 전체 */
+
+  function allSeen() {
+    var out = [];
+    for (var date in state.days) {
+      var d = state.days[date];
+      if (!d || !d.seen) continue;
+      d.seen.forEach(function (v) { out.push({ date: date, v: v }); });
+    }
+    return out.sort(function (a, b) { return b.date.localeCompare(a.date); });
+  }
+
+  function seenAt(date, id) {
+    var list = day(date).seen;
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+    return null;
+  }
+
+  function seenMatches(r, kind, q, from, to) {
+    if (kind && (r.v.kind || "") !== kind) return false;
+    if (from && r.date < from) return false;
+    if (to && r.date > to) return false;
+    if (!q) return true;
+    return [r.v.title, r.v.place, r.v.who, r.v.notes].filter(Boolean).join(" ")
+      .toLowerCase().indexOf(q.toLowerCase()) !== -1;
+  }
+
+  /* 별 다섯. 빈 별도 그려야 몇 점인지 눈으로 세지 않아도 된다 */
+  function starText(n) {
+    n = Math.max(0, Math.min(5, Number(n) || 0));
+    if (!n) return '<span class="stars off">☆☆☆☆☆</span>';
+    return '<span class="stars">' + "★".repeat(n) +
+      '<span class="off">' + "☆".repeat(5 - n) + "</span></span>";
+  }
+
+  function seenRow(date, v) {
+    var at = date + "|" + v.id;
+    var dt = parseISO(date);
+    var open = seenOpen === at;
+    var html = '<button type="button" class="vrow" data-srow="' + at + '"' +
+      ' aria-expanded="' + open + '">' +
+      '<span class="vd">' + pad(dt.getMonth() + 1) + "." + pad(dt.getDate()) +
+        "<small> " + dt.getFullYear() + "</small></span>" +
+      '<span class="skind">' + esc(v.kind || "—") + "</span>" +
+      '<span class="vs">' + esc((v.title || "").trim() || "제목 없음") + "</span>" +
+      starText(v.star) +
+      "</button>";
+    if (open) html += '<div class="vopen">' + seenCard(date, v) + "</div>";
+    return html;
+  }
+
+  function seenCard(date, v) {
+    var at = date + "|" + v.id;
+    var stars = "";
+    for (var i = 1; i <= 5; i++) {
+      stars += '<button type="button" data-star="' + i + '" data-at="' + at +
+        '" aria-pressed="' + (i <= (v.star || 0)) + '" aria-label="' + i +
+        '점">' + (i <= (v.star || 0) ? "★" : "☆") + "</button>";
+    }
+    if (v.star) stars += '<button type="button" class="clear" data-star="0" data-at="' +
+      at + '">지우기</button>';
+
+    return '<div class="mt">' +
+      '<div class="mt-top">' +
+        '<select class="skind-pick" data-seen="kind" data-at="' + at +
+          '" aria-label="갈래">' +
+          SEEN_KINDS.map(function (k) {
+            return '<option value="' + k + '"' +
+              (k === v.kind ? " selected" : "") + ">" + k + "</option>";
+          }).join("") +
+        "</select>" +
+        '<input class="mt-title" data-seen="title" data-at="' + at +
+          '" value="' + esc(v.title || "") + '" placeholder="제목" aria-label="제목">' +
+        '<button class="ghost mt-del" data-seendel="' + at + '">지우기</button>' +
+      "</div>" +
+      '<div class="mt-row"><span class="mt-key">날짜</span>' +
+        dayField('data-seendate="' + at + '"', date, "본 날짜") + "</div>" +
+      '<div class="mt-row"><span class="mt-key">어디서</span>' +
+        '<input data-seen="place" data-at="' + at + '" value="' + esc(v.place || "") +
+        '" placeholder="극장 · 도시 · 강의실" aria-label="어디서"></div>' +
+      '<div class="mt-row"><span class="mt-key">함께</span>' +
+        '<input data-seen="who" data-at="' + at + '" value="' + esc(v.who || "") +
+        '" placeholder="누구와" aria-label="함께한 사람"></div>' +
+      '<div class="mt-row"><span class="mt-key">별점</span>' +
+        '<span class="starpick">' + stars + "</span></div>" +
+      '<div class="mt-row"><span class="mt-key">느낀 점</span>' +
+        '<textarea data-seen="notes" data-at="' + at +
+        '" placeholder="기억에 남은 것" aria-label="느낀 점">' + esc(v.notes || "") +
+        "</textarea></div>" +
+    "</div>";
+  }
+
+  function renderSeen() {
+    var host = document.getElementById("seenList");
+    if (!host) return;
+
+    var q = document.getElementById("seenQuery").value.trim();
+    var from = document.getElementById("seenFrom").value;
+    var to = document.getElementById("seenTo").value;
+    var all = allSeen();
+    var rows = all.filter(function (r) { return seenMatches(r, seenKind, q, from, to); });
+
+    var narrowed = !!(seenKind || q || from || to);
+    var count = document.getElementById("seenCount");
+    count.textContent = !all.length ? ""
+      : (narrowed ? rows.length + " / " + all.length + "개" : all.length + "개");
+
+    if (!all.length) {
+      host.innerHTML = '<div class="wk-empty">아직 적어 둔 것이 없습니다. ' +
+        "<b>+ 새로 적기</b>로 시작하세요.</div>";
+      return;
+    }
+    if (!rows.length) {
+      host.innerHTML = '<div class="wk-empty">찾는 기록이 없습니다.</div>';
+      return;
+    }
+    host.innerHTML = rows.map(function (r) { return seenRow(r.date, r.v); }).join("");
+  }
+
+  var seenHost = document.getElementById("seenList");
+
+  seenHost.addEventListener("change", function (e) {
+    var f = e.target.closest("[data-seen]");
+    if (f) {
+      var k = f.getAttribute("data-at").split("|");
+      var v = seenAt(k[0], k[1]);
+      if (!v) return;
+      v[f.getAttribute("data-seen")] = f.value.trim();
+      save();
+      /* 갈래를 바꾸면 걸러 보는 중에 목록에서 빠져야 하니 통째로 다시 그린다.
+         나머지는 위의 한 줄만 고쳐 쓴다 — 다시 그리면 적던 자리가 접힌다. */
+      if (f.getAttribute("data-seen") === "kind") { renderSeen(); return; }
+      var row = seenHost.querySelector('[data-srow="' + k[0] + "|" + k[1] + '"]');
+      if (row && f.getAttribute("data-seen") === "title") {
+        var cell = row.querySelector(".vs");
+        if (cell) cell.textContent = (v.title || "").trim() || "제목 없음";
+      }
+      return;
+    }
+    var dbox = e.target.closest("input[data-seendate]");
+    if (dbox) {
+      var a = dbox.getAttribute("data-seendate").split("|");
+      var to2 = dbox.value;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(to2) || to2 === a[0]) return;
+      /* 날짜를 바꾸면 그 날짜 밑으로 옮긴다 — 본 날이 곧 저장 위치다 */
+      var moved = seenAt(a[0], a[1]);
+      if (!moved) return;
+      state.days[a[0]].seen = state.days[a[0]].seen.filter(function (x) { return x.id !== a[1]; });
+      day(to2).seen.push(moved);
+      if (seenOpen === a[0] + "|" + a[1]) seenOpen = to2 + "|" + a[1];
+      save(); renderSeen();
+    }
+  });
+
+  seenHost.addEventListener("click", function (e) {
+    var st = e.target.closest("button[data-star]");
+    if (st) {
+      var ks = st.getAttribute("data-at").split("|");
+      var sv = seenAt(ks[0], ks[1]);
+      if (!sv) return;
+      var n = Number(st.getAttribute("data-star"));
+      /* 같은 별을 다시 누르면 지운다 — 잘못 눌렀을 때 되돌릴 길이 있어야 한다 */
+      sv.star = (sv.star === n) ? 0 : n;
+      save(); renderSeen();
+      return;
+    }
+    var del = e.target.closest("button[data-seendel]");
+    if (del) {
+      var kd = del.getAttribute("data-seendel").split("|");
+      var dv = seenAt(kd[0], kd[1]);
+      if (dv && (dv.title || dv.notes) &&
+          !confirm("이 기록을 지울까요?\n\n" + (dv.title || "제목 없음"))) return;
+      state.days[kd[0]].seen = state.days[kd[0]].seen.filter(function (x) { return x.id !== kd[1]; });
+      save(); renderSeen();
+      return;
+    }
+    var row = e.target.closest("button[data-srow]");
+    if (row) {
+      var at = row.getAttribute("data-srow");
+      seenOpen = (seenOpen === at) ? null : at;
+      renderSeen();
+    }
+  });
+
+  document.getElementById("seenKinds").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-sk]");
+    if (!b) return;
+    seenKind = b.getAttribute("data-sk");
+    Array.prototype.forEach.call(
+      this.querySelectorAll("button[data-sk]"), function (x) {
+        x.setAttribute("aria-pressed", x.getAttribute("data-sk") === seenKind);
+      });
+    seenOpen = null; renderSeen();
+  });
+
+  ["seenQuery", "seenFrom", "seenTo"].forEach(function (id) {
+    document.getElementById(id).addEventListener("input", function () {
+      seenOpen = null; renderSeen();
+    });
+  });
+
+  document.getElementById("seenAdd").addEventListener("click", function () {
+    var v = { id: uid(), kind: seenKind || "영화", title: "", place: "",
+              who: "", notes: "", star: 0 };
+    day(selected).seen.push(v);
+    /* 새로 만든 것이 걸러진 조건에 안 걸릴 수 있으니 조건을 비우고 그것을 펼친다 */
+    document.getElementById("seenQuery").value = "";
+    document.getElementById("seenFrom").value = "";
+    document.getElementById("seenTo").value = "";
+    seenOpen = selected + "|" + v.id;
+    save();
+    renderSeen();
+    var box = seenHost.querySelector('input[data-seen="title"]');
     if (box) box.focus();
   });
 
@@ -5495,6 +5798,7 @@
              : kind === "faith"     ? parseNote("faith")
              : kind === "prayer"    ? parseNote("prayer")
              : kind === "worklog"   ? parseNote("worklog")
+             : kind === "seen"      ? function (tx, bs) { return parseSeen(tx, bs, t.word); }
              : kind === "visit"     ? parseVisit
              : kind === "money"     ? parseMoney
              : parseWork;
@@ -5550,7 +5854,8 @@
     "나의역사": "history", "지식창고": "knowledge",
     "메모": "health", "식단": "health", "복약": "health", "운동": "health",
     "증상": "health",
-    "가계부": "money", "업무일지": "work"
+    "가계부": "money", "업무일지": "work",
+    "여행": "seen", "영화": "seen", "공연": "seen", "강의": "seen"
   };
 
   function findAllRecords(q) {
@@ -5588,6 +5893,11 @@
       (d.money || []).forEach(function (m) {
         hit(date, "가계부", (m.kind === "in" ? "번 것 " : "쓴 것 ") + wonText(m.amount) +
           " " + [m.note, m.cat].filter(Boolean).join(" · "));
+      });
+      (d.seen || []).forEach(function (v) {
+        hit(date, v.kind || "본 것",
+          [v.title, v.place, v.who, v.notes].filter(Boolean).join(" · ") +
+          (v.star ? " ★" + v.star : ""));
       });
       hit(date, "메모", d.note);
       if (d.menu) MEALS.forEach(function (m) { hit(date, "식단", d.menu[m[0]]); });
@@ -5668,7 +5978,8 @@
     { id: "money",     label: "돈" },
     { id: "history",   label: "발자취" },
     { id: "meeting",   label: "만남" },
-    { id: "knowledge", label: "배움" }
+    { id: "knowledge", label: "배움" },
+    { id: "seen",      label: "본 것" }
   ];
 
   function currentPage() {
