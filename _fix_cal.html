@@ -1714,6 +1714,14 @@
 
 </head>
 <body>
+<script>
+window.addEventListener("error",function(e){document.title="오류: "+e.message+" ("+e.lineno+")";});
+try{
+localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],habits:[]}));
+
+}catch(e){document.title="씨앗 오류: "+e.message;}
+</script>
+
 
 <div class="wrap">
 

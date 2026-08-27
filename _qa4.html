@@ -1,6 +1,6 @@
 <!doctype html><meta charset="utf-8"><title>달력 양식 시험</title>
 <div id="out" style="font:13px/1.7 ui-monospace"></div>
-<iframe id="f" src="/#/faith" style="width:1240px;height:100px;border:0"></iframe>
+<iframe id="f" src="/_fix_cal.html#/faith" style="width:1240px;height:100px;border:0"></iframe>
 <script>
 var out=document.getElementById("out"),f=document.getElementById("f"),pass=0,fail=0;
 function log(ok,n,e){(ok?pass++:fail++);
@@ -31,7 +31,7 @@ f.onload=function(){var w=f.contentWindow,d=w.document;
   /* 눌러서 고르개 열기 */
   when.click();
   setTimeout(function(){
-   var pick=cal.querySelector(".ympick");
+   var pick=cal.querySelector(".ympop");
    log(!!pick,"연도를 누르면 고르개가 열린다");
    if(!pick){out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");return;}
    log(cal.querySelectorAll(".ym-grid button[data-ymm]").length===12,"달이 열둘 있다");
@@ -39,7 +39,13 @@ f.onload=function(){var w=f.contentWindow,d=w.document;
    var yr=cal.querySelector(".ym-y span").textContent;
    log(/^\d{4}년$/.test(yr),"해가 보인다",yr);
    log(!!cal.querySelector(".ym-grid button.now"),"지금 달이 표시된다");
-   log(!cal.querySelector(".dp-grid"),"열려 있는 동안 날짜 격자는 접힌다");
+   log(!!cal.querySelector(".dp-grid"),"달력은 그대로 있다");
+   var pr=pick.getBoundingClientRect(), gr=cal.querySelector(".dp-grid").getBoundingClientRect();
+   log(pr.top<gr.bottom&&pr.bottom>gr.top,"고르개가 달력 위에 뜬다");
+   var cr=cal.getBoundingClientRect();
+   log(pr.left>=cr.left-1&&pr.right<=cr.right+1,"달력 폭 안에 들어간다",
+     Math.round(cr.width)+"px 안에 "+Math.round(pr.width)+"px");
+   log(w.getComputedStyle(pick).position==="absolute","띄워 놓은 창이다");
 
    /* 지난 해로 옮기고 3월 고르기 */
    cal.querySelector('.ym-spin button[data-ymy="-1"]').click();
@@ -49,7 +55,7 @@ f.onload=function(){var w=f.contentWindow,d=w.document;
     cal.querySelector('.ym-grid button[data-ymm="3"]').click();
     setTimeout(function(){
      var head=cal.querySelector(".dp-when");
-     log(!cal.querySelector(".ympick"),"달을 고르면 고르개가 닫힌다");
+     log(!cal.querySelector(".ympop"),"달을 고르면 고르개가 닫힌다");
      var got=head.querySelector("small").textContent+"-"+head.querySelector("b").textContent;
      log(got===(parseInt(yr)-1)+"-3월","고른 연·월로 달력이 옮겨간다",got);
 
@@ -64,7 +70,20 @@ f.onload=function(){var w=f.contentWindow,d=w.document;
        var pd=pop?[].map.call(pop.querySelectorAll(".dp-dow div"),
          function(x){return x.textContent;}).join(""):"";
        log(pd==="일월화수목금토","팝업 달력도 일요일 시작",pd);
-       out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
+       /* 바깥을 누르면 닫힌다 — 창이 격자를 덮고 있으니 닫을 길이 있어야 한다 */
+       w.location.hash="#/faith";
+       setTimeout(function(){
+        var c2=d.querySelector('[data-cal="faith"]');
+        c2.querySelector(".dp-when").click();
+        setTimeout(function(){
+         log(!!c2.querySelector(".ympop"),"다시 열린다");
+         d.body.click();
+         setTimeout(function(){
+          log(!d.querySelector(".ympop"),"바깥을 누르면 닫힌다");
+          out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
+         },400);
+        },400);
+       },500);
       },400);
      },500);
     },300);
