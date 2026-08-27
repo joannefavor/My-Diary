@@ -5016,7 +5016,11 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     prayer:    { list: "prayerList",    title: "무엇을 위해 기도하는가" },
     worklog:   { list: "worklogList",   title: "무슨 일을 했나" },
     memo:      { list: "memoList",      title: "무엇을 남길까" },
-    diary:     { list: "diaryList",     title: "오늘 어떤 하루였나" },
+    /* 일기는 하루를 두고 적는다 — 무엇을 했나(일과)와 어땠나(느낌)를 나눠 둔다.
+       묵상일기는 말씀을 두고 적는 것이라 그쪽은 한 칸으로 둔다. */
+    diary:     { list: "diaryList",     title: "오늘 어떤 하루였나",
+                 body: "일과", bodyPh: "무엇을 했나",
+                 feel: "어떤 마음이었나" },
     /* feel 을 주면 내용 밑에 '느낌' 칸이 하나 더 붙는다. 무엇을 보았나와
        어땠나는 다른 이야기라 한 칸에 섞으면 나중에 골라 읽기 어렵다. */
     /* trio 를 주면 제목 아래에 언제·어디서·누구랑이 한 줄로 붙는다.
@@ -5190,9 +5194,10 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
           "</div>"
         : '<div class="mt-row"><span class="mt-key">날짜</span>' +
             dayField('data-notedate="' + at + '"', date, "적은 날짜") + "</div>") +
-      '<div class="mt-row"><span class="mt-key">내용</span>' +
+      '<div class="mt-row"><span class="mt-key">' + esc(conf.body || "내용") + "</span>" +
         '<textarea data-note="notes" data-at="' + at +
-        '" placeholder="더 적을 것이 있으면" aria-label="내용">' + esc(n.notes) +
+        '" placeholder="' + esc(conf.bodyPh || "더 적을 것이 있으면") +
+        '" aria-label="' + esc(conf.body || "내용") + '">' + esc(n.notes) +
         "</textarea></div>" +
       (conf.star
         ? '<div class="mt-row"><span class="mt-key">별점</span>' +
