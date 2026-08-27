@@ -174,6 +174,13 @@
     gap: 28px;
     align-items: start;
   }
+  /* 빠르게 쓰기와 빠르게 찾기를 한 줄에 나란히 둔다. 적는 쪽이 더 넓은 건
+     넣을 곳 고르는 단추가 여덟 개라서다 — 반씩 나누면 두 줄로 감긴다.
+     묶는 div 에 data-page 를 옮겨 달아서 페이지를 옮기면 둘이 함께 사라진다. */
+  .sidebyside { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 20px; }
+  .sidebyside > .panel { min-width: 0; }
+  @media (max-width: 860px) { .sidebyside { grid-template-columns: minmax(0, 1fr); } }
+
   .content {
     display: flex;
     flex-direction: column;
@@ -1605,7 +1612,8 @@
     <div class="today" id="todayBody"></div>
   </section>
 
-  <section class="panel" id="quickPanel" data-page="main">
+  <div class="sidebyside" data-page="main">
+  <section class="panel" id="quickPanel">
     <header>
       <div class="calnav">
         <button class="icon-btn" id="quickPrev" aria-label="하루 전">&lt;</button>
@@ -1627,7 +1635,7 @@
     </div>
   </section>
 
-  <section class="panel" id="findPanel" data-page="main">
+  <section class="panel" id="findPanel">
     <header>
       <h2>빠르게 찾기</h2>
       <span class="hint">적어 둔 모든 것에서 찾습니다</span>
@@ -1639,6 +1647,7 @@
     </div>
     <div class="findlist" id="findList"></div>
   </section>
+  </div>
 
 
   <section class="panel" id="voicePanel" data-page="main faith" hidden>
