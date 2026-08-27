@@ -24,7 +24,7 @@ t("아무것도 없으면 빈 날", {}, true);
 t("없는 날도 빈 날", null, true);
 
 ["schedule", "meetings", "visits", "money", "faith", "prayer",
- "worklog", "history", "knowledge", "memo", "seen",
+ "worklog", "history", "knowledge", "memo", "diary", "seen",
  "trip", "movie", "show", "lecture", "book"].forEach(function (k) {
   var d = {}; d[k] = [{ id: "x" }];
   t(k + " 하나만 있어도 빈 날이 아니다", d, false);

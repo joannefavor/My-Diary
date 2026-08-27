@@ -2133,6 +2133,23 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     </div>
   </section>
 
+  <section class="panel" data-page="faith">
+    <header>
+      <h2>일기</h2>
+      <button class="ghost" data-noteadd="diary">+ 새로 적기</button>
+    </header>
+      <div class="daybar">
+        <input type="search" data-find="diary" placeholder="단어로 찾기"
+          aria-label="일기 찾기">
+        <span class="visit-count" data-count="diary"></span>
+      </div>
+
+    <div class="withcal">
+      <div class="panelcal" data-cal="diary"></div>
+      <div class="notelist" id="diaryList"></div>
+    </div>
+  </section>
+
   <section class="panel" data-page="money">
     <header>
       <h2 id="moneyTitle">이 달</h2>
@@ -2532,6 +2549,9 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     /* 일 페이지의 메모. 하루 기록하기의 메모(d.note)와 따로 두는 것은
        그쪽은 몸 이야기를 적는 자리라서, 섞이면 나중에 찾기 어렵기 때문이다. */
     if (!d.memo) d.memo = [];
+    /* 일기. 묵상일기와 같은 양식이지만 자리는 따로 둔다 — 그쪽은 말씀을 두고
+       적는 것이고 이쪽은 하루를 두고 적는 것이라, 섞이면 나중에 골라 읽기 어렵다. */
+    if (!d.diary) d.diary = [];
     return d;
   }
 
@@ -4229,6 +4249,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     renderNotes("faith");
     renderNotes("prayer");
     renderNotes("worklog");
+    renderNotes("diary");
     renderVisits();
     renderTrips();
     renderNotes("movie");
@@ -4924,7 +4945,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
   ];
   /* 새 이름과 예전 이름을 함께 받는다. 손에 익은 말을 못 쓰게 하면 안 된다. */
   var QUICK_TAGS = {
-    "일정": "schedule", "달력": "schedule",
+    "일정": "schedule", "달력": "schedule", "일기": "diary",
     "여행": "trip", "영화": "movie", "공연": "show", "강의": "lecture", "책": "book",
     "업무": "worklog", "업무일지": "worklog", "일": "worklog", "할일": "work",
     "건강": "health", "몸": "health",
@@ -4986,7 +5007,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
      지난주 것이 안 보이는 창고는 창고가 아니기 때문이다. */
   var NOTE_LABEL = { history: "나의역사", knowledge: "지식창고",
                      faith: "묵상일기", prayer: "기도", worklog: "업무",
-                     memo: "메모",
+                     memo: "메모", diary: "일기",
                      movie: "영화", show: "공연", lecture: "강의", book: "책" };
   var NOTE_KINDS = {
     history:   { list: "historyList",   title: "무슨 일이 있었나" },
@@ -4995,6 +5016,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     prayer:    { list: "prayerList",    title: "무엇을 위해 기도하는가" },
     worklog:   { list: "worklogList",   title: "무슨 일을 했나" },
     memo:      { list: "memoList",      title: "무엇을 남길까" },
+    diary:     { list: "diaryList",     title: "오늘 어떤 하루였나" },
     /* feel 을 주면 내용 밑에 '느낌' 칸이 하나 더 붙는다. 무엇을 보았나와
        어땠나는 다른 이야기라 한 칸에 섞으면 나중에 골라 읽기 어렵다. */
     /* trio 를 주면 제목 아래에 언제·어디서·누구랑이 한 줄로 붙는다.
@@ -5331,6 +5353,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
   bindNotes("faith");
   bindNotes("prayer");
   bindNotes("worklog");
+  bindNotes("diary");
   bindNotes("memo");
   bindNotes("movie");
   bindNotes("show");
@@ -6647,6 +6670,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
              : kind === "knowledge" ? parseNote("knowledge")
              : kind === "faith"     ? parseNote("faith")
              : kind === "prayer"    ? parseNote("prayer")
+             : kind === "diary"     ? parseNote("diary")
              : kind === "worklog"   ? parseNote("worklog")
              : kind === "trip"      ? parseTrip
              : kind === "movie"     ? parseNote("movie")
@@ -6705,7 +6729,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
   var FIND_WHERE = {
     "일정": "schedule", "할 일": "work", "미팅": "meeting",
     "병원": "health", "묵상일기": "faith", "기도": "faith",
-    "나의역사": "history", "지식창고": "knowledge",
+    "나의역사": "history", "지식창고": "knowledge", "일기": "faith",
     "메모": "health", "식단": "health", "복약": "health", "운동": "health",
     "증상": "health",
     "가계부": "money", "업무일지": "work", "일 메모": "work",
@@ -6740,7 +6764,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       });
       [["faith", "묵상일기"], ["prayer", "기도"], ["worklog", "업무일지"],
        ["history", "나의역사"], ["knowledge", "지식창고"],
-       ["memo", "일 메모"], ["movie", "영화"], ["show", "공연"],
+       ["memo", "일 메모"], ["diary", "일기"], ["movie", "영화"], ["show", "공연"],
        ["lecture", "강의"], ["book", "책"]].forEach(function (pair) {
         (d[pair[0]] || []).forEach(function (n) {
           hit(date, pair[1],
@@ -7795,7 +7819,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
      하나도 빠짐없이 여기서도 봐야 한다. 자리를 새로 만들면 여기도 함께 고칠 것. */
   var DAY_LISTS = ["schedule", "meetings", "visits", "money",
                    "faith", "prayer", "worklog", "history", "knowledge",
-                   "memo", "seen",
+                   "memo", "diary", "seen",
                    "trip", "movie", "show", "lecture", "book"];
 
   function emptyDay(d) {

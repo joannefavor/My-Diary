@@ -1,0 +1,66 @@
+<!doctype html><meta charset="utf-8"><title>일기 시험</title>
+<div id="out" style="font:13px/1.7 ui-monospace"></div>
+<iframe id="f" src="/#/faith" style="width:1240px;height:100px;border:0"></iframe>
+<script>
+var out=document.getElementById("out"),f=document.getElementById("f"),pass=0,fail=0;
+function log(ok,n,e){(ok?pass++:fail++);
+ out.insertAdjacentHTML("beforeend",(ok?"통과  ":"X 실패  ")+n+(e?"   "+e:"")+"<br>");}
+function ev(w,el,t){el.dispatchEvent(new w.Event(t,{bubbles:true}));}
+f.onload=function(){var w=f.contentWindow,d=w.document;
+ w.onerror=function(m,s,l){log(false,"앱 오류",m+" ("+l+"줄)");};
+ setTimeout(function(){
+  try{w.localStorage.removeItem("weekly-health-ledger-v3");}catch(e){}
+  var ps=d.querySelectorAll('section.panel[data-page="faith"]:not(.is-off)');
+  var names=[].map.call(ps,function(p){var h=p.querySelector("h2");return h?h.textContent:"";});
+  log(names.indexOf("일기")!==-1,"마음 페이지에 일기가 있다",names.join(","));
+  log(names.indexOf("일기")>names.indexOf("기도"),"기도 아래에 있다",names.join(" → "));
+
+  var panel=ps[names.indexOf("일기")];
+  log(!!panel.querySelector('[data-cal="diary"]'),"묵상일기처럼 옆 달력이 있다");
+  log(!!panel.querySelector('input[data-find="diary"]'),"단어로 찾기가 있다");
+  log(!!panel.querySelector('button[data-noteadd="diary"]'),"새로 적기가 있다");
+
+  /* 적어 본다 */
+  panel.querySelector('button[data-noteadd="diary"]').click();
+  setTimeout(function(){
+   var ti=d.querySelector('#diaryList input[data-note="title"]');
+   log(!!ti,"칸이 생긴다");
+   log(ti.getAttribute("placeholder")==="오늘 어떤 하루였나","묻는 말이 일기답다",
+     ti.getAttribute("placeholder"));
+   ti.value="비가 왔고 오래 걸었다"; ev(w,ti,"change");
+   var tx=d.querySelector('#diaryList textarea[data-note="notes"]');
+   tx.value="우산을 두고 나와서 흠뻑 젖었다"; ev(w,tx,"change");
+   setTimeout(function(){
+    var st=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3"));
+    var got=null;Object.keys(st.days).forEach(function(k){
+     ((st.days[k].diary)||[]).forEach(function(v){got=v;});});
+    log(got&&got.title==="비가 왔고 오래 걸었다","저장된다",got&&got.title);
+    log(got&&got.notes.indexOf("우산")!==-1,"내용도 저장된다");
+
+    /* 묵상일기와 섞이지 않는가 */
+    var fl=Object.keys(st.days).reduce(function(a,k){return a+((st.days[k].faith)||[]).length;},0);
+    log(fl===0,"묵상일기에는 들어가지 않는다",fl+"건");
+
+    /* 찾기 */
+    var q=panel.querySelector('input[data-find="diary"]');
+    q.value="우산"; ev(w,q,"input");
+    setTimeout(function(){
+     log(d.querySelectorAll("#diaryList .mt").length===1,"단어로 찾힌다");
+     q.value=""; ev(w,q,"input");
+     /* 빠르게 찾기 */
+     w.location.hash="#/main";
+     setTimeout(function(){
+      var fi=d.getElementById("findAll");
+      fi.value="우산"; ev(w,fi,"input");
+      setTimeout(function(){
+       var t=d.getElementById("findList").textContent;
+       log(t.indexOf("일기")!==-1&&t.indexOf("우산")!==-1,"빠르게 찾기에 걸린다",
+         t.slice(0,34).trim());
+       out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
+      },300);
+     },500);
+    },300);
+   },300);
+  },400);
+ },900);};
+</script>
