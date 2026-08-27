@@ -177,11 +177,11 @@
   /* 빠르게 쓰기와 빠르게 찾기를 한 줄에 나란히 둔다. 적는 쪽이 더 넓은 건
      넣을 곳 고르는 단추가 여덟 개라서다 — 반씩 나누면 두 줄로 감긴다.
      묶는 div 에 data-page 를 옮겨 달아서 페이지를 옮기면 둘이 함께 사라진다. */
-  /* 갈래 딱지. 한 줄에서 갈래가 먼저 눈에 들어와야 "영화만 훑기"가 된다 */
-  .skind {
-    flex: none; min-width: 40px; text-align: center;
-    font-size: 11px; padding: 2px 7px; border-radius: 999px;
-    background: var(--accent-soft, var(--hair)); color: var(--accent-ink);
+  /* 며칠짜리 여행이었나. 날짜 옆이 아니라 오른쪽에 두는 것은, 날짜는 언제인지를
+     묻는 것이고 이건 얼마나였는지를 묻는 것이라 서로 다른 물음이라서다. */
+  .tspan {
+    flex: none; font-size: 11px; padding: 2px 7px; border-radius: 999px;
+    background: var(--surface-2); color: var(--muted); white-space: nowrap;
   }
   /* 별점. 빈 별도 자리를 지켜야 줄이 흔들리지 않는다 */
   .stars { flex: none; letter-spacing: 1px; color: var(--accent-ink); font-size: 12px; }
@@ -1902,29 +1902,100 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
 
   <section class="panel" data-page="seen">
     <header>
-      <h2>본 것</h2>
-      <span class="hint">여행 · 영화 · 공연 · 강의</span>
-      <button class="ghost" id="seenAdd">+ 새로 적기</button>
+      <h2>여행</h2>
+      <button class="ghost" id="tripAdd">+ 새로 적기</button>
     </header>
-    <div class="visit-bar">
-      <div class="viewtoggle" id="seenKinds" role="group" aria-label="갈래 고르기">
-        <button type="button" data-sk="" aria-pressed="true">전체</button>
-        <button type="button" data-sk="여행" aria-pressed="false">여행</button>
-        <button type="button" data-sk="영화" aria-pressed="false">영화</button>
-        <button type="button" data-sk="공연" aria-pressed="false">공연</button>
-        <button type="button" data-sk="강의" aria-pressed="false">강의</button>
-      </div>
-      <input type="search" id="seenQuery" placeholder="제목·어디서·느낀 점으로 찾기"
-        aria-label="본 것 찾기">
+    <div class="daybar">
+      <input type="search" id="tripQuery" placeholder="어디에·누구랑·느낌으로 찾기"
+        aria-label="여행 찾기">
       <span class="findrange">
-        <input type="date" id="seenFrom" aria-label="찾을 기간 시작">
-        <span class="tilde">~</span>
-        <input type="date" id="seenTo" aria-label="찾을 기간 끝">
+        <select id="tripYear" aria-label="연도"><option value="">연도 전체</option></select>
+        <select id="tripMonth" aria-label="달">
+          <option value="">달 전체</option>
+          <option value="01">1월</option><option value="02">2월</option>
+          <option value="03">3월</option><option value="04">4월</option>
+          <option value="05">5월</option><option value="06">6월</option>
+          <option value="07">7월</option><option value="08">8월</option>
+          <option value="09">9월</option><option value="10">10월</option>
+          <option value="11">11월</option><option value="12">12월</option>
+        </select>
       </span>
-      <span class="visit-count" id="seenCount"></span>
+      <span class="visit-count" id="tripCount"></span>
     </div>
-    <div class="notelist" id="seenList"></div>
+    <div class="withcal">
+      <div class="panelcal" data-cal="trip"></div>
+      <div class="notelist" id="tripList"></div>
+    </div>
   </section>
+
+  <section class="panel" data-page="seen">
+    <header>
+      <h2>영화</h2>
+      <button class="ghost" data-noteadd="movie">+ 새로 적기</button>
+    </header>
+    <div class="daybar">
+      <input type="search" data-find="movie" placeholder="제목·내용·느낌으로 찾기" aria-label="영화 찾기">
+      <span class="findrange">
+        <input type="date" data-findfrom="movie" aria-label="찾을 기간 시작">
+        <span class="tilde">~</span>
+        <input type="date" data-findto="movie" aria-label="찾을 기간 끝">
+      </span>
+      <span class="visit-count" data-count="movie"></span>
+    </div>
+    <div class="notelist" id="movieList"></div>
+  </section>
+
+  <section class="panel" data-page="seen">
+    <header>
+      <h2>공연</h2>
+      <button class="ghost" data-noteadd="show">+ 새로 적기</button>
+    </header>
+    <div class="daybar">
+      <input type="search" data-find="show" placeholder="제목·내용·느낌으로 찾기" aria-label="공연 찾기">
+      <span class="findrange">
+        <input type="date" data-findfrom="show" aria-label="찾을 기간 시작">
+        <span class="tilde">~</span>
+        <input type="date" data-findto="show" aria-label="찾을 기간 끝">
+      </span>
+      <span class="visit-count" data-count="show"></span>
+    </div>
+    <div class="notelist" id="showList"></div>
+  </section>
+
+  <section class="panel" data-page="seen">
+    <header>
+      <h2>강의</h2>
+      <button class="ghost" data-noteadd="lecture">+ 새로 적기</button>
+    </header>
+    <div class="daybar">
+      <input type="search" data-find="lecture" placeholder="제목·내용·느낌으로 찾기" aria-label="강의 찾기">
+      <span class="findrange">
+        <input type="date" data-findfrom="lecture" aria-label="찾을 기간 시작">
+        <span class="tilde">~</span>
+        <input type="date" data-findto="lecture" aria-label="찾을 기간 끝">
+      </span>
+      <span class="visit-count" data-count="lecture"></span>
+    </div>
+    <div class="notelist" id="lectureList"></div>
+  </section>
+
+  <section class="panel" data-page="seen">
+    <header>
+      <h2>책</h2>
+      <button class="ghost" data-noteadd="book">+ 새로 적기</button>
+    </header>
+    <div class="daybar">
+      <input type="search" data-find="book" placeholder="제목·내용·느낌으로 찾기" aria-label="책 찾기">
+      <span class="findrange">
+        <input type="date" data-findfrom="book" aria-label="찾을 기간 시작">
+        <span class="tilde">~</span>
+        <input type="date" data-findto="book" aria-label="찾을 기간 끝">
+      </span>
+      <span class="visit-count" data-count="book"></span>
+    </div>
+    <div class="notelist" id="bookList"></div>
+  </section>
+
 
   <section class="panel" data-page="habit">
     <header>
@@ -2430,9 +2501,14 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     if (!d.visits) d.visits = [];
     if (!d.money) d.money = [];
     if (!d.worklog) d.worklog = [];
-    /* 여행·영화·공연·강의를 한 목록에 담는다. 넷 다 날짜·제목·어디서·느낀 점으로
-       칸이 같아서, 갈래만 달아 두면 한 그릇에 들어간다. */
-    if (!d.seen) d.seen = [];
+    /* 본 것은 갈래마다 칸이 달라 따로 담는다. 여행은 어디에·언제부터 언제까지·
+       누구랑이 있고, 나머지 넷은 일자·제목·내용·느낌이다. 한 그릇에 담았더니
+       여행의 기간이 갈 곳이 없었다. */
+    if (!d.trip) d.trip = [];
+    if (!d.movie) d.movie = [];
+    if (!d.show) d.show = [];
+    if (!d.lecture) d.lecture = [];
+    if (!d.book) d.book = [];
     /* 일 페이지의 메모. 하루 기록하기의 메모(d.note)와 따로 두는 것은
        그쪽은 몸 이야기를 적는 자리라서, 섞이면 나중에 찾기 어렵기 때문이다. */
     if (!d.memo) d.memo = [];
@@ -2489,6 +2565,35 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
 
        옮기면서 workNote 를 비우므로 다음 번에는 걸리지 않는다. */
     var moved = false;
+
+    /* 본 것을 한 목록(seen)에 담던 것을 갈래마다 나눈다. 여행은 제목이 곧
+       가는 곳이었으므로 '어디에' 로 옮기고, 나머지는 어디서·함께가 갈 곳이
+       없어져 내용 밑에 붙인다 — 지우는 것보다 낫다. */
+    var SEEN_MOVE = { "여행": "trip", "영화": "movie", "공연": "show",
+                      "강의": "lecture", "책": "book" };
+    Object.keys(state.days).forEach(function (date) {
+      var w = state.days[date];
+      if (!w || !w.seen || !w.seen.length) return;
+      w.seen.forEach(function (v) {
+        var key = SEEN_MOVE[v.kind] || "movie";
+        if (!w[key]) w[key] = [];
+        if (key === "trip") {
+          w[key].push({ id: v.id || uid(),
+                        place: (v.place || v.title || ""), to: "",
+                        who: v.who || "", notes: v.notes || "", star: v.star || 0 });
+        } else {
+          var tail = [];
+          if (v.place) tail.push("어디서 " + v.place);
+          if (v.who) tail.push("함께 " + v.who);
+          w[key].push({ id: v.id || uid(), title: v.title || "",
+                        notes: [v.notes, tail.join(" · ")].filter(Boolean).join("\n"),
+                        feel: "", star: v.star || 0 });
+        }
+      });
+      w.seen = [];
+      moved = true;
+    });
+
     Object.keys(state.days).forEach(function (date) {
       var w = state.days[date];
       if (w && w.workNote) {
@@ -4082,7 +4187,11 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     renderNotes("prayer");
     renderNotes("worklog");
     renderVisits();
-    renderSeen();
+    renderTrips();
+    renderNotes("movie");
+    renderNotes("show");
+    renderNotes("lecture");
+    renderNotes("book");
     renderHabits();
     renderHabitNow();
     renderMoney();
@@ -4766,12 +4875,14 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     { id: "history",   label: "발자취", ph: "첫 직장 입사" },
     { id: "meeting",   label: "만남",   ph: "오후 2시 법무팀 정기회의" },
     { id: "knowledge", label: "배움",   ph: "복리 계산법 — 72 법칙" },
-    { id: "seen",      label: "본 것", ph: "영화 오펜하이머 4점    ·    여행 속초 2박3일" }
+    /* 본 것은 갈래가 다섯이라 단추를 다섯 개 늘어놓으면 왼쪽 페이지 막대와
+       차례가 어긋난다. 대표로 영화만 두고 나머지는 #여행 #공연 처럼 태그로 받는다. */
+    { id: "movie",     label: "본 것", ph: "오펜하이머    ·    #여행 속초    ·    #책 총, 균, 쇠" }
   ];
   /* 새 이름과 예전 이름을 함께 받는다. 손에 익은 말을 못 쓰게 하면 안 된다. */
   var QUICK_TAGS = {
     "일정": "schedule", "달력": "schedule",
-    "여행": "seen", "영화": "seen", "공연": "seen", "강의": "seen", "본것": "seen",
+    "여행": "trip", "영화": "movie", "공연": "show", "강의": "lecture", "책": "book",
     "업무": "worklog", "업무일지": "worklog", "일": "worklog", "할일": "work",
     "건강": "health", "몸": "health",
     "미팅": "meeting", "회의": "meeting", "만남": "meeting", "todo": "work",
@@ -4832,38 +4943,32 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
      지난주 것이 안 보이는 창고는 창고가 아니기 때문이다. */
   var NOTE_LABEL = { history: "나의역사", knowledge: "지식창고",
                      faith: "묵상일기", prayer: "기도", worklog: "업무",
-                     memo: "메모" };
+                     memo: "메모",
+                     movie: "영화", show: "공연", lecture: "강의", book: "책" };
   var NOTE_KINDS = {
     history:   { list: "historyList",   title: "무슨 일이 있었나" },
     knowledge: { list: "knowledgeList", title: "무엇을 알게 되었나" },
     faith:     { list: "faithList",     title: "오늘 마음에 남은 것" },
     prayer:    { list: "prayerList",    title: "무엇을 위해 기도하는가" },
     worklog:   { list: "worklogList",   title: "무슨 일을 했나" },
-    memo:      { list: "memoList",      title: "무엇을 남길까" }
+    memo:      { list: "memoList",      title: "무엇을 남길까" },
+    /* feel 을 주면 내용 밑에 '느낌' 칸이 하나 더 붙는다. 무엇을 보았나와
+       어땠나는 다른 이야기라 한 칸에 섞으면 나중에 골라 읽기 어렵다. */
+    movie:     { list: "movieList",   title: "무슨 영화", feel: "어땠나" },
+    show:      { list: "showList",    title: "무슨 공연", feel: "어땠나" },
+    lecture:   { list: "lectureList", title: "무슨 강의", feel: "무엇이 남았나" },
+    book:      { list: "bookList",    title: "무슨 책",   feel: "무엇이 남았나" }
   };
 
-  /* "영화 오펜하이머 4점" 처럼 갈래를 앞에 적는다. #영화 로 적었으면 그 말이
-     이미 갈래라서 앞말을 찾지 않는다. 갈래를 안 적었으면 영화로 둔다 —
-     가장 자주 적을 것이고, 목록에서 한 번에 고쳐진다. */
-  function parseSeen(text, base, tagWord) {
+  /* 여행은 빠르게 쓰기로 "#여행 속초" 처럼 가는 곳만 받는다. 기간과 누구랑은
+     목록에서 채운다 — 한 줄에 다 담으려 하면 말이 길어져 오히려 안 쓰게 된다. */
+  function parseTrip(text, base) {
     var w = takeWhen(" " + String(text).replace(/\s+/g, " ").trim() + " ", base);
-    var rest = w.rest.replace(/\s+/g, " ").trim();
-    var kind = SEEN_KINDS.indexOf(tagWord) !== -1 ? tagWord : "";
-    if (!kind) {
-      rest = rest.replace(/^(여행|영화|공연|강의)\s+/, function (all, k) {
-        kind = k; return "";
-      });
-    }
-    /* 별점: "4점", "★4", "별점 4" 를 받는다 */
-    var star = 0;
-    rest = rest.replace(/(?:^|\s)(?:별점\s*)?★?\s*([1-5])\s*점?(?=\s|$)/, function (all, n) {
-      star = Number(n); return " ";
-    });
-    var title = rest.replace(/\s+/g, " ").trim();
-    if (!title) return null;
-    day(w.date).seen.push({ id: uid(), kind: kind || "영화", title: title,
-                            place: "", who: "", notes: "", star: star });
-    return { date: w.date, label: (kind || "영화") + " " + title };
+    var place = w.rest.replace(/\s+/g, " ").trim();
+    if (!place) return null;
+    day(w.date).trip.push({ id: uid(), place: place, to: "",
+                            who: "", notes: "", star: 0 });
+    return { date: w.date, label: "여행 " + place };
   }
 
   /* 빠르게 쓰기에서 #병원 으로 넣는다. 고르는 단추를 여덟 개로 늘리면
@@ -5002,7 +5107,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     var shown = 0;
     dates.forEach(function (d0) {
       state.days[d0][kind].forEach(function (n) {
-        if (hitWord(kind, n.title + " " + n.notes)) shown++;
+        if (hitWord(kind, [n.title, n.notes, n.feel].filter(Boolean).join(" "))) shown++;
       });
     });
     dayBarPaint(kind, shown, total);
@@ -5022,7 +5127,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       var when = dt.getFullYear() + "." + pad(dt.getMonth() + 1) + "." + pad(dt.getDate()) +
         " " + dowOf(date);
       return state.days[date][kind].filter(function (n) {
-        return hitWord(kind, n.title + " " + n.notes);
+        return hitWord(kind, [n.title, n.notes, n.feel].filter(Boolean).join(" "));
       }).map(function (n) {
         var at = kind + "|" + date + "|" + n.id;
         return '<div class="mt">' +
@@ -5039,6 +5144,12 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
             '<textarea data-note="notes" data-at="' + at +
             '" placeholder="더 적을 것이 있으면" aria-label="내용">' + esc(n.notes) +
             "</textarea></div>" +
+          (conf.feel
+            ? '<div class="mt-row"><span class="mt-key">느낌</span>' +
+                '<textarea data-note="feel" data-at="' + at +
+                '" placeholder="' + esc(conf.feel) + '" aria-label="느낌">' +
+                esc(n.feel || "") + "</textarea></div>"
+            : "") +
         "</div>";
       }).join("");
     }).join("");
@@ -5086,6 +5197,10 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
   bindNotes("prayer");
   bindNotes("worklog");
   bindNotes("memo");
+  bindNotes("movie");
+  bindNotes("show");
+  bindNotes("lecture");
+  bindNotes("book");
 
   Array.prototype.forEach.call(
     document.querySelectorAll("button[data-noteadd]"), function (b) {
@@ -5526,42 +5641,15 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     });
   });
 
-  /* ============================ 본 것 ============================
+  /* ============================ 여행 ============================
 
-     여행·영화·공연·강의를 한 목록에 담는다. 넷을 페이지 셋으로 나누지 않은 것은
-     칸이 서로 같기 때문이고 — 날짜·제목·어디서·함께·느낀 점·별점 —
-     "올해 뭐 봤지"처럼 갈래를 넘나드는 물음이 한 목록이라야 답이 되기 때문이다.
+     영화·공연·강의·책과 달리 따로 만든 것은 칸이 다르기 때문이다 —
+     어디에·언제부터 언제까지·누구랑·느낌. 넷은 갈래 엔진에 얹었지만
+     여행의 '기간' 은 그 엔진에 담을 자리가 없다.
 
-     병원기록과 달리 처음부터 **전부** 보여준다. 병원은 "그날 무슨 진료를 받았나"라
-     하루에 매여 있지만, 본 것은 어쩌다 한 번이라 그날만 보이면 늘 비어 있다. */
-  var SEEN_KINDS = ["여행", "영화", "공연", "강의"];
-  var seenOpen = null;   /* 펼쳐 둔 한 줄 */
-  var seenKind = "";     /* 고른 갈래. 빈 값이면 전체 */
-
-  function allSeen() {
-    var out = [];
-    for (var date in state.days) {
-      var d = state.days[date];
-      if (!d || !d.seen) continue;
-      d.seen.forEach(function (v) { out.push({ date: date, v: v }); });
-    }
-    return out.sort(function (a, b) { return b.date.localeCompare(a.date); });
-  }
-
-  function seenAt(date, id) {
-    var list = day(date).seen;
-    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
-    return null;
-  }
-
-  function seenMatches(r, kind, q, from, to) {
-    if (kind && (r.v.kind || "") !== kind) return false;
-    if (from && r.date < from) return false;
-    if (to && r.date > to) return false;
-    if (!q) return true;
-    return [r.v.title, r.v.place, r.v.who, r.v.notes].filter(Boolean).join(" ")
-      .toLowerCase().indexOf(q.toLowerCase()) !== -1;
-  }
+     저장은 떠난 날 밑에 한다. 그날이 곧 여행의 시작이라, 돌아온 날은 칸으로 둔다.
+     달력에서 떠난 날을 바꾸면 그 날짜 밑으로 옮긴다. */
+  var tripOpen = null;
 
   /* 별 다섯. 빈 별도 그려야 몇 점인지 눈으로 세지 않아도 된다 */
   function starText(n) {
@@ -5571,184 +5659,221 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       '<span class="off">' + "☆".repeat(5 - n) + "</span></span>";
   }
 
-  function seenRow(date, v) {
+  function allTrips() {
+    var out = [];
+    for (var date in state.days) {
+      var d = state.days[date];
+      if (!d || !d.trip) continue;
+      d.trip.forEach(function (v) { out.push({ date: date, v: v }); });
+    }
+    return out.sort(function (a, b) { return b.date.localeCompare(a.date); });
+  }
+
+  function tripAt(date, id) {
+    var list = day(date).trip;
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+    return null;
+  }
+
+  function tripMatches(r, y, m, q) {
+    if (y && r.date.slice(0, 4) !== y) return false;
+    if (m && r.date.slice(5, 7) !== m) return false;
+    if (!q) return true;
+    return [r.v.place, r.v.who, r.v.notes].filter(Boolean).join(" ")
+      .toLowerCase().indexOf(q.toLowerCase()) !== -1;
+  }
+
+  /* 며칠 다녀왔나. 돌아온 날을 안 적었으면 하루로 본다 */
+  function tripSpan(from, to) {
+    if (!to || to <= from) return "";
+    var a = parseISO(from), b = parseISO(to);
+    var n = Math.round((b - a) / 86400000);
+    return n + "박 " + (n + 1) + "일";
+  }
+
+  function tripWhen(from, to) {
+    var a = parseISO(from);
+    var t = (a.getMonth() + 1) + "/" + a.getDate();
+    if (to && to > from) {
+      var b = parseISO(to);
+      t += " – " + (b.getMonth() + 1) + "/" + b.getDate();
+    }
+    return t;
+  }
+
+  function tripRow(date, v) {
     var at = date + "|" + v.id;
-    var dt = parseISO(date);
-    var open = seenOpen === at;
-    var html = '<button type="button" class="vrow" data-srow="' + at + '"' +
+    var open = tripOpen === at;
+    var span = tripSpan(date, v.to);
+    var html = '<button type="button" class="vrow" data-trow="' + at + '"' +
       ' aria-expanded="' + open + '">' +
-      '<span class="vd">' + pad(dt.getMonth() + 1) + "." + pad(dt.getDate()) +
-        "<small> " + dt.getFullYear() + "</small></span>" +
-      '<span class="skind">' + esc(v.kind || "—") + "</span>" +
-      '<span class="vs">' + esc((v.title || "").trim() || "제목 없음") + "</span>" +
+      '<span class="vd">' + tripWhen(date, v.to) +
+        "<small> " + parseISO(date).getFullYear() + "</small></span>" +
+      '<span class="vp">' + esc((v.place || "").trim() || "어디였더라") + "</span>" +
+      '<span class="vs">' + esc((v.who || "").trim()) + "</span>" +
+      (span ? '<span class="tspan">' + esc(span) + "</span>" : "") +
       starText(v.star) +
       "</button>";
-    if (open) html += '<div class="vopen">' + seenCard(date, v) + "</div>";
+    if (open) html += '<div class="vopen">' + tripCard(date, v) + "</div>";
     return html;
   }
 
-  function seenCard(date, v) {
+  function tripCard(date, v) {
     var at = date + "|" + v.id;
     var stars = "";
     for (var i = 1; i <= 5; i++) {
-      stars += '<button type="button" data-star="' + i + '" data-at="' + at +
+      stars += '<button type="button" data-tstar="' + i + '" data-at="' + at +
         '" aria-pressed="' + (i <= (v.star || 0)) + '" aria-label="' + i +
         '점">' + (i <= (v.star || 0) ? "★" : "☆") + "</button>";
     }
-    if (v.star) stars += '<button type="button" class="clear" data-star="0" data-at="' +
+    if (v.star) stars += '<button type="button" class="clear" data-tstar="0" data-at="' +
       at + '">지우기</button>';
 
     return '<div class="mt">' +
       '<div class="mt-top">' +
-        '<select class="skind-pick" data-seen="kind" data-at="' + at +
-          '" aria-label="갈래">' +
-          SEEN_KINDS.map(function (k) {
-            return '<option value="' + k + '"' +
-              (k === v.kind ? " selected" : "") + ">" + k + "</option>";
-          }).join("") +
-        "</select>" +
-        '<input class="mt-title" data-seen="title" data-at="' + at +
-          '" value="' + esc(v.title || "") + '" placeholder="제목" aria-label="제목">' +
-        '<button class="ghost mt-del" data-seendel="' + at + '">지우기</button>' +
+        '<input class="mt-title" data-trip="place" data-at="' + at +
+          '" value="' + esc(v.place || "") + '" placeholder="어디에" aria-label="어디에"></input>' +
+        '<button class="ghost mt-del" data-tripdel="' + at + '">지우기</button>' +
       "</div>" +
-      '<div class="mt-row"><span class="mt-key">날짜</span>' +
-        dayField('data-seendate="' + at + '"', date, "본 날짜") + "</div>" +
-      '<div class="mt-row"><span class="mt-key">어디서</span>' +
-        '<input data-seen="place" data-at="' + at + '" value="' + esc(v.place || "") +
-        '" placeholder="극장 · 도시 · 강의실" aria-label="어디서"></div>' +
-      '<div class="mt-row"><span class="mt-key">함께</span>' +
-        '<input data-seen="who" data-at="' + at + '" value="' + esc(v.who || "") +
-        '" placeholder="누구와" aria-label="함께한 사람"></div>' +
+      '<div class="mt-row"><span class="mt-key">떠난 날</span>' +
+        dayField('data-tripdate="' + at + '"', date, "떠난 날") + "</div>" +
+      '<div class="mt-row"><span class="mt-key">돌아온 날</span>' +
+        '<input type="date" data-trip="to" data-at="' + at + '" value="' +
+        esc(v.to || "") + '" aria-label="돌아온 날"></div>' +
+      '<div class="mt-row"><span class="mt-key">누구랑</span>' +
+        '<input data-trip="who" data-at="' + at + '" value="' + esc(v.who || "") +
+        '" placeholder="함께 간 사람" aria-label="누구랑"></div>' +
       '<div class="mt-row"><span class="mt-key">별점</span>' +
         '<span class="starpick">' + stars + "</span></div>" +
-      '<div class="mt-row"><span class="mt-key">느낀 점</span>' +
-        '<textarea data-seen="notes" data-at="' + at +
-        '" placeholder="기억에 남은 것" aria-label="느낀 점">' + esc(v.notes || "") +
+      '<div class="mt-row"><span class="mt-key">느낌</span>' +
+        '<textarea data-trip="notes" data-at="' + at +
+        '" placeholder="어땠나, 무엇이 남았나" aria-label="느낌">' + esc(v.notes || "") +
         "</textarea></div>" +
     "</div>";
   }
 
-  function renderSeen() {
-    var host = document.getElementById("seenList");
+  function renderTrips() {
+    var host = document.getElementById("tripList");
     if (!host) return;
+    /* 옆 달력은 갈래 엔진이 그려 주는데 여행은 그 엔진을 안 쓴다. 직접 부른다 */
+    renderPanelCal("trip");
+    var all = allTrips();
 
-    var q = document.getElementById("seenQuery").value.trim();
-    var from = document.getElementById("seenFrom").value;
-    var to = document.getElementById("seenTo").value;
-    var all = allSeen();
-    var rows = all.filter(function (r) { return seenMatches(r, seenKind, q, from, to); });
+    /* 연도 고르개를 적어 둔 해로만 채운다. 없는 해를 늘어놓아 봐야 고를 일이 없다 */
+    var ysel = document.getElementById("tripYear");
+    var keep = ysel.value, years = {}, ylist = [];
+    all.forEach(function (r) {
+      var y = r.date.slice(0, 4);
+      if (!years[y]) { years[y] = 1; ylist.push(y); }
+    });
+    ylist.sort().reverse();
+    ysel.innerHTML = '<option value="">연도 전체</option>' + ylist.map(function (y) {
+      return '<option value="' + y + '">' + y + "년</option>";
+    }).join("");
+    ysel.value = ylist.indexOf(keep) !== -1 ? keep : "";
 
-    var narrowed = !!(seenKind || q || from || to);
-    var count = document.getElementById("seenCount");
-    count.textContent = !all.length ? ""
-      : (narrowed ? rows.length + " / " + all.length + "개" : all.length + "개");
+    var y2 = ysel.value, m2 = document.getElementById("tripMonth").value;
+    var q = document.getElementById("tripQuery").value.trim();
+    var rows = all.filter(function (r) { return tripMatches(r, y2, m2, q); });
+
+    var narrowed = !!(y2 || m2 || q);
+    document.getElementById("tripCount").textContent = !all.length ? ""
+      : (narrowed ? rows.length + " / " + all.length + "번" : all.length + "번");
 
     if (!all.length) {
-      host.innerHTML = '<div class="wk-empty">아직 적어 둔 것이 없습니다. ' +
+      host.innerHTML = '<div class="wk-empty">아직 적어 둔 여행이 없습니다. ' +
         "<b>+ 새로 적기</b>로 시작하세요.</div>";
       return;
     }
     if (!rows.length) {
-      host.innerHTML = '<div class="wk-empty">찾는 기록이 없습니다.</div>';
+      host.innerHTML = '<div class="wk-empty">찾는 여행이 없습니다.</div>';
       return;
     }
-    host.innerHTML = rows.map(function (r) { return seenRow(r.date, r.v); }).join("");
+    host.innerHTML = rows.map(function (r) { return tripRow(r.date, r.v); }).join("");
   }
 
-  var seenHost = document.getElementById("seenList");
+  var tripHost = document.getElementById("tripList");
 
-  seenHost.addEventListener("change", function (e) {
-    var f = e.target.closest("[data-seen]");
+  tripHost.addEventListener("change", function (e) {
+    var f = e.target.closest("[data-trip]");
     if (f) {
       var k = f.getAttribute("data-at").split("|");
-      var v = seenAt(k[0], k[1]);
+      var v = tripAt(k[0], k[1]);
       if (!v) return;
-      v[f.getAttribute("data-seen")] = f.value.trim();
+      v[f.getAttribute("data-trip")] = f.value.trim();
       save();
-      /* 갈래를 바꾸면 걸러 보는 중에 목록에서 빠져야 하니 통째로 다시 그린다.
-         나머지는 위의 한 줄만 고쳐 쓴다 — 다시 그리면 적던 자리가 접힌다. */
-      if (f.getAttribute("data-seen") === "kind") { renderSeen(); return; }
-      var row = seenHost.querySelector('[data-srow="' + k[0] + "|" + k[1] + '"]');
-      if (row && f.getAttribute("data-seen") === "title") {
-        var cell = row.querySelector(".vs");
-        if (cell) cell.textContent = (v.title || "").trim() || "제목 없음";
-      }
+      /* 어디에·돌아온 날은 접힌 줄에도 보이므로 그 줄만 고쳐 쓴다.
+         통째로 다시 그리면 적던 자리가 접힌다. */
+      var row = tripHost.querySelector('[data-trow="' + k[0] + "|" + k[1] + '"]');
+      if (!row) return;
+      var fld = f.getAttribute("data-trip");
+      if (fld === "place") row.querySelector(".vp").textContent =
+        (v.place || "").trim() || "어디였더라";
+      else if (fld === "who") row.querySelector(".vs").textContent = (v.who || "").trim();
+      else if (fld === "to") renderTrips();      /* 며칠짜리인지가 바뀐다 */
       return;
     }
-    var dbox = e.target.closest("input[data-seendate]");
+    var dbox = e.target.closest("input[data-tripdate]");
     if (dbox) {
-      var a = dbox.getAttribute("data-seendate").split("|");
+      var a = dbox.getAttribute("data-tripdate").split("|");
       var to2 = dbox.value;
       if (!/^\d{4}-\d{2}-\d{2}$/.test(to2) || to2 === a[0]) return;
-      /* 날짜를 바꾸면 그 날짜 밑으로 옮긴다 — 본 날이 곧 저장 위치다 */
-      var moved = seenAt(a[0], a[1]);
+      var moved = tripAt(a[0], a[1]);
       if (!moved) return;
-      state.days[a[0]].seen = state.days[a[0]].seen.filter(function (x) { return x.id !== a[1]; });
-      day(to2).seen.push(moved);
-      if (seenOpen === a[0] + "|" + a[1]) seenOpen = to2 + "|" + a[1];
-      save(); renderSeen();
+      state.days[a[0]].trip = state.days[a[0]].trip.filter(function (x) { return x.id !== a[1]; });
+      day(to2).trip.push(moved);
+      if (tripOpen === a[0] + "|" + a[1]) tripOpen = to2 + "|" + a[1];
+      save(); renderTrips();
     }
   });
 
-  seenHost.addEventListener("click", function (e) {
-    var st = e.target.closest("button[data-star]");
+  tripHost.addEventListener("click", function (e) {
+    var st = e.target.closest("button[data-tstar]");
     if (st) {
       var ks = st.getAttribute("data-at").split("|");
-      var sv = seenAt(ks[0], ks[1]);
+      var sv = tripAt(ks[0], ks[1]);
       if (!sv) return;
-      var n = Number(st.getAttribute("data-star"));
-      /* 같은 별을 다시 누르면 지운다 — 잘못 눌렀을 때 되돌릴 길이 있어야 한다 */
+      var n = Number(st.getAttribute("data-tstar"));
       sv.star = (sv.star === n) ? 0 : n;
-      save(); renderSeen();
+      save(); renderTrips();
       return;
     }
-    var del = e.target.closest("button[data-seendel]");
+    var del = e.target.closest("button[data-tripdel]");
     if (del) {
-      var kd = del.getAttribute("data-seendel").split("|");
-      var dv = seenAt(kd[0], kd[1]);
-      if (dv && (dv.title || dv.notes) &&
-          !confirm("이 기록을 지울까요?\n\n" + (dv.title || "제목 없음"))) return;
-      state.days[kd[0]].seen = state.days[kd[0]].seen.filter(function (x) { return x.id !== kd[1]; });
-      save(); renderSeen();
+      var kd = del.getAttribute("data-tripdel").split("|");
+      var dv = tripAt(kd[0], kd[1]);
+      if (dv && (dv.place || dv.notes) &&
+          !confirm("이 여행 기록을 지울까요?\n\n" + (dv.place || "어디였더라"))) return;
+      state.days[kd[0]].trip = state.days[kd[0]].trip.filter(function (x) { return x.id !== kd[1]; });
+      save(); renderTrips();
       return;
     }
-    var row = e.target.closest("button[data-srow]");
+    var row = e.target.closest("button[data-trow]");
     if (row) {
-      var at = row.getAttribute("data-srow");
-      seenOpen = (seenOpen === at) ? null : at;
-      renderSeen();
+      var at = row.getAttribute("data-trow");
+      tripOpen = (tripOpen === at) ? null : at;
+      renderTrips();
     }
   });
 
-  document.getElementById("seenKinds").addEventListener("click", function (e) {
-    var b = e.target.closest("button[data-sk]");
-    if (!b) return;
-    seenKind = b.getAttribute("data-sk");
-    Array.prototype.forEach.call(
-      this.querySelectorAll("button[data-sk]"), function (x) {
-        x.setAttribute("aria-pressed", x.getAttribute("data-sk") === seenKind);
-      });
-    seenOpen = null; renderSeen();
-  });
-
-  ["seenQuery", "seenFrom", "seenTo"].forEach(function (id) {
-    document.getElementById(id).addEventListener("input", function () {
-      seenOpen = null; renderSeen();
+  ["tripQuery", "tripYear", "tripMonth"].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener(id === "tripQuery" ? "input" : "change", function () {
+      tripOpen = null; renderTrips();
     });
   });
 
-  document.getElementById("seenAdd").addEventListener("click", function () {
-    var v = { id: uid(), kind: seenKind || "영화", title: "", place: "",
-              who: "", notes: "", star: 0 };
-    day(selected).seen.push(v);
-    /* 새로 만든 것이 걸러진 조건에 안 걸릴 수 있으니 조건을 비우고 그것을 펼친다 */
-    document.getElementById("seenQuery").value = "";
-    document.getElementById("seenFrom").value = "";
-    document.getElementById("seenTo").value = "";
-    seenOpen = selected + "|" + v.id;
-    save();
-    renderSeen();
-    var box = seenHost.querySelector('input[data-seen="title"]');
+  var tripAddBtn = document.getElementById("tripAdd");
+  if (tripAddBtn) tripAddBtn.addEventListener("click", function () {
+    var v = { id: uid(), place: "", to: "", who: "", notes: "", star: 0 };
+    day(selected).trip.push(v);
+    document.getElementById("tripQuery").value = "";
+    document.getElementById("tripYear").value = "";
+    document.getElementById("tripMonth").value = "";
+    tripOpen = selected + "|" + v.id;
+    save(); renderTrips();
+    var box = tripHost.querySelector('input[data-trip="place"]');
     if (box) box.focus();
   });
 
@@ -6394,7 +6519,11 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
              : kind === "faith"     ? parseNote("faith")
              : kind === "prayer"    ? parseNote("prayer")
              : kind === "worklog"   ? parseNote("worklog")
-             : kind === "seen"      ? function (tx, bs) { return parseSeen(tx, bs, t.word); }
+             : kind === "trip"      ? parseTrip
+             : kind === "movie"     ? parseNote("movie")
+             : kind === "show"      ? parseNote("show")
+             : kind === "lecture"   ? parseNote("lecture")
+             : kind === "book"      ? parseNote("book")
              : kind === "visit"     ? parseVisit
              : kind === "money"     ? parseMoney
              : parseWork;
@@ -6451,7 +6580,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     "메모": "health", "식단": "health", "복약": "health", "운동": "health",
     "증상": "health",
     "가계부": "money", "업무일지": "work", "일 메모": "work",
-    "여행": "seen", "영화": "seen", "공연": "seen", "강의": "seen"
+    "여행": "seen", "영화": "seen", "공연": "seen", "강의": "seen", "책": "seen"
   };
 
   function findAllRecords(q) {
@@ -6482,18 +6611,18 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       });
       [["faith", "묵상일기"], ["prayer", "기도"], ["worklog", "업무일지"],
        ["history", "나의역사"], ["knowledge", "지식창고"],
-       ["memo", "일 메모"]].forEach(function (pair) {
+       ["memo", "일 메모"], ["movie", "영화"], ["show", "공연"],
+       ["lecture", "강의"], ["book", "책"]].forEach(function (pair) {
         (d[pair[0]] || []).forEach(function (n) {
-          hit(date, pair[1], [n.title, n.notes].filter(Boolean).join(" · "));
+          hit(date, pair[1], [n.title, n.notes, n.feel].filter(Boolean).join(" · "));
         });
       });
       (d.money || []).forEach(function (m) {
         hit(date, "가계부", (m.kind === "in" ? "번 것 " : "쓴 것 ") + wonText(m.amount) +
           " " + [m.note, m.cat].filter(Boolean).join(" · "));
       });
-      (d.seen || []).forEach(function (v) {
-        hit(date, v.kind || "본 것",
-          [v.title, v.place, v.who, v.notes].filter(Boolean).join(" · ") +
+      (d.trip || []).forEach(function (v) {
+        hit(date, "여행", [v.place, v.who, v.notes].filter(Boolean).join(" · ") +
           (v.star ? " ★" + v.star : ""));
       });
       hit(date, "메모", d.note);
@@ -7535,8 +7664,9 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
      그래서 여기에 빠진 자리는 곧 사라지는 기록이다. day() 가 만드는 자리를
      하나도 빠짐없이 여기서도 봐야 한다. 자리를 새로 만들면 여기도 함께 고칠 것. */
   var DAY_LISTS = ["schedule", "meetings", "visits", "money",
-                   "faith", "prayer", "worklog", "history", "knowledge", "seen",
-                   "memo"];
+                   "faith", "prayer", "worklog", "history", "knowledge",
+                   "memo", "seen",
+                   "trip", "movie", "show", "lecture", "book"];
 
   function emptyDay(d) {
     if (!d) return true;

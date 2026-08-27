@@ -17,6 +17,17 @@ SEED
 python3 _mkdbg.py _fix_today.html <<'SEED'
 localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],habits:[]}));
 SEED
+python3 _mkdbg.py _fix_seen.html <<'SEED'
+var t=new Date(), iso=function(x){return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0");};
+var b=new Date(t); b.setDate(b.getDate()-40);
+var st={days:{},meds:[],habits:[]};
+st.days[iso(t)]={seen:[
+ {id:"s1",kind:"영화",title:"오펜하이머",place:"메가박스",who:"동생",notes:"길지만 좋았다",star:4},
+ {id:"s2",kind:"강의",title:"파이썬 기초 3강",place:"",who:"",notes:"",star:3}]};
+st.days[iso(b)]={seen:[
+ {id:"s3",kind:"여행",title:"속초 2박3일",place:"",who:"가족",notes:"바다가 좋았다",star:5}]};
+localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
+SEED
 python3 _mkdbg.py _fix_memo.html <<'SEED'
 var t=new Date(), iso=function(x){return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0");};
 var b=new Date(t); b.setDate(b.getDate()-5);
@@ -36,7 +47,7 @@ done
 
 echo
 echo "— 화면 시험"
-for f in _qa.html _qa3.html _qa4.html _qa5.html _qa6.html _qa7.html; do
+for f in _qa.html _qa3.html _qa4.html _qa5.html _qa6.html _qa7.html _qa8.html; do
   printf "%-12s " "$f"
   out=$("$CHROME" --headless --disable-gpu --window-size=1240,900 \
         --virtual-time-budget=20000 --dump-dom "http://localhost:$PORT/$f" 2>/dev/null \

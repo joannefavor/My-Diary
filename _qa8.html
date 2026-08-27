@@ -1,0 +1,77 @@
+<!doctype html><meta charset="utf-8"><title>본 것 다섯 갈래 시험</title>
+<div id="out" style="font:13px/1.7 ui-monospace"></div>
+<iframe id="f" src="/_fix_seen.html#/seen" style="width:1240px;height:100px;border:0"></iframe>
+<script>
+var out=document.getElementById("out"),f=document.getElementById("f"),pass=0,fail=0;
+function log(ok,n,e){(ok?pass++:fail++);
+ out.insertAdjacentHTML("beforeend",(ok?"통과  ":"X 실패  ")+n+(e?"   "+e:"")+"<br>");}
+function ev(w,el,t){el.dispatchEvent(new w.Event(t,{bubbles:true}));}
+f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
+ w.onerror=function(m,s,l){log(false,"앱 오류",m+" ("+l+"줄)");};
+ setTimeout(function(){
+  /* 다섯 패널이 세로로 */
+  var ps=d.querySelectorAll('section.panel[data-page="seen"]:not(.is-off)');
+  log(ps.length===5,"다섯 갈래가 따로 선다",ps.length+"개");
+  var titles=[].map.call(ps,function(p){return p.querySelector("h2").textContent;});
+  log(titles.join(",")==="여행,영화,공연,강의,책","차례가 여행·영화·공연·강의·책",titles.join(","));
+  var tops=[].map.call(ps,function(p){return p.getBoundingClientRect().top;});
+  log(tops.every(function(v,i){return i===0||v>tops[i-1];}),"세로로 쌓인다");
+
+  /* 옮겨 담기 */
+  var st=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3"));
+  var got={trip:0,movie:0,show:0,lecture:0,book:0,seen:0};
+  Object.keys(st.days).forEach(function(k){
+   Object.keys(got).forEach(function(g){got[g]+=((st.days[k][g])||[]).length;});});
+  log(got.trip===1&&got.movie===1&&got.lecture===1,"예전 기록이 갈래별로 나뉜다",
+    JSON.stringify(got));
+  log(got.seen===0,"옛 자리는 비워진다");
+  var tr=null; Object.keys(st.days).forEach(function(k){
+   ((st.days[k].trip)||[]).forEach(function(v){tr=v;});});
+  log(tr&&tr.place==="속초 2박3일","여행은 제목이 '어디에' 로 간다",tr&&tr.place);
+  var mv=null; Object.keys(st.days).forEach(function(k){
+   ((st.days[k].movie)||[]).forEach(function(v){mv=v;});});
+  log(mv&&mv.notes.indexOf("메가박스")!==-1,"갈 곳 없는 칸은 내용에 붙는다",mv&&mv.notes.replace(/\n/g," / "));
+
+  /* 여행 패널 — 달력 있음, 연·월 검색 */
+  var trip=ps[0];
+  log(!!trip.querySelector('[data-cal="trip"]'),"여행에는 달력이 있다");
+  log(!!d.getElementById("tripYear")&&!!d.getElementById("tripMonth"),"연도·달 고르개가 있다");
+  log(trip.querySelectorAll("[data-trow]").length===1,"여행 한 건이 보인다");
+
+  /* 나머지 넷 — 달력 없음, 찾기만 */
+  ["movie","show","lecture","book"].forEach(function(k,i){
+   var p=ps[i+1];
+   if(i===0) log(!p.querySelector('[data-cal]'),"영화에는 달력이 없다");
+   if(i===0) log(!!p.querySelector('input[data-find="movie"]')&&
+                 !!p.querySelector('input[data-findfrom="movie"]'),"찾기와 기간 칸이 있다");
+  });
+  /* 느낌 칸 */
+  d.querySelector('button[data-noteadd="book"]').click();
+  setTimeout(function(){
+   var card=d.querySelector("#bookList .mt");
+   log(!!card,"책에 새로 적기가 된다");
+   var keys=[].map.call(card.querySelectorAll(".mt-key"),function(x){return x.textContent;});
+   log(keys.join(",")==="날짜,내용,느낌","일자·내용·느낌 칸이 있다",keys.join(","));
+   var fe=card.querySelector('textarea[data-note="feel"]');
+   fe.value="오래 남을 책"; ev(w,fe,"change");
+   setTimeout(function(){
+    var st2=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3"));
+    var ok=false; Object.keys(st2.days).forEach(function(k){
+     ((st2.days[k].book)||[]).forEach(function(v){if(v.feel==="오래 남을 책")ok=true;});});
+    log(ok,"느낌이 저장된다");
+    /* 여행 연도로 좁히기 */
+    var ysel=d.getElementById("tripYear");
+    ysel.value=ysel.options[1]?ysel.options[1].value:""; ev(w,ysel,"change");
+    setTimeout(function(){
+     log(d.querySelectorAll("#tripList [data-trow]").length===1,"연도로 좁혀도 그 해 것이 보인다");
+     var msel=d.getElementById("tripMonth"); msel.value="01"; ev(w,msel,"change");
+     setTimeout(function(){
+      log(d.getElementById("tripList").textContent.indexOf("찾는 여행이 없습니다")!==-1,
+        "다른 달로 좁히면 안 나온다");
+      out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
+     },300);
+    },300);
+   },300);
+  },400);
+ },1100);};
+</script>

@@ -1,82 +1,55 @@
-<!doctype html><meta charset="utf-8"><title>본 것 시험</title>
+<!doctype html><meta charset="utf-8"><title>본 것 — 빠르게 쓰기·찾기 시험</title>
 <div id="out" style="font:13px/1.7 ui-monospace"></div>
-<iframe id="f" src="/#/seen" style="width:1240px;height:100px;border:0"></iframe>
+<iframe id="f" src="/#/main" style="width:1240px;height:100px;border:0"></iframe>
 <script>
 var out=document.getElementById("out"),f=document.getElementById("f"),pass=0,fail=0;
 function log(ok,n,e){(ok?pass++:fail++);
- out.insertAdjacentHTML("beforeend",(ok?"통과  ":"X 실패  ")+n+(e?"  <i>"+e+"</i>":"")+"<br>");}
+ out.insertAdjacentHTML("beforeend",(ok?"통과  ":"X 실패  ")+n+(e?"   "+e:"")+"<br>");}
 function ev(w,el,t){el.dispatchEvent(new w.Event(t,{bubbles:true}));}
-
 f.onload=function(){var w=f.contentWindow,d=w.document;
+ w.onerror=function(m,s,l){log(false,"앱 오류",m+" ("+l+"줄)");};
  setTimeout(function(){
   try{w.localStorage.removeItem("weekly-health-ledger-v3");}catch(e){}
-  /* --- 탭이 생겼나 --- */
-  var tab=d.querySelector('#pageTabs button[data-goto="seen"]');
-  log(!!tab,"왼쪽 막대에 '본 것' 탭이 있다",tab&&tab.textContent);
-  log(!!d.getElementById("seenList"),"본 것 화면이 있다");
+  log(!!d.querySelector('#pageTabs button[data-goto="seen"]'),"'본 것' 탭이 있다");
 
-  /* --- 빠르게 쓰기로 넣어 본다 --- */
-  w.location.hash="#/main";
+  /* 빠르게 쓰기 — 대표 갈래는 영화, 나머지는 태그로 */
+  var pick=d.querySelector('#quickPicks button[data-pick="movie"]');
+  log(!!pick,"빠르게 쓰기에 '본 것' 단추가 있다",pick&&pick.textContent);
+  pick.click();
+  function quick(t){var ta=d.getElementById("quickText");ta.value=t;ev(w,ta,"input");
+   d.getElementById("quickAdd").click();}
+  quick("오펜하이머");
+  quick("#여행 속초");
+  quick("#책 총, 균, 쇠");
+  quick("#공연 김광석 다시부르기");
+  quick("#강의 파이썬 기초");
   setTimeout(function(){
-   /* 갈래를 '본 것'으로 골라 두고 적는다. 안 고르면 기본값인 달력으로 간다 */
-   d.querySelector('#quickPicks button[data-pick="seen"]').click();
-   function quick(txt){
-    var ta=d.getElementById("quickText"); ta.value=txt; ev(w,ta,"input");
-    d.getElementById("quickAdd").click();
-   }
-   quick("영화 오펜하이머 4점");
-   quick("여행 속초 2박3일 5점");
-   quick("#강의 파이썬 기초 3강");   /* 태그로도 되는지 */
-   quick("공연 라라랜드 내한");
-
-   var all=[];
    var st=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3")||"{}");
-   for(var k in (st.days||{})) (st.days[k].seen||[]).forEach(function(v){all.push(v);});
-   log(all.length===4,"빠르게 쓰기로 네 개가 들어갔다",all.length+"개");
-   var byKind={}; all.forEach(function(v){byKind[v.kind]=v;});
-   log(!!byKind["영화"]&&byKind["영화"].title==="오펜하이머","갈래와 제목이 갈렸다",
-     JSON.stringify(all.map(function(v){return v.kind+":"+v.title+":"+v.star;})));
-   log(byKind["영화"]&&byKind["영화"].star===4,"별점 4점이 들어갔다",
-     byKind["영화"]&&byKind["영화"].star);
-   log(byKind["여행"]&&byKind["여행"].title==="속초 2박3일","여행 제목에 숫자가 남았다",
-     byKind["여행"]&&byKind["여행"].title);
-   log(!!byKind["강의"],"#강의 태그도 갈래가 된다",byKind["강의"]&&byKind["강의"].title);
+   var got={trip:[],movie:[],show:[],lecture:[],book:[]};
+   Object.keys(st.days||{}).forEach(function(k){
+    Object.keys(got).forEach(function(g){
+     ((st.days[k][g])||[]).forEach(function(v){got[g].push(v.place||v.title);});});});
+   log(got.movie.length===1&&got.movie[0]==="오펜하이머","갈래를 안 적으면 영화로",got.movie.join(","));
+   log(got.trip.length===1&&got.trip[0]==="속초","#여행 은 여행으로, 가는 곳이 '어디에'",got.trip.join(","));
+   log(got.book.length===1&&got.book[0]==="총, 균, 쇠","#책 은 책으로",got.book.join(","));
+   log(got.show.length===1,"#공연 은 공연으로",got.show.join(","));
+   log(got.lecture.length===1,"#강의 는 강의로",got.lecture.join(","));
 
-   /* --- 빠르게 찾기에 걸리나 --- */
-   var fi=d.getElementById("findAll"); fi.value="오펜하이머"; ev(w,fi,"input");
-   setTimeout(function(){
-    var ft=d.getElementById("findList").textContent;
-    log(ft.indexOf("오펜하이머")!==-1,"빠르게 찾기에 걸린다",ft.slice(0,36).trim());
-
-    /* --- 본 것 화면에서 거르기 --- */
-    w.location.hash="#/seen";
-    setTimeout(function(){
-     var rows=function(){return d.querySelectorAll("#seenList [data-srow]").length;};
-     log(rows()===4,"목록에 넷이 다 보인다",rows()+"개");
-     d.querySelector('#seenKinds button[data-sk="영화"]').click();
-     log(rows()===1,"갈래로 거르면 하나만",rows()+"개");
-     d.querySelector('#seenKinds button[data-sk=""]').click();
-     var sq=d.getElementById("seenQuery"); sq.value="속초"; ev(w,sq,"input");
-     log(rows()===1,"말로 찾으면 하나만",rows()+"개");
-     sq.value=""; ev(w,sq,"input");
-
-     /* --- 별점 눌러 바꾸기 --- */
-     d.querySelector("#seenList [data-srow]").click();
-     setTimeout(function(){
-      var sp=d.querySelectorAll("#seenList .starpick button[data-star]");
-      log(sp.length>=5,"펼치면 별점을 누를 수 있다",sp.length+"개");
-      sp[2].click();
-      setTimeout(function(){
-       var st2=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3"));
-       var found=null;
-       for(var k in st2.days)(st2.days[k].seen||[]).forEach(function(v){
-        if(v.star===3) found=v;});
-       log(!!found,"별을 누르면 점수가 저장된다",found&&found.title+" ★3");
-       out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
-      },300);
-     },300);
-    },500);
-   },400);
+   /* 빠르게 찾기에 다섯 갈래가 다 걸리나 */
+   var fi=d.getElementById("findAll");
+   function find(q,cb){fi.value=q;ev(w,fi,"input");setTimeout(cb,300);}
+   find("속초",function(){
+    var t1=d.getElementById("findList").textContent;
+    log(t1.indexOf("여행")!==-1&&t1.indexOf("속초")!==-1,"여행이 찾기에 걸린다",t1.slice(0,34).trim());
+    find("총, 균",function(){
+     var t2=d.getElementById("findList").textContent;
+     log(t2.indexOf("책")!==-1,"책이 찾기에 걸린다",t2.slice(0,34).trim());
+     find("김광석",function(){
+      log(d.getElementById("findList").textContent.indexOf("공연")!==-1,"공연이 찾기에 걸린다");
+      out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
+     });
+    });
+   });
   },600);
  },900);};
 </script>
