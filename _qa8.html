@@ -30,7 +30,12 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
   log(tr&&tr.place==="속초 2박3일","여행은 제목이 '어디에' 로 간다",tr&&tr.place);
   var mv=null; Object.keys(st.days).forEach(function(k){
    ((st.days[k].movie)||[]).forEach(function(v){mv=v;});});
-  log(mv&&mv.notes.indexOf("메가박스")!==-1,"갈 곳 없는 칸은 내용에 붙는다",mv&&mv.notes.replace(/\n/g," / "));
+  /* 영화·공연에는 어디서·누구랑 칸이 있으므로 칸으로 간다 */
+  log(mv&&mv.place==="메가박스"&&mv.who==="동생","영화는 어디서·누구랑이 칸으로",
+    mv&&(mv.place+" / "+mv.who));
+  var lc=null; Object.keys(st.days).forEach(function(k){
+   ((st.days[k].lecture)||[]).forEach(function(v){lc=v;});});
+  log(!!lc,"강의도 옮겨진다",lc&&lc.title);
 
   /* 여행 패널 — 달력 있음, 연·월 검색 */
   var trip=ps[0];

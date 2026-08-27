@@ -1,0 +1,72 @@
+<!doctype html><meta charset="utf-8"><title>영화·공연 세 칸 시험</title>
+<div id="out" style="font:13px/1.7 ui-monospace"></div>
+<iframe id="f" src="/_fix_trio.html#/seen" style="width:1240px;height:100px;border:0"></iframe>
+<script>
+var out=document.getElementById("out"),f=document.getElementById("f"),pass=0,fail=0;
+function log(ok,n,e){(ok?pass++:fail++);
+ out.insertAdjacentHTML("beforeend",(ok?"통과  ":"X 실패  ")+n+(e?"   "+e:"")+"<br>");}
+function ev(w,el,t){el.dispatchEvent(new w.Event(t,{bubbles:true}));}
+f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
+ w.onerror=function(m,s,l){log(false,"앱 오류",m+" ("+l+"줄)");};
+ setTimeout(function(){
+  var st=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3"));
+  function pick(kind,t){var r=null;Object.keys(st.days).forEach(function(k){
+   ((st.days[k][kind])||[]).forEach(function(v){if(v.title===t)r=v;});});return r;}
+
+  /* 옛 seen 에서 바로 온 것 */
+  var m1=pick("movie","오펜하이머");
+  log(m1&&m1.place==="메가박스"&&m1.who==="동생","옛 기록의 어디서·누구랑이 칸으로 간다",
+    m1&&(m1.place+" / "+m1.who));
+  log(m1&&m1.notes.indexOf("어디서")===-1,"내용에 덧붙지 않는다",m1&&m1.notes);
+
+  /* 어제 내용에 붙여 둔 것 되돌리기 */
+  var m2=pick("movie","듄");
+  log(m2&&m2.place==="CGV"&&m2.who==="친구","붙여 둔 것이 칸으로 되돌아온다",
+    m2&&(m2.place+" / "+m2.who));
+  log(m2&&m2.notes==="사막 이야기","붙인 줄만 떼어낸다",m2&&JSON.stringify(m2.notes));
+
+  /* 손으로 적어 둔 것은 안 덮는다 */
+  var m3=pick("movie","기생충");
+  log(m3&&m3.place==="롯데시네마"&&m3.who==="혼자","이미 적어 둔 칸은 그대로",
+    m3&&(m3.place+" / "+m3.who));
+
+  /* 강의·책은 칸이 없으니 내용에 붙은 채 */
+  var b1=pick("lecture","파이썬 기초 3강");
+  log(b1&&b1.place===undefined||b1&&!b1.place,"강의에는 어디서 칸이 없다");
+
+  /* 화면 — 제목 아래 세 칸 */
+  var card=d.querySelector("#movieList .mt");
+  log(!!card,"영화 칸이 보인다");
+  var trio=card.querySelector(".mt-trio");
+  log(!!trio,"제목 아래 한 줄이 있다");
+  var keys=[].map.call(trio.querySelectorAll(".mt-key"),function(x){return x.textContent;});
+  log(keys.join(",")==="언제,어디서,누구랑","언제·어디서·누구랑 셋",keys.join(","));
+  var rows=[].map.call(card.querySelectorAll(".mt-row"),function(r){
+    return r.querySelector(".mt-key").textContent;});
+  log(rows.join(",")==="언제,내용,느낌","차례가 제목 → 셋 → 내용 → 느낌",rows.join(","));
+  var tt=card.querySelector(".mt-title").getBoundingClientRect().top;
+  log(tt<trio.getBoundingClientRect().top,"제목이 맨 위에 있다");
+
+  /* 강의는 예전 그대로 */
+  var lc=d.querySelector("#lectureList .mt");
+  log(lc&&!lc.querySelector(".mt-trio"),"강의는 세 칸을 쓰지 않는다");
+
+  /* 적으면 저장되나 */
+  var wi=trio.querySelector('input[data-note="who"]');
+  wi.value="누나"; ev(w,wi,"change");
+  setTimeout(function(){
+   var st2=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3"));
+   var ok=false;Object.keys(st2.days).forEach(function(k){
+    ((st2.days[k].movie)||[]).forEach(function(v){if(v.who==="누나")ok=true;});});
+   log(ok,"누구랑이 저장된다");
+   /* 찾기에 걸리나 */
+   var q=d.querySelector('input[data-find="movie"]');
+   q.value="메가박스"; ev(w,q,"input");
+   setTimeout(function(){
+    log(d.querySelectorAll("#movieList .mt").length===1,"어디서로 찾을 수 있다",
+      d.querySelectorAll("#movieList .mt").length+"개");
+    out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
+   },300);
+  },300);
+ },1200);};
+</script>
