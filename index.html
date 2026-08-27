@@ -209,9 +209,19 @@
   .wk-line { display: flex; align-items: center; gap: 7px; }
   .wk-line .wk-item { flex: none; }
   .wk-at {
-    flex: none; font-size: 11px; color: var(--accent-ink);
-    font-family: var(--mono); white-space: nowrap;
+    flex: none; display: flex; align-items: center; gap: 2px;
+    font-size: 11px; color: var(--accent-ink); font-family: var(--mono);
   }
+  .wk-at i { font-style: normal; }
+  .wk-at input {
+    font: inherit; font-size: 11px; font-family: var(--mono);
+    color: inherit; background: none; border: 1px solid transparent;
+    border-radius: 5px; padding: 1px 3px; width: 108px;
+  }
+  .wk-at input:hover { border-color: var(--hair); }
+  .wk-at input:focus { border-color: var(--accent-ink); background: var(--surface); }
+  /* 비어 있으면 흐리게 — 아직 안 적었다는 것이 보여야 채워 넣게 된다 */
+  .wk-at input:invalid, .wk-at input[value=""] { color: var(--muted); opacity: .75; }
   /* 메모는 남는 자리를 다 쓴다. 테두리를 평소엔 감추는 것은, 다섯 줄마다
      빈 칸이 늘어서 있으면 적어 둔 것보다 빈 칸이 먼저 눈에 들어와서다. */
   .wk-note {
@@ -2726,14 +2736,6 @@
 
   var TODO_SLOTS = 5;
   var TODO_FIXED = "QT";   // 첫 칸은 이름 고정
-  /* 끝낸 날을 짧게. 적어 둔 날과 같으면 "그날" 이라고만 쓴다 —
-     날짜가 두 번 나오면 어느 쪽이 무엇인지 되레 헷갈린다. */
-  function doneAtWord(date, at) {
-    if (!at) return "";
-    if (at === date) return "✓ 그날";
-    var dt = parseISO(at);
-    return "✓ " + (dt.getMonth() + 1) + "/" + dt.getDate();
-  }
 
   /* 날짜별 할 일. 항상 다섯 칸을 보여주고 빈 칸은 그대로 둔다. */
   function todosOf(date) {
@@ -6163,8 +6165,13 @@
               '<input type="checkbox" data-work="' + at + '"' +
                 (s.done ? " checked" : "") + ">" +
               "<span>" + esc(s.text) + "</span></label>" +
-            (s.doneAt ? '<span class="wk-at" title="끝낸 날">' +
-              esc(doneAtWord(date, s.doneAt)) + "</span>" : "") +
+            /* 끝낸 것에만 완료일 칸을 둔다. 고칠 수 있게 한 것은, 예전에
+               체크해 둔 것들은 끝낸 날을 모르기 때문이다 — 그때는 이 칸이
+               없었다. 뒤늦게 채워 넣을 길이 있어야 한다. */
+            (s.done ? '<span class="wk-at"><i>✓</i>' +
+              '<input type="date" data-workdate="' + at + '" value="' +
+              esc(s.doneAt || "") + '" title="끝낸 날" aria-label="' +
+              esc(s.text) + ' 끝낸 날"></span>' : "") +
             '<input class="wk-note" data-worknote="' + at +
               '" value="' + esc(s.note || "") + '" placeholder="메모" ' +
               'aria-label="' + esc(s.text) + ' 메모">' +
@@ -6231,6 +6238,15 @@
       var nk = nb.getAttribute("data-worknote").split("|");
       todoSlot(nk[0], +nk[1]).note = nb.value.trim();
       /* 통째로 다시 그리지 않는다 — 적던 자리가 접히고 커서가 튄다 */
+      save();
+      return;
+    }
+    var db = e.target.closest("input[data-workdate]");
+    if (db) {
+      var dk = db.getAttribute("data-workdate").split("|");
+      var ds = todoSlot(dk[0], +dk[1]);
+      if (db.value) ds.doneAt = db.value;
+      else delete ds.doneAt;
       save();
       return;
     }
