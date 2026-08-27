@@ -192,10 +192,15 @@
     display: grid; align-items: center; gap: 4px 8px;
     grid-template-columns: auto minmax(120px, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
   }
+  /* 두 칸짜리 줄(여행의 떠난 날·돌아온 날)은 네 칸으로 선다 */
+  .mt-trio:has(> :nth-child(4):last-child) {
+    grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+  }
   .mt-trio input { min-width: 0; }
   @media (max-width: 780px) {
     .mt-trio { grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr); }
   }
+
 
   /* 며칠짜리 여행이었나. 날짜 옆이 아니라 오른쪽에 두는 것은, 날짜는 언제인지를
      묻는 것이고 이건 얼마나였는지를 묻는 것이라 서로 다른 물음이라서다. */
@@ -645,6 +650,24 @@
   .panelcal .dp-grid, .panelcal .dp-dow { gap: 1px; }
   .panelcal .dp-grid button { padding: 2px 0; font-size: 9.5px; border-radius: 4px; }
   .panelcal .dp-grid button .dot { width: 3px; height: 3px; bottom: 2px; }
+
+  /* 아래 띠 규칙은 반드시 .panelcal 규칙 뒤에 둔다. 같은 강도끼리는 뒤가 이기는데,
+     앞에 두었더니 위의 border-radius: 4px 에 눌려 가운데 날까지 둥글어졌다. */
+  /* 여행 기간 — 복숭아보다 진한 색으로, 칸 사이를 메워 이어지게 칠한다.
+     가운데 날은 모서리를 없애고 양 끝만 둥글게 한다. */
+  .dp-grid button.band {
+    background: var(--s2); color: var(--on-accent); font-weight: 600;
+    border-radius: 0; position: relative;
+  }
+  /* 칸 사이 틈(gap)을 좌우로 넘겨 메운다. 안 메우면 점선처럼 끊겨 보인다 */
+  .dp-grid button.band.a, .dp-grid button.band.mid { margin-right: -2px; padding-right: 2px; }
+  .dp-grid button.band.b, .dp-grid button.band.mid { margin-left: -2px; padding-left: 2px; }
+  .dp-grid button.band.a { border-radius: 6px 0 0 6px; }
+  .dp-grid button.band.b { border-radius: 0 6px 6px 0; }
+  .dp-grid button.band.one { border-radius: 6px; }
+  .dp-grid button.band.hol { color: var(--on-accent); }
+  .dp-grid button.band.on { outline: 2px solid var(--ink); outline-offset: -2px; }
+
   .withcal .notelist, .withcal .meetlist { padding: 0; }
   /* minmax(0, 1fr) 로 못 박는다. 그냥 1fr 이면 굵은 글씨(고른 날·오늘)가
      그 칸만 넓혀서 줄이 어긋난다. */
@@ -4473,6 +4496,28 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
   }
 
   /* 그 갈래의 기록이 있는 날 */
+  /* 여행이 걸쳐 있는 날들. 하루짜리는 'one', 여러 날이면 시작·중간·끝을 나눈다.
+     주가 바뀌는 자리에서 끊기지 않게, 칠하는 일은 날짜 단위로만 정하고
+     둥글게 다듬는 것은 모양(CSS)에 맡긴다. */
+  function tripBand() {
+    var out = {};
+    for (var date in state.days) {
+      var d = state.days[date];
+      if (!d || !d.trip) continue;
+      d.trip.forEach(function (v) {
+        var to = (v.to && v.to > date) ? v.to : date;
+        var at = parseISO(date), end = parseISO(to);
+        for (var g = 0; g < 400 && at <= end; g++) {
+          var k = iso(at);
+          var isA = (k === date), isB = (k === to);
+          out[k] = isA && isB ? "one" : isA ? "a" : isB ? "b" : "mid";
+          at = addDays(at, 1);
+        }
+      });
+    }
+    return out;
+  }
+
   function dpMarks(kind, ym) {
     var out = {};
     for (var date in state.days) {
@@ -4502,6 +4547,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
     var lead = dowIndex(first);                       /* 주의 첫날까지 당긴다 */
     var start = addDays(first, -lead);
     var marks = dpMarks(kind, ym);
+    var band = kind === "trip" ? tripBand() : null;
     var today = iso(new Date());
 
     var cells = "";
@@ -4509,10 +4555,16 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
       var dt = addDays(start, i);
       var ds = iso(dt);
       var out = ds.slice(0, 7) !== ym;
+      /* 여행 기간은 형광펜처럼 이어 칠한다. 양 끝만 둥글게 해서 며칠짜리인지가
+         한눈에 보이게 한다 — 점만 찍으면 떠난 날과 돌아온 날이 따로 놀아
+         그 사이가 여행이었다는 것이 안 보인다. */
+      var bd = band && band[ds];
       cells += '<button type="button" data-dpday="' + ds + '"' +
         ' class="' + (out ? "out " : "") + (holidayOf(ds) ? "hol " : "") +
+        (bd ? "band " + bd + " " : "") +
         (ds === today ? "today " : "") + (ds === cur ? "on" : "") + '">' +
-        dt.getDate() + (marks[ds] ? '<span class="dot"></span>' : "") + "</button>";
+        dt.getDate() +
+        (marks[ds] && !bd ? '<span class="dot"></span>' : "") + "</button>";
     }
 
     var head = '<div class="dp-head">' +
@@ -5925,11 +5977,16 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
           '" value="' + esc(v.place || "") + '" placeholder="어디에" aria-label="어디에"></input>' +
         '<button class="ghost mt-del" data-tripdel="' + at + '">지우기</button>' +
       "</div>" +
-      '<div class="mt-row"><span class="mt-key">떠난 날</span>' +
-        dayField('data-tripdate="' + at + '"', date, "떠난 날") + "</div>" +
-      '<div class="mt-row"><span class="mt-key">돌아온 날</span>' +
+      /* 떠난 날과 돌아온 날은 한 쌍이라 한 줄에 나란히 둔다. 위아래로 두면
+         기간이라는 것이 눈에 안 들어오고 줄만 길어진다. */
+      '<div class="mt-row mt-trio">' +
+        '<span class="mt-key">떠난 날</span>' +
+        '<input type="date" data-tripdate="' + at + '" value="' + date +
+          '" aria-label="떠난 날">' +
+        '<span class="mt-key">돌아온 날</span>' +
         '<input type="date" data-trip="to" data-at="' + at + '" value="' +
-        esc(v.to || "") + '" aria-label="돌아온 날"></div>' +
+        esc(v.to || "") + '" aria-label="돌아온 날">' +
+      "</div>" +
       '<div class="mt-row"><span class="mt-key">누구랑</span>' +
         '<input data-trip="who" data-at="' + at + '" value="' + esc(v.who || "") +
         '" placeholder="함께 간 사람" aria-label="누구랑"></div>' +
