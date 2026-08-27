@@ -6928,15 +6928,28 @@
      화면을 열기만 해도 day()가 오늘 날짜의 빈 칸을 만들어 둔다. 사람이 적은 게 아니다.
      이걸 '적은 것'으로 세면, 처음 연결하는 기기에서 빈 칸과 저쪽 기록이 부딪쳐
      충돌로 판정되고 저쪽 기록이 버려진다. 그래서 빈 칸은 없는 것으로 친다. */
+  /* 이 함수가 "빈 날"이라고 하면 동기화는 그 날을 아예 없는 날로 다룬다 —
+     올리지도 않고, 합칠 때는 저쪽에 없으니 이쪽 것을 버린다.
+     그래서 여기에 빠진 자리는 곧 사라지는 기록이다. day() 가 만드는 자리를
+     하나도 빠짐없이 여기서도 봐야 한다. 자리를 새로 만들면 여기도 함께 고칠 것. */
+  var DAY_LISTS = ["schedule", "meetings", "visits", "money",
+                   "faith", "prayer", "worklog", "history", "knowledge", "seen"];
+
   function emptyDay(d) {
     if (!d) return true;
-    if (d.schedule && d.schedule.length) return false;
+    for (var i = 0; i < DAY_LISTS.length; i++) {
+      var L = d[DAY_LISTS[i]];
+      if (L && L.length) return false;
+    }
     if (d.todos && d.todos.some(function (t) { return t && (t.text || t.done); })) return false;
     if (d.sleep != null || d.bp || d.glucose != null || d.weight != null || d.water != null) return false;
     if (d.exercise && (d.exercise.min != null || d.exercise.kind)) return false;
-    if (d.meals && (d.meals.b || d.meals.l || d.meals.d)) return false;
-    if (d.menu && (d.menu.b || d.menu.l || d.menu.d)) return false;
-    if (d.pill && (d.pill.b || d.pill.l || d.pill.d)) return false;
+    /* 끼니는 간식(s)까지 본다. 규칙성은 세 끼로 세지만, 적은 것을 지키는 일은
+       간식도 똑같이 해야 한다 — 여기서 빠지면 간식만 적은 날이 사라진다. */
+    if (d.meals && (d.meals.b || d.meals.l || d.meals.d || d.meals.s)) return false;
+    if (d.menu && (d.menu.b || d.menu.l || d.menu.d || d.menu.s)) return false;
+    if (d.pill && (d.pill.b || d.pill.l || d.pill.d || d.pill.s)) return false;
+    if (d.sym && (d.sym.b || d.sym.l || d.sym.d || d.sym.s)) return false;
     if (d.meds) return false;
     if (d.medTaken && Object.keys(d.medTaken).some(function (k) { return d.medTaken[k]; })) return false;
     if (d.mood != null || d.condition != null || d.overall != null) return false;
