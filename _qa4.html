@@ -1,0 +1,74 @@
+<!doctype html><meta charset="utf-8"><title>달력 양식 시험</title>
+<div id="out" style="font:13px/1.7 ui-monospace"></div>
+<iframe id="f" src="/#/faith" style="width:1240px;height:100px;border:0"></iframe>
+<script>
+var out=document.getElementById("out"),f=document.getElementById("f"),pass=0,fail=0;
+function log(ok,n,e){(ok?pass++:fail++);
+ out.insertAdjacentHTML("beforeend",(ok?"통과  ":"X 실패  ")+n+(e?"   "+e:"")+"<br>");}
+f.onload=function(){var w=f.contentWindow,d=w.document;
+ w.onerror=function(m,s,l){log(false,"앱 오류",m+" ("+l+"줄)");};
+ setTimeout(function(){
+  var cal=d.querySelector('[data-cal="faith"]');
+  log(!!cal,"패널 옆 달력이 있다");
+
+  /* 주 시작이 일요일인가 */
+  var dows=[].map.call(cal.querySelectorAll(".dp-dow div"),function(x){return x.textContent;});
+  log(dows.join("")==="일월화수목금토","주가 일요일부터 시작한다",dows.join(" "));
+
+  /* 첫 칸이 정말 일요일인가 */
+  var first=cal.querySelector(".dp-grid button[data-dpday]").getAttribute("data-dpday");
+  log(new Date(first+"T00:00:00").getDay()===0,"격자 첫 칸이 일요일이다",first);
+
+  /* 머리 모양 — 연도 위, 달 아래 크게 */
+  var when=cal.querySelector(".dp-when");
+  log(!!when,"연도·달이 누를 수 있는 단추다");
+  var y=when.querySelector("small"), m=when.querySelector("b");
+  log(!!y&&!!m,"연도와 달이 따로 있다",y&&(y.textContent+" / "+m.textContent));
+  var ys=parseFloat(w.getComputedStyle(y).fontSize), ms=parseFloat(w.getComputedStyle(m).fontSize);
+  log(ms>ys,"달이 연도보다 크다",ys+"px → "+ms+"px");
+  log(y.getBoundingClientRect().top<m.getBoundingClientRect().top,"연도가 위에 있다");
+
+  /* 눌러서 고르개 열기 */
+  when.click();
+  setTimeout(function(){
+   var pick=cal.querySelector(".ympick");
+   log(!!pick,"연도를 누르면 고르개가 열린다");
+   if(!pick){out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");return;}
+   log(cal.querySelectorAll(".ym-grid button[data-ymm]").length===12,"달이 열둘 있다");
+   log(cal.querySelectorAll(".ym-spin button[data-ymy]").length===2,"해를 옮기는 ▲▼ 가 있다");
+   var yr=cal.querySelector(".ym-y span").textContent;
+   log(/^\d{4}년$/.test(yr),"해가 보인다",yr);
+   log(!!cal.querySelector(".ym-grid button.now"),"지금 달이 표시된다");
+   log(!cal.querySelector(".dp-grid"),"열려 있는 동안 날짜 격자는 접힌다");
+
+   /* 지난 해로 옮기고 3월 고르기 */
+   cal.querySelector('.ym-spin button[data-ymy="-1"]').click();
+   setTimeout(function(){
+    var yr2=cal.querySelector(".ym-y span").textContent;
+    log(parseInt(yr2)===parseInt(yr)-1,"▼ 를 누르면 지난 해로",yr+" → "+yr2);
+    cal.querySelector('.ym-grid button[data-ymm="3"]').click();
+    setTimeout(function(){
+     var head=cal.querySelector(".dp-when");
+     log(!cal.querySelector(".ympick"),"달을 고르면 고르개가 닫힌다");
+     var got=head.querySelector("small").textContent+"-"+head.querySelector("b").textContent;
+     log(got===(parseInt(yr)-1)+"-3월","고른 연·월로 달력이 옮겨간다",got);
+
+     /* 팝업 달력도 같은 양식인가 */
+     w.location.hash="#/health";
+     setTimeout(function(){
+      var btn=d.querySelector("button[data-daypick]");
+      if(btn) btn.click();
+      setTimeout(function(){
+       var pop=d.querySelector(".daypick");
+       log(!!pop&&!!pop.querySelector(".dp-when"),"팝업 달력도 같은 머리를 쓴다");
+       var pd=pop?[].map.call(pop.querySelectorAll(".dp-dow div"),
+         function(x){return x.textContent;}).join(""):"";
+       log(pd==="일월화수목금토","팝업 달력도 일요일 시작",pd);
+       out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
+      },400);
+     },500);
+    },300);
+   },300);
+  },300);
+ },900);};
+</script>

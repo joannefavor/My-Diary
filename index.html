@@ -456,12 +456,54 @@
     display: flex; align-items: center; justify-content: space-between;
     gap: 6px; margin-bottom: 8px;
   }
-  .dp-head .t {
-    font-weight: 700; font-size: 14px; flex: 1; text-align: center;
-    white-space: nowrap;      /* 좁아져도 두 줄로 깨지지 않게 */
-  }
-  .dp-head .t small { font-weight: 400; font-size: .78em; color: var(--muted); }
   .dp-today { font-size: 11.5px; padding: 3px 9px; flex: none; }
+
+  /* 달력 머리. 연도를 위에 작게, 달을 아래 크게 둔다 — 달력에서 먼저 찾는 것은
+     달이고 연도는 확인용이라서다. 통째로 단추라서 눌러 고르개를 연다. */
+  .dp-when {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    gap: 0; background: none; border: 0; cursor: pointer;
+    padding: 1px 4px; border-radius: 7px; color: inherit; line-height: 1.15;
+  }
+  .dp-when:hover { background: var(--surface-2); }
+  .dp-when small { font-size: 10.5px; color: var(--muted); font-family: var(--mono); }
+  .dp-when b { font-size: 16px; font-weight: 700; }
+
+  /* 연·월 고르개 */
+  .ym-y {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 2px 4px 7px; border-bottom: 1px solid var(--hair); margin-bottom: 7px;
+    font-weight: 700; font-size: 14px;
+  }
+  .ym-spin { display: flex; flex-direction: column; gap: 1px; }
+  .ym-spin button {
+    background: none; border: 0; cursor: pointer; padding: 0 5px;
+    font-size: 9px; line-height: 1.05; color: var(--accent-ink);
+  }
+  .ym-spin button:hover { color: var(--ink); }
+  .ym-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; }
+  .ym-grid button {
+    display: flex; flex-direction: column; align-items: center; gap: 0;
+    padding: 5px 2px; border: 1px solid transparent; border-radius: 7px;
+    background: none; cursor: pointer; color: inherit; line-height: 1.2;
+  }
+  .ym-grid button:hover { background: var(--surface-2); }
+  .ym-grid button b { font-size: 14px; font-weight: 700; }
+  .ym-grid button small { font-size: 8.5px; color: var(--muted); }
+  /* 지금 달은 글자 색으로, 보고 있는 달은 채워서. 둘이 겹칠 때도 구별된다 */
+  .ym-grid button.now b, .ym-grid button.now small { color: var(--s2); }
+  .ym-grid button.on {
+    background: var(--accent); border-color: var(--accent); color: var(--on-accent);
+  }
+  .ym-grid button.on small { color: var(--on-accent); opacity: .8; }
+
+  /* 패널 옆 작은 달력에서는 한 치수 줄인다 */
+  .panelcal .dp-when b { font-size: 12px; }
+  .panelcal .dp-when small { font-size: 8.5px; }
+  .panelcal .ym-y { font-size: 11px; padding-bottom: 5px; margin-bottom: 5px; }
+  .panelcal .ym-grid button { padding: 3px 1px; }
+  .panelcal .ym-grid button b { font-size: 11px; }
+  .panelcal .ym-grid button small { font-size: 7px; }
 
   /* 왼쪽에 한 달 달력, 오른쪽에 그날 기록 */
   .withcal { display: grid; gap: 14px 18px; padding: 0 16px 8px; }
@@ -473,7 +515,6 @@
     max-width: 155px;
   }
   .panelcal .dp-head { margin-bottom: 5px; }
-  .panelcal .dp-head .t { font-size: 11px; }
   .panelcal .dp-head .icon-btn { padding: 1px 5px; font-size: 10px; }
   .panelcal .dp-today { font-size: 9.5px; padding: 1px 6px; }
   .panelcal .dp-dow div { font-size: 8.5px; padding-bottom: 2px; }
@@ -2028,7 +2069,18 @@
   "use strict";
 
   var STORE = "weekly-health-ledger-v3";
-  var DOW = ["월", "화", "수", "목", "금", "토", "일"];
+  /* ============================ 달력 양식 ============================
+
+     달력이 여러 군데 나온다 — 팝업으로 뜨는 것, 패널 옆에 늘 펼쳐 둔 것,
+     달력 페이지의 월 보기와 년 보기. 예전에는 저마다 요일 셈을 따로 하고 있어서
+     주 시작을 바꾸려면 여섯 군데를 손봐야 했다. 이제 여기서만 정한다.
+
+     WEEK_START 를 1 로 두면 월요일 시작으로 되돌아간다. DOW 도 함께 돌릴 것. */
+  var WEEK_START = 0;                                   /* 0 = 일요일 시작 */
+  var DOW = ["일", "월", "화", "수", "목", "금", "토"];
+
+  /* 그 주에서 몇 번째 칸인가 (0 = 주의 첫날) */
+  function dowIndex(d) { return (d.getDay() - WEEK_START + 7) % 7; }
 
   /* ---------- 공휴일 ----------
      관공서의 공휴일에 관한 규정 기준. 제헌절(2008년부터 공휴일 아님)과
@@ -2160,9 +2212,11 @@
   function pad(n) { return (n < 10 ? "0" : "") + n; }
   function iso(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
   function parseISO(s) { var p = s.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
-  function mondayOf(d) {
+  /* 그 날이 속한 주의 첫날. 이름에 요일을 박지 않은 것은 WEEK_START 로
+     바뀌기 때문이다 — mondayOf 였을 때는 이름과 동작이 어긋났다. */
+  function weekStartOf(d) {
     var x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+    x.setDate(x.getDate() - dowIndex(x));
     return x;
   }
   function addDays(d, n) {
@@ -2176,7 +2230,7 @@
 
   /* days는 날짜별 기록, meds는 "내가 먹는 약" 목록(설정) */
   var state = { days: {}, meds: [] };
-  var weekStart = mondayOf(new Date());
+  var weekStart = weekStartOf(new Date());
   var selected = TODAY;
 
   function blank() {
@@ -2306,8 +2360,11 @@
     if (view === "day") return [selected];
     return weekDates();
   }
-  function dowOf(date) { return DOW[(parseISO(date).getDay() + 6) % 7]; }
+  function dowOf(date) { return DOW[dowIndex(parseISO(date))]; }
   function isWeekendDate(date) { var g = parseISO(date).getDay(); return g === 0 || g === 6; }
+  /* 요일머리의 몇 번째 칸이 주말인가. 칸 번호로 세면 주 시작이 바뀔 때 어긋난다 —
+     월요일 시작에서는 마지막 두 칸이 토·일이지만 일요일 시작에서는 첫 칸과 끝 칸이다. */
+  function isWeekendCol(i) { var g = (WEEK_START + i) % 7; return g === 0 || g === 6; }
 
   function weekDates() {
     var out = [];
@@ -2806,7 +2863,7 @@
     var out = "";
     for (var m = 0; m < 12; m++) {
       var first = new Date(y, m, 1);
-      var start = mondayOf(first);
+      var start = weekStartOf(first);
       var cells = "";
       for (var i = 0; i < 42; i++) {
         var date = iso(addDays(start, i));
@@ -2831,7 +2888,7 @@
   function monthDates() {
     var base = parseISO(selected);
     var first = new Date(base.getFullYear(), base.getMonth(), 1);
-    var start = mondayOf(first);
+    var start = weekStartOf(first);
     var out = [];
     for (var i = 0; i < 42; i++) out.push(iso(addDays(start, i)));
     return out;
@@ -2842,7 +2899,7 @@
     var dates = monthDates();
 
     var head = '<div class="mon-head">' + DOW.map(function (d, i) {
-      return '<div class="mon-dh' + (i >= 5 ? " is-weekend" : "") + '">' + d + "</div>";
+      return '<div class="mon-dh' + (isWeekendCol(i) ? " is-weekend" : "") + '">' + d + "</div>";
     }).join("") + "</div>";
 
     var cells = dates.map(function (date) {
@@ -2886,7 +2943,8 @@
       var items = d && d.schedule.length
         ? d.schedule.slice().sort(function (a, b) { return a.time.localeCompare(b.time); })
         : [];
-      var cls = "day-row" + (date === TODAY ? " is-today" : "") + (i >= 5 ? " is-weekend" : "");
+      var cls = "day-row" + (date === TODAY ? " is-today" : "") +
+        (isWeekendDate(date) ? " is-weekend" : "");
       var dd = parseISO(date);
 
       var rows = items.length
@@ -4030,6 +4088,7 @@
 
   function dpClose() {
     if (dpEl) { dpEl.remove(); dpEl = null; dpBox = null; }
+    if (ymOpen === "pop") ymOpen = null;
   }
 
   /* 그 갈래의 기록이 있는 날 */
@@ -4052,10 +4111,14 @@
 
   /* 한 달 달력 하나를 그린다. 눌러서 여는 것과 패널 옆에 늘 펼쳐 두는 것이
      같은 것을 쓴다. */
-  function calHTML(kind, ym, cur) {
+  /* 어느 달력에서 고르개를 열었는지 가른다. 팝업 달력과 패널 옆 달력이
+     같은 마크업을 쓰기 때문에, 이름이 없으면 둘이 함께 열린다. */
+  var ymOpen = null, ymYear = null;
+
+  function calHTML(kind, ym, cur, scope) {
     var base = parseISO(ym + "-01");
     var first = new Date(base.getFullYear(), base.getMonth(), 1);
-    var lead = (first.getDay() + 6) % 7;              /* 월요일 시작 */
+    var lead = dowIndex(first);                       /* 주의 첫날까지 당긴다 */
     var start = addDays(first, -lead);
     var marks = dpMarks(kind, ym);
     var today = iso(new Date());
@@ -4071,19 +4134,79 @@
         dt.getDate() + (marks[ds] ? '<span class="dot"></span>' : "") + "</button>";
     }
 
-    return '<div class="dp-head">' +
+    var head = '<div class="dp-head">' +
         '<button type="button" class="icon-btn" data-dpmon="-1" aria-label="지난 달">&lt;</button>' +
-        '<span class="t">' + (base.getMonth() + 1) + "월<small> " +
-          base.getFullYear() + "</small></span>" +
+        '<button type="button" class="dp-when" data-dpwhen' +
+          ' aria-expanded="' + (ymOpen === scope) + '"' +
+          ' aria-label="연도와 달 고르기">' +
+          "<small>" + base.getFullYear() + "</small>" +
+          "<b>" + (base.getMonth() + 1) + "월</b>" +
+        "</button>" +
         '<button type="button" class="icon-btn" data-dpmon="1" aria-label="다음 달">&gt;</button>' +
         '<button type="button" class="ghost dp-today">오늘</button>' +
-      "</div>" +
+      "</div>";
+
+    /* 고르개를 열면 날짜 격자 대신 그 자리에 놓는다. 위에 띄우지 않는 것은
+       패널 옆 달력이 작아서, 띄우면 달력 밖으로 삐져나가기 때문이다. */
+    if (ymOpen === scope) return head + ymHTML(ym);
+
+    return head +
       '<div class="dp-dow">' + DOW.map(function (d) { return "<div>" + d + "</div>"; }).join("") + "</div>" +
       '<div class="dp-grid">' + cells + "</div>";
   }
 
+  /* ---------- 연·월 고르개 ----------
+     연도를 누르면 열린다. 해는 ▲▼ 로 옮기고 달은 눌러서 고른다.
+     한 해를 통째로 보여주므로 "작년 3월"까지 두 번이면 닿는다 —
+     < > 로만 넘기면 열다섯 번을 눌러야 한다. */
+  var MONTH_EN = ["January", "February", "March", "April", "May", "June",
+                  "July", "August", "September", "October", "November", "December"];
+
+  function ymHTML(ym) {
+    var now = new Date();
+    var curY = now.getFullYear(), curM = now.getMonth() + 1;
+    var onY = Number(ym.slice(0, 4)), onM = Number(ym.slice(5, 7));
+
+    var cells = "";
+    for (var m = 1; m <= 12; m++) {
+      cells += '<button type="button" data-ymm="' + m + '"' +
+        ' class="' + (ymYear === onY && m === onM ? "on " : "") +
+                    (ymYear === curY && m === curM ? "now" : "") + '"' +
+        ' aria-label="' + ymYear + "년 " + m + '월">' +
+        "<b>" + m + "</b><small>" + MONTH_EN[m - 1] + "</small></button>";
+    }
+    return '<div class="ympick">' +
+        '<div class="ym-y"><span>' + ymYear + "년</span>" +
+          '<span class="ym-spin">' +
+            '<button type="button" data-ymy="1" aria-label="다음 해">▲</button>' +
+            '<button type="button" data-ymy="-1" aria-label="지난 해">▼</button>' +
+          "</span>" +
+        "</div>" +
+        '<div class="ym-grid">' + cells + "</div>" +
+      "</div>";
+  }
+
+  /* 달력 안에서 눌린 것이 고르개와 관련된 것이면 처리하고 보여줄 달을 돌려준다.
+     null 이면 상관없는 곳을 누른 것이니 부른 쪽이 하던 일을 이어서 한다. */
+  function calPick(e, scope, ym) {
+    if (e.target.closest("[data-dpwhen]")) {
+      ymOpen = (ymOpen === scope) ? null : scope;
+      ymYear = Number(ym.slice(0, 4));
+      return ym;
+    }
+    if (ymOpen !== scope) return null;
+    var yb = e.target.closest("button[data-ymy]");
+    if (yb) { ymYear += Number(yb.getAttribute("data-ymy")); return ym; }
+    var mb = e.target.closest("button[data-ymm]");
+    if (mb) {
+      ymOpen = null;
+      return ymYear + "-" + pad(Number(mb.getAttribute("data-ymm")));
+    }
+    return null;
+  }
+
   function dpPaint() {
-    dpEl.innerHTML = calHTML(dpKind, dpMonth, dpBox ? dpBox.value : selected);
+    dpEl.innerHTML = calHTML(dpKind, dpMonth, dpBox ? dpBox.value : selected, "pop");
   }
 
   /* ---------- 패널 옆에 늘 펼쳐 두는 달력 ----------
@@ -4099,21 +4222,25 @@
     if (calMonth[kind] && calMonth[kind + ":day"] === selected) ym = calMonth[kind];
     calMonth[kind] = ym;
     calMonth[kind + ":day"] = selected;
-    host.innerHTML = calHTML(kind, ym, selected);
+    host.innerHTML = calHTML(kind, ym, selected, "cal:" + kind);
   }
 
   document.addEventListener("click", function (e) {
     var host = e.target.closest("[data-cal]");
     if (!host) return;
     var kind = host.getAttribute("data-cal");
+    function repaint(ym) {
+      calMonth[kind] = ym;
+      calMonth[kind + ":day"] = selected;
+      host.innerHTML = calHTML(kind, ym, selected, "cal:" + kind);
+    }
+    var picked = calPick(e, "cal:" + kind, calMonth[kind]);
+    if (picked) return repaint(picked);
     var mon = e.target.closest("button[data-dpmon]");
     if (mon) {
       var m = parseISO(calMonth[kind] + "-01");
       m.setMonth(m.getMonth() + (+mon.getAttribute("data-dpmon")));
-      calMonth[kind] = iso(m).slice(0, 7);
-      calMonth[kind + ":day"] = selected;
-      host.innerHTML = calHTML(kind, calMonth[kind], selected);
-      return;
+      return repaint(iso(m).slice(0, 7));
     }
     if (e.target.closest(".dp-today")) return goToDate(iso(new Date()));
     var dayBtn = e.target.closest("button[data-dpday]");
@@ -4147,6 +4274,8 @@
     if (open) { e.preventDefault(); return dpOpen(open); }
 
     if (dpEl && dpEl.contains(e.target)) {
+      var picked = calPick(e, "pop", dpMonth);
+      if (picked) { dpMonth = picked; return dpPaint(); }
       var mon = e.target.closest("button[data-dpmon]");
       if (mon) {
         var m = parseISO(dpMonth + "-01");
@@ -5431,7 +5560,7 @@
     dayBarPaint("meeting", mShown, mTotal);
 
     host.innerHTML = mDates.map(function (date) {
-      var i = (parseISO(date).getDay() + 6) % 7;
+      var i = dowIndex(parseISO(date));
       var list = ((peek(date) && peek(date).meetings) || []).filter(function (m) {
         return hitWord("meeting", m.title + " " + m.people + " " + m.notes);
       });
@@ -5672,7 +5801,7 @@
     dayBarPaint("work", wShown, wTotal);
 
     host.innerHTML = wDates.map(function (date) {
-      var i = (parseISO(date).getDay() + 6) % 7;
+      var i = dowIndex(parseISO(date));
       var items = todosOf(date).map(function (s, idx) {
         return { text: s.text, done: s.done, idx: idx };
       }).filter(function (s) { return s.idx > 0 && keepTodo(s); });
@@ -5761,7 +5890,7 @@
   function goToDate(date) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
     selected = date;
-    var wk = mondayOf(parseISO(date));
+    var wk = weekStartOf(parseISO(date));
     if (iso(wk) !== iso(weekStart)) weekStart = wk;
     render();
   }
@@ -6047,15 +6176,15 @@
     } else if (view === "year") {
       selected = iso(shiftMonths(d, dir * 12));
     } else {
-      selected = iso(addDays(mondayOf(d), dir * 7));
+      selected = iso(addDays(weekStartOf(d), dir * 7));
     }
-    weekStart = mondayOf(parseISO(selected));
+    weekStart = weekStartOf(parseISO(selected));
     render();
   }
   document.getElementById("prevWeek").addEventListener("click", function () { step(-1); });
   document.getElementById("nextWeek").addEventListener("click", function () { step(1); });
   document.getElementById("thisWeek").addEventListener("click", function () {
-    weekStart = mondayOf(new Date()); selected = TODAY; render();
+    weekStart = weekStartOf(new Date()); selected = TODAY; render();
   });
 
   /* 하루 기록하기의 < > — 하루씩 옮긴다.
@@ -6063,7 +6192,7 @@
   function stepDay(dir) {
     var d = addDays(parseISO(selected), dir);
     selected = iso(d);
-    var wk = mondayOf(d);
+    var wk = weekStartOf(d);
     if (iso(wk) !== iso(weekStart)) {
       weekStart = wk;
       render();
@@ -6192,7 +6321,7 @@
     var goDay = e.target.closest("button[data-goday]");
     if (goDay) {
       selected = goDay.getAttribute("data-goday");
-      weekStart = mondayOf(parseISO(selected));
+      weekStart = weekStartOf(parseISO(selected));
       view = "day";
       syncViewButtons();
       return render();
@@ -6202,7 +6331,7 @@
     var monCell = e.target.closest(".mon-cell");
     if (monCell && !e.target.closest("[data-ev]")) {
       selected = monCell.getAttribute("data-monday");
-      weekStart = mondayOf(parseISO(selected));
+      weekStart = weekStartOf(parseISO(selected));
       view = "day";
       syncViewButtons();
       return render();
@@ -6356,7 +6485,7 @@
     el.setAttribute("aria-label", it ? "일정 고치기" : "일정 추가");
     el.innerHTML =
       '<div class="pop-when"><span class="d">' +
-        DOW[(dd.getDay() + 6) % 7] + " " + (dd.getMonth() + 1) + "/" + dd.getDate() + "</span>" +
+        DOW[dowIndex(dd)] + " " + (dd.getMonth() + 1) + "/" + dd.getDate() + "</span>" +
         (untimed
           ? '<span>시간 없음</span>'
           : '<input class="tm" id="popStart" type="text" inputmode="numeric" maxlength="5" value="' +
