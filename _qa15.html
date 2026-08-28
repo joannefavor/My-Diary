@@ -1,0 +1,69 @@
+<!doctype html><meta charset="utf-8"><title>할 일 계속 넣기 시험</title>
+<div id="out" style="font:13px/1.7 ui-monospace"></div>
+<iframe id="f" src="/_fix_work.html#/work" style="width:1240px;height:100px;border:0"></iframe>
+<script>
+var out=document.getElementById("out"),f=document.getElementById("f"),pass=0,fail=0;
+function log(ok,n,e){(ok?pass++:fail++);
+ out.insertAdjacentHTML("beforeend",(ok?"통과  ":"X 실패  ")+n+(e?"   "+e:"")+"<br>");}
+function ev(w,el,t){el.dispatchEvent(new w.Event(t,{bubbles:true}));}
+f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
+ w.onerror=function(m,s,l){log(false,"앱 오류",m+" ("+l+"줄)");};
+ /* 헤드리스에서는 alert·confirm 이 화면을 멈춘다. 둘 다 갈아 끼운다 */
+ var alerted=false; w.alert=function(){alerted=true;};
+ w.confirm=function(){return true;};
+ setTimeout(function(){
+  var nw=d.getElementById("workNew"), add=d.getElementById("workAdd");
+  function put(t){nw.value=t; ev(w,nw,"input"); add.click();}
+  /* 넉 줄까지는 예전에도 됐다 */
+  ["하나","둘","셋","넷"].forEach(put);
+  setTimeout(function(){
+   function saved(){var st=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3")||"{}");
+    var a=[];Object.keys(st.days||{}).forEach(function(k){
+     ((st.days[k].todos)||[]).forEach(function(t,i){if(i>0&&t&&t.text)a.push(t.text);});});
+    return a;}
+   log(saved().length===4,"넉 줄이 들어간다",saved().join(","));
+   /* 다섯째 — 예전에는 여기서 막혔다 */
+   put("다섯"); put("여섯");
+   setTimeout(function(){
+    log(!alerted,"칸이 찼다고 막지 않는다");
+    log(saved().length===6,"칸이 차도 계속 들어간다",saved().join(","));
+    log(d.querySelectorAll("#workList .wk-line").length===6,"목록에 여섯 줄이 다 보인다",
+      d.querySelectorAll("#workList .wk-line").length+"줄");
+    /* 이어 붙은 것에도 완료·메모가 되는가 */
+    var boxes=d.querySelectorAll('#workList input[data-work]');
+    boxes[5].checked=true; ev(w,boxes[5],"change");
+    setTimeout(function(){
+     var st=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3"));
+     var six=null;Object.keys(st.days).forEach(function(k){
+      ((st.days[k].todos)||[]).forEach(function(t){if(t&&t.text==="여섯")six=t;});});
+     log(six&&six.done&&!!six.doneAt,"이어 붙은 것도 완료일이 붙는다",six&&six.doneAt);
+
+     /* 지우기 */
+     var dels=d.querySelectorAll("#workList button[data-workdel]");
+     log(dels.length===6,"줄마다 지우기가 있다",dels.length+"개");
+     dels[5].click();
+     setTimeout(function(){
+      log(saved().length===5,"이어 붙은 것을 지우면 줄이 빠진다",saved().join(","));
+      log(d.querySelectorAll("#workList .wk-line").length===5,"빈 줄이 남지 않는다",
+        d.querySelectorAll("#workList .wk-line").length+"줄");
+      /* 앞의 칸을 지우면 자리는 남고 내용만 빈다 */
+      d.querySelectorAll("#workList button[data-workdel]")[0].click();
+      setTimeout(function(){
+       log(saved().length===4,"앞 칸도 지워진다",saved().join(","));
+       var st2=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3"));
+       var len=0;Object.keys(st2.days).forEach(function(k){
+        if((st2.days[k].todos||[]).length)len=st2.days[k].todos.length;});
+       log(len>=5,"앞 칸은 자리로 남는다(달력 주 보기가 쓴다)",len+"칸");
+       /* 지운 자리에 다시 넣을 수 있다 */
+       put("다시");
+       setTimeout(function(){
+        log(saved().indexOf("다시")!==-1,"지운 자리에 다시 넣힌다",saved().join(","));
+        out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
+       },400);
+      },400);
+     },400);
+    },400);
+   },500);
+  },500);
+ },1200);};
+</script>

@@ -252,6 +252,11 @@
   .wk-note:hover { border-color: var(--hair); }
   .wk-note:focus { border-color: var(--accent-ink); background: var(--surface); color: inherit; }
   .wk-note:not(:placeholder-shown) { color: inherit; }
+  .wk-del {
+    flex: none; border: 0; background: none; cursor: pointer;
+    color: var(--muted); font-size: 12px; padding: 0 4px; opacity: 0;
+  }
+  .wk-line:hover .wk-del, .wk-del:focus { opacity: 1; }
 
   /* ---------- 습관 ---------- */
   /* 한 달이 가로로 서른한 칸이라 좁은 화면에서는 옆으로 민다. 줄바꿈은 안 된다 —
@@ -6599,15 +6604,23 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       wDates = [selected];
     }
     wDates.forEach(function (d0) {
-      todosOf(d0).forEach(function (t, ti) { if (ti > 0 && keepTodo(t)) wShown++; });
+      var rawc = (state.days[d0] && state.days[d0].todos) || [];
+      rawc.forEach(function (t, ti) { if (ti > 0 && keepTodo(t)) wShown++; });
     });
     dayBarPaint("work", wShown, wTotal);
 
     host.innerHTML = wDates.map(function (date) {
       var i = dowIndex(parseISO(date));
-      var items = todosOf(date).map(function (s, idx) {
-        return { text: s.text, done: s.done, doneAt: s.doneAt, note: s.note, idx: idx };
-      }).filter(function (s) { return s.idx > 0 && keepTodo(s); });
+      /* todosOf 는 달력 주 보기에 맞춰 다섯 칸으로 끊는다. 이 화면에서는
+         뒤로 이어 붙은 것까지 다 보여야 한다. */
+      var raw = (state.days[date] && state.days[date].todos) || [];
+      var items = [];
+      for (var ti2 = 1; ti2 < Math.max(TODO_SLOTS, raw.length); ti2++) {
+        var s0 = raw[ti2] || { text: "", done: false };
+        var one = { text: s0.text, done: s0.done, doneAt: s0.doneAt,
+                    note: s0.note, idx: ti2 };
+        if (keepTodo(one)) items.push(one);
+      }
       if (!items.length) return "";
       any = true;
       var dt = parseISO(date);
@@ -6631,6 +6644,8 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
             '<input class="wk-note" data-worknote="' + at +
               '" value="' + esc(s.note || "") + '" placeholder="메모" ' +
               'aria-label="' + esc(s.text) + ' 메모">' +
+            '<button type="button" class="wk-del" data-workdel="' + at +
+              '" title="지우기" aria-label="' + esc(s.text) + ' 지우기">✕</button>' +
           "</div>";
         }).join("") +
       "</div>";
@@ -6651,14 +6666,15 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     /* 넣을 날짜는 옆 달력에서 고른 날이다. 날짜 칸을 따로 두면 둘이 어긋난다. */
     var date = selected, text = tbox.value.trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !text) return;
-    var slot = -1;
+    /* 앞의 빈 칸부터 채우고, 다 찼으면 뒤로 이어 붙인다. 예전에는 여기서
+       "칸이 다 찼습니다" 하고 멈췄는데, 정작 이 화면에는 지우는 단추가 없어서
+       한 번 차면 그날은 영영 못 적었다. 달력 주 보기는 앞의 다섯 칸을 쓰므로
+       그 뒤에 붙은 것은 이 화면과 찾기에서 본다. */
+    var d0 = day(date), slot = -1;
     for (var i = 1; i < TODO_SLOTS; i++) {
       if (!todoSlot(date, i).text) { slot = i; break; }
     }
-    if (slot < 0) {
-      alert("그날 할 일 칸이 다 찼습니다.\n일정 페이지에서 지우고 다시 넣어주세요.");
-      return;
-    }
+    if (slot < 0) { d0.todos.push({ text: "", done: false }); slot = d0.todos.length - 1; }
     day(date).todos[slot].text = text;
     tbox.value = "";
     save();
@@ -6670,6 +6686,20 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
   document.getElementById("workAdd").addEventListener("click", workAdd);
   document.getElementById("workNew").addEventListener("keydown", function (e) {
     if (e.key === "Enter") { e.preventDefault(); workAdd(); }
+  });
+
+  document.getElementById("workList").addEventListener("click", function (e) {
+    var del = e.target.closest("button[data-workdel]");
+    if (!del) return;
+    var k = del.getAttribute("data-workdel").split("|");
+    var list = day(k[0]).todos, i = +k[1];
+    var t = list[i];
+    if (t && t.text && !confirm("이 할 일을 지울까요?\n\n" + t.text)) return;
+    /* 앞의 다섯 칸은 달력 주 보기가 자리로 쓰므로 비우기만 하고, 뒤로 이어
+       붙은 것은 통째로 뺀다 — 안 그러면 빈 줄이 남는다. */
+    if (i < TODO_SLOTS) list[i] = { text: "", done: false };
+    else list.splice(i, 1);
+    persist();
   });
 
   document.getElementById("workList").addEventListener("change", function (e) {
