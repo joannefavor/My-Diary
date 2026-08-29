@@ -1,0 +1,73 @@
+<!doctype html><meta charset="utf-8"><title>할 일·메모 연·월 찾기 시험</title>
+<div id="out" style="font:13px/1.7 ui-monospace"></div>
+<iframe id="f" src="/_fix_find.html#/work" style="width:1240px;height:100px;border:0"></iframe>
+<script>
+var out=document.getElementById("out"),f=document.getElementById("f"),pass=0,fail=0;
+function log(ok,n,e){(ok?pass++:fail++);
+ out.insertAdjacentHTML("beforeend",(ok?"통과  ":"X 실패  ")+n+(e?"   "+e:"")+"<br>");}
+function ev(w,el,t){el.dispatchEvent(new w.Event(t,{bubbles:true}));}
+f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
+ w.onerror=function(m,s,l){log(false,"앱 오류",m+" ("+l+"줄)");};
+ setTimeout(function(){
+  function ysel(k){return d.querySelector('select[data-findyear="'+k+'"]');}
+  function msel(k){return d.querySelector('select[data-findmonth="'+k+'"]');}
+  log(!!ysel("work")&&!!msel("work"),"할 일에 연도·달 고르개가 있다");
+  log(!!ysel("memo")&&!!msel("memo"),"메모에도 있다");
+
+  /* 적어 둔 해만 나온다 */
+  var ys=[].map.call(ysel("work").options,function(o){return o.value;}).filter(Boolean);
+  log(ys.join(",")==="2026,2025","적어 둔 해만 최근 순으로",ys.join(","));
+  log([].map.call(msel("work").options,function(o){return o.value;}).filter(Boolean).length===12,
+    "달은 열둘 다");
+
+  function lines(){return d.querySelectorAll("#workList .wk-line").length;}
+  function memos(){return d.querySelectorAll("#memoList [data-nrow], #memoList .mt").length;}
+
+  /* 연도로 좁히기 */
+  ysel("work").value="2025"; ev(w,ysel("work"),"change");
+  setTimeout(function(){
+   log(lines()===2,"연도로 좁히면 그 해 것만",lines()+"줄");
+   log(d.getElementById("workList").textContent.indexOf("작년")!==-1,"작년 것이 나온다");
+   /* 달까지 좁히기 */
+   msel("work").value="03"; ev(w,msel("work"),"change");
+   setTimeout(function(){
+    log(lines()===1,"달까지 좁히면 하나",lines()+"줄");
+    log(d.getElementById("workList").textContent.indexOf("작년삼월")!==-1,"작년 3월 것");
+    /* 달만 — 해를 풀면 해마다 그 달 */
+    ysel("work").value=""; ev(w,ysel("work"),"change");
+    msel("work").value="08"; ev(w,msel("work"),"change");
+    setTimeout(function(){
+     log(lines()===2,"해를 풀고 달만 고르면 해마다 그 달",lines()+"줄");
+     /* 말과 함께 */
+     var q=d.querySelector('input[data-find="work"]');
+     q.value="작년"; ev(w,q,"input");
+     setTimeout(function(){
+      log(lines()===1,"말과 달을 함께 걸 수 있다",lines()+"줄");
+      q.value=""; ev(w,q,"input");
+      msel("work").value=""; ev(w,msel("work"),"change");
+
+      /* 메모 쪽도 */
+      w.location.hash="#/work";
+      setTimeout(function(){
+       ysel("memo").value="2025"; ev(w,ysel("memo"),"change");
+       setTimeout(function(){
+        function mtitles(){
+         return [].map.call(
+           d.querySelectorAll('#memoList input[data-note="title"]'),
+           function(x){return x.value;}).join(",");}
+        log(mtitles()==="작년팔월 메모,작년삼월 메모",
+          "메모도 연도로 좁혀진다",mtitles());
+        msel("memo").value="03"; ev(w,msel("memo"),"change");
+        setTimeout(function(){
+         log(mtitles().indexOf("작년삼월")!==-1&&mtitles().indexOf("작년팔월")===-1,
+           "메모도 달까지 좁혀진다",mtitles());
+         out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
+        },400);
+       },400);
+      },500);
+     },400);
+    },400);
+   },400);
+  },400);
+ },1200);};
+</script>

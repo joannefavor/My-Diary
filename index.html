@@ -551,6 +551,13 @@
   }
   .findrange input:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 1px; }
   .findrange .tilde { color: var(--muted); font-size: 11px; }
+  /* 연도·달 고르개도 기간 칸과 같은 크기로. 두 방식이 나란히 서므로
+     생김새가 다르면 어느 쪽이 무엇인지 헷갈린다. */
+  .findrange select {
+    font: inherit; font-size: 11.5px; font-family: var(--mono);
+    padding: 3px 5px; border: 1px solid var(--hair); border-radius: 7px;
+    background: var(--surface); color: inherit;
+  }
   .daybar .viewtoggle { flex: none; }
   .daybar .dayspin { flex: 0 1 240px; }
 
@@ -2073,6 +2080,12 @@
       </span>
       <input type="search" data-find="work" placeholder="단어로 찾기" aria-label="할 일 찾기">
       <span class="findrange">
+        <select data-findyear="work" aria-label="찾을 연도"><option value="">연도 전체</option></select>
+        <select data-findmonth="work" aria-label="찾을 달">
+          <option value="">달 전체</option><option value="01">1월</option><option value="02">2월</option><option value="03">3월</option><option value="04">4월</option><option value="05">5월</option><option value="06">6월</option><option value="07">7월</option><option value="08">8월</option><option value="09">9월</option><option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
+        </select>
+      </span>
+      <span class="findrange">
         <input type="date" data-findfrom="work" aria-label="찾을 기간 시작">
         <span class="tilde">~</span>
         <input type="date" data-findto="work" aria-label="찾을 기간 끝">
@@ -2092,6 +2105,12 @@
     </header>
     <div class="daybar">
       <input type="search" data-find="memo" placeholder="단어로 찾기" aria-label="메모 찾기">
+      <span class="findrange">
+        <select data-findyear="memo" aria-label="찾을 연도"><option value="">연도 전체</option></select>
+        <select data-findmonth="memo" aria-label="찾을 달">
+          <option value="">달 전체</option><option value="01">1월</option><option value="02">2월</option><option value="03">3월</option><option value="04">4월</option><option value="05">5월</option><option value="06">6월</option><option value="07">7월</option><option value="08">8월</option><option value="09">9월</option><option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
+        </select>
+      </span>
       <span class="findrange">
         <input type="date" data-findfrom="memo" aria-label="찾을 기간 시작">
         <span class="tilde">~</span>
@@ -4478,6 +4497,16 @@
     redrawKind(kind);
   });
 
+  /* 찾을 연도·달 */
+  document.addEventListener("change", function (e) {
+    var sel = e.target.closest("select[data-findyear], select[data-findmonth]");
+    if (!sel) return;
+    var kind = sel.getAttribute("data-findyear") || sel.getAttribute("data-findmonth");
+    if (sel.hasAttribute("data-findyear")) findYear[kind] = sel.value;
+    else findMonth[kind] = sel.value;
+    redrawKind(kind);
+  });
+
   /* 완료 여부 거르기 */
   document.addEventListener("click", function (e) {
     var b = e.target.closest("#workDone button[data-wd]");
@@ -5187,18 +5216,57 @@
   var workDone = "all";        /* 전체 · 미완료 · 완료 */
   /* 찾을 때 기간도 함께 고른다. 비어 있으면 처음부터 끝까지. */
   var findFrom = {}, findTo = {};
+  /* 연도·달로도 좁힌다. 기간 두 칸으로도 되지만 "작년 3월" 을 보려면 날짜를
+     두 번 골라야 한다 — 한 해나 한 달을 통째로 보는 일이 훨씬 잦다. */
+  var findYear = {}, findMonth = {};
 
   function inFindRange(kind, date) {
     var a = findFrom[kind], b = findTo[kind];
     if (a && date < a) return false;
     if (b && date > b) return false;
+    if (findYear[kind] && date.slice(0, 4) !== findYear[kind]) return false;
+    if (findMonth[kind] && date.slice(5, 7) !== findMonth[kind]) return false;
     return true;
   }
   function findingNow(kind) {
-    return !!((findWord[kind] || "").trim() || findFrom[kind] || findTo[kind]);
+    return !!((findWord[kind] || "").trim() || findFrom[kind] || findTo[kind] ||
+              findYear[kind] || findMonth[kind]);
+  }
+
+  /* 그 갈래에 기록이 있는 날들. 연도 고르개를 적어 둔 해로만 채우는 데 쓴다 —
+     없는 해를 늘어놓아 봐야 고를 일이 없다. */
+  function kindDates(kind) {
+    var out = [];
+    for (var date in state.days) {
+      var d = state.days[date];
+      if (!d) continue;
+      var has = kind === "work"
+        ? (d.todos || []).filter(function (t, i) { return i > 0 && t && t.text; }).length
+        : (d[kind] || []).length;
+      if (has) out.push(date);
+    }
+    return out;
+  }
+
+  function paintYearPicker(kind) {
+    var sel = document.querySelector('select[data-findyear="' + kind + '"]');
+    if (!sel) return;
+    var seen = {}, years = [];
+    kindDates(kind).forEach(function (d0) {
+      var y = d0.slice(0, 4);
+      if (!seen[y]) { seen[y] = 1; years.push(y); }
+    });
+    years.sort().reverse();
+    var keep = findYear[kind] || "";
+    sel.innerHTML = '<option value="">연도 전체</option>' + years.map(function (y) {
+      return '<option value="' + y + '">' + y + "년</option>";
+    }).join("");
+    sel.value = years.indexOf(keep) !== -1 ? keep : "";
+    if (sel.value !== keep) findYear[kind] = sel.value;
   }
 
   function dayBarPaint(kind, shown, total) {
+    paintYearPicker(kind);
     var box = document.querySelector('input[data-dayof="' + kind + '"]');
     if (box && box.value !== selected) box.value = selected;
     var dot = box && box.parentNode.querySelector(".dot-btn");

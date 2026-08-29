@@ -38,6 +38,17 @@ st.days[iso(t)]={
         {id:"m3",title:"기생충",place:"롯데시네마",who:"혼자",notes:"계단",feel:"",star:5}]};
 localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
 SEED
+python3 _mkdbg.py _fix_find.html <<'SEED'
+var st={days:{},meds:[],habits:[]};
+function put(k,todo,memo){st.days[k]=st.days[k]||{};
+ if(todo){st.days[k].todos=[{text:"QT",done:false},{text:todo,done:false}];}
+ if(memo){st.days[k].memo=[{id:"m"+k,title:memo,notes:""}];}}
+put("2026-08-10","팔월 할일","팔월 메모");
+put("2026-07-05","칠월 할일","칠월 메모");
+put("2025-08-20","작년팔월 할일","작년팔월 메모");
+put("2025-03-11","작년삼월 할일","작년삼월 메모");
+localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
+SEED
 python3 _mkdbg.py _fix_work.html <<'SEED'
 localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],habits:[]}));
 SEED
@@ -101,7 +112,7 @@ done
 
 echo
 echo "— 화면 시험"
-for f in _qa.html _qa3.html _qa4.html _qa5.html _qa6.html _qa7.html _qa8.html _qa9.html _qa10.html _qa11.html _qa12.html _qa13.html _qa14.html _qa15.html; do
+for f in _qa.html _qa3.html _qa4.html _qa5.html _qa6.html _qa7.html _qa8.html _qa9.html _qa10.html _qa11.html _qa12.html _qa13.html _qa14.html _qa15.html _qa16.html; do
   printf "%-12s " "$f"
   out=$("$CHROME" --headless --disable-gpu --window-size=1240,900 \
         --virtual-time-budget=20000 --dump-dom "http://localhost:$PORT/$f" 2>/dev/null \
