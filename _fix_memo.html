@@ -204,6 +204,17 @@
   }
 
 
+  /* 받음·줌 딱지. 색으로 갈라야 목록을 훑을 때 방향이 먼저 눈에 들어온다 */
+  .gdir {
+    flex: none; min-width: 34px; text-align: center;
+    font-size: 11px; padding: 2px 7px; border-radius: 999px;
+  }
+  .gdir.in { background: var(--accent); color: var(--on-accent); }
+  .gdir.out { background: var(--surface-2); color: var(--muted); }
+  /* 칸 안에서 쓰는 작은 고르개 */
+  .viewtoggle.inline { flex: none; }
+  .gwon { flex: none; font-size: 12px; color: var(--muted); }
+
   /* 며칠짜리 여행이었나. 날짜 옆이 아니라 오른쪽에 두는 것은, 날짜는 언제인지를
      묻는 것이고 이건 얼마나였는지를 묻는 것이라 서로 다른 물음이라서다. */
   .tspan {
@@ -2242,6 +2253,33 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
     </div>
   </section>
 
+  <section class="panel" data-page="meeting">
+    <header>
+      <h2>선물</h2>
+      <button class="ghost" id="giftAdd">+ 새로 적기</button>
+    </header>
+    <div class="daybar">
+      <span class="viewtoggle" id="giftDir" role="group" aria-label="받은 것·준 것">
+        <button type="button" data-gd="" aria-pressed="true">전체</button>
+        <button type="button" data-gd="in" aria-pressed="false">받은 것</button>
+        <button type="button" data-gd="out" aria-pressed="false">준 것</button>
+      </span>
+      <input type="search" data-find="gift" placeholder="누구·무엇·무슨 일로 찾기"
+        aria-label="선물 찾기">
+      <span class="findrange">
+        <select data-findyear="gift" aria-label="찾을 연도"><option value="">연도 전체</option></select>
+        <select data-findmonth="gift" aria-label="찾을 달">
+          <option value="">달 전체</option><option value="01">1월</option><option value="02">2월</option><option value="03">3월</option><option value="04">4월</option><option value="05">5월</option><option value="06">6월</option><option value="07">7월</option><option value="08">8월</option><option value="09">9월</option><option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
+        </select>
+      </span>
+      <span class="visit-count" data-count="gift"></span>
+    </div>
+    <div class="withcal">
+      <div class="panelcal" data-cal="gift"></div>
+      <div class="notelist" id="giftList"></div>
+    </div>
+  </section>
+
   <section class="panel" data-page="knowledge">
     <header>
       <h2>배운 것</h2>
@@ -2590,6 +2628,10 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
     /* 일기. 묵상일기와 같은 양식이지만 자리는 따로 둔다 — 그쪽은 말씀을 두고
        적는 것이고 이쪽은 하루를 두고 적는 것이라, 섞이면 나중에 골라 읽기 어렵다. */
     if (!d.diary) d.diary = [];
+    /* 선물. 받은 것과 준 것을 한 목록에 담고 방향(dir)으로 가른다 —
+       "그 사람에게 뭘 주고 뭘 받았나" 를 함께 봐야 답이 되기 때문이다.
+       물건일 수도 돈일 수도 있어 kind 로 가르고, 돈이면 금액을 따로 둔다. */
+    if (!d.gift) d.gift = [];
     return d;
   }
 
@@ -4312,6 +4354,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
     renderNotes("worklog");
     renderNotes("diary");
     renderVisits();
+    renderGifts();
     renderTrips();
     renderNotes("movie");
     renderNotes("lecture");
@@ -4485,11 +4528,16 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
     if (dbox && dbox.value) goToDate(dbox.value);
   });
 
+  /* 갈래마다 다시 그리는 법. 손으로 하나씩 늘어놓았더니 선물을 새로 만들고
+     여기에 안 적어서, 찾기 칸에 글자를 넣는 순간 화면이 멈췄다.
+     제 목록을 따로 그리는 갈래는 여기에 적고, 나머지는 갈래 엔진이 맡는다. */
+  var KIND_RENDER = {
+    meeting: renderMeetings, work: renderWork, money: renderMoney,
+    gift: renderGifts, trip: renderTrips, visit: renderVisits
+  };
+
   function redrawKind(kind) {
-    if (kind === "meeting") renderMeetings();
-    else if (kind === "work") renderWork();
-    else if (kind === "money") renderMoney();
-    else renderNotes(kind);
+    (KIND_RENDER[kind] || function () { renderNotes(kind); })();
   }
 
   document.addEventListener("input", function (e) {
@@ -5964,6 +6012,238 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
       habMonth = iso(m).slice(0, 7);
       renderHabits();
     });
+  });
+
+  /* ============================ 선물 ============================
+
+     받은 것과 준 것을 한 목록에 담고 방향으로 가른다 — "그 사람에게 뭘 주고
+     뭘 받았나" 는 함께 봐야 답이 되기 때문이다. 따로 두면 한 사람을 보려고
+     두 곳을 오가야 한다.
+
+     물건일 수도 돈일 수도 있다. 물건이면 이름을, 돈이면 금액을 적는다.
+     한 칸에 "10만원" 처럼 적게 두지 않은 것은, 그러면 나중에 합을 못 내서다. */
+  var giftOpen = null;
+  var giftDir = "";     /* 빈 값이면 전체 */
+
+  function allGifts() {
+    var out = [];
+    for (var date in state.days) {
+      var d = state.days[date];
+      if (!d || !d.gift) continue;
+      d.gift.forEach(function (v) { out.push({ date: date, v: v }); });
+    }
+    return out.sort(function (a, b) { return b.date.localeCompare(a.date); });
+  }
+
+  function giftAt(date, id) {
+    var list = day(date).gift;
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+    return null;
+  }
+
+  /* 무엇을 주고받았나 — 돈이면 금액으로, 물건이면 이름으로 */
+  function giftWhat(v) {
+    if (v.kind === "money") return v.amount ? wonText(v.amount) : "얼마인지 안 적음";
+    return (v.what || "").trim() || "무엇인지 안 적음";
+  }
+
+  function giftRow(date, v) {
+    var at = date + "|" + v.id;
+    var dt = parseISO(date);
+    var open = giftOpen === at;
+    var isIn = v.dir !== "out";
+    var html = '<button type="button" class="vrow" data-grow="' + at + '"' +
+      ' aria-expanded="' + open + '">' +
+      '<span class="vd">' + (dt.getMonth() + 1) + "." + pad(dt.getDate()) +
+        "<small> " + dt.getFullYear() + "</small></span>" +
+      '<span class="gdir ' + (isIn ? "in" : "out") + '">' +
+        (isIn ? "받음" : "줌") + "</span>" +
+      '<span class="vp">' + esc((v.who || "").trim() || "누구인지 안 적음") + "</span>" +
+      '<span class="vs">' + esc(giftWhat(v)) +
+        (v.why ? " · " + esc(v.why) : "") + "</span>" +
+      "</button>";
+    if (open) html += '<div class="vopen">' + giftCard(date, v) + "</div>";
+    return html;
+  }
+
+  function giftCard(date, v) {
+    var at = date + "|" + v.id;
+    var isMoney = v.kind === "money";
+    return '<div class="mt">' +
+      '<div class="mt-top">' +
+        '<span class="mt-when">' + esc(date) + "</span>" +
+        '<span class="mt-fill"></span>' +
+        '<button class="ghost mt-del" data-giftdel="' + at + '">지우기</button>' +
+      "</div>" +
+      '<div class="mt-row mt-trio">' +
+        '<span class="mt-key">언제</span>' +
+        '<input type="date" data-giftdate="' + at + '" value="' + date +
+          '" aria-label="언제">' +
+        '<span class="mt-key">누구</span>' +
+        '<input data-gift="who" data-at="' + at + '" value="' + esc(v.who || "") +
+          '" placeholder="' + (v.dir === "out" ? "누구에게" : "누구에게서") +
+          '" aria-label="누구">' +
+      "</div>" +
+      '<div class="mt-row"><span class="mt-key">주고받음</span>' +
+        '<span class="viewtoggle inline">' +
+          '<button type="button" data-giftdir="in" data-at="' + at + '"' +
+            ' aria-pressed="' + (v.dir !== "out") + '">받음</button>' +
+          '<button type="button" data-giftdir="out" data-at="' + at + '"' +
+            ' aria-pressed="' + (v.dir === "out") + '">줌</button>' +
+        "</span>" +
+      "</div>" +
+      '<div class="mt-row"><span class="mt-key">무엇을</span>' +
+        '<span class="viewtoggle inline">' +
+          '<button type="button" data-giftkind="item" data-at="' + at + '"' +
+            ' aria-pressed="' + (!isMoney) + '">물건</button>' +
+          '<button type="button" data-giftkind="money" data-at="' + at + '"' +
+            ' aria-pressed="' + isMoney + '">돈</button>' +
+        "</span>" +
+        (isMoney
+          ? '<input type="number" inputmode="numeric" data-gift="amount" data-at="' + at +
+            '" value="' + esc(v.amount == null ? "" : v.amount) +
+            '" placeholder="금액" aria-label="금액"><span class="gwon">원</span>'
+          : '<input data-gift="what" data-at="' + at + '" value="' + esc(v.what || "") +
+            '" placeholder="무엇을 주고받았나" aria-label="무엇">') +
+      "</div>" +
+      '<div class="mt-row"><span class="mt-key">무슨 일로</span>' +
+        '<input data-gift="why" data-at="' + at + '" value="' + esc(v.why || "") +
+        '" placeholder="생일 · 결혼 · 명절 …" aria-label="무슨 일로"></div>' +
+      '<div class="mt-row"><span class="mt-key">메모</span>' +
+        '<textarea data-gift="notes" data-at="' + at +
+        '" placeholder="더 적을 것이 있으면" aria-label="메모">' + esc(v.notes || "") +
+        "</textarea></div>" +
+    "</div>";
+  }
+
+  function giftMatches(r) {
+    if (giftDir && (r.v.dir || "in") !== giftDir) return false;
+    if (!inFindRange("gift", r.date)) return false;
+    return hitWord("gift",
+      [r.v.who, r.v.what, r.v.why, r.v.notes,
+       r.v.kind === "money" && r.v.amount ? wonText(r.v.amount) : ""]
+      .filter(Boolean).join(" "));
+  }
+
+  function renderGifts() {
+    var host = document.getElementById("giftList");
+    if (!host) return;
+    var all = allGifts();
+    var rows = all.filter(giftMatches);
+    dayBarPaint("gift", rows.length, all.length);
+
+    if (!all.length) {
+      host.innerHTML = '<div class="wk-empty">아직 적어 둔 선물이 없습니다. ' +
+        "<b>+ 새로 적기</b>로 시작하세요.</div>";
+      return;
+    }
+    if (!rows.length) {
+      host.innerHTML = '<div class="wk-empty">찾는 선물이 없습니다.</div>';
+      return;
+    }
+
+    /* 다른 목록과 같이 펼친 칸은 하나, 나머지는 줄로 셋 */
+    var show = rows.slice(0, RECENT_MAX);
+    if (giftOpen && !show.some(function (r) { return r.date + "|" + r.v.id === giftOpen; })) {
+      var got = rows.filter(function (r) { return r.date + "|" + r.v.id === giftOpen; })[0];
+      if (got) show = [got].concat(show.slice(0, RECENT_MAX - 1));
+    }
+    var more = rows.length - show.length;
+    host.innerHTML = show.map(function (r) { return giftRow(r.date, r.v); }).join("") +
+      (more > 0 ? '<div class="pasttitle"><span class="more">그 밖에 ' + more +
+        "건 — 위에서 찾아보세요</span></div>" : "");
+  }
+
+  var giftHost = document.getElementById("giftList");
+
+  giftHost.addEventListener("change", function (e) {
+    var f = e.target.closest("[data-gift]");
+    if (f) {
+      var k = f.getAttribute("data-at").split("|");
+      var v = giftAt(k[0], k[1]);
+      if (!v) return;
+      var fld = f.getAttribute("data-gift");
+      v[fld] = fld === "amount" ? (f.value === "" ? null : Number(f.value)) : f.value.trim();
+      save();
+      /* 줄에 보이는 것만 고쳐 쓴다. 통째로 다시 그리면 적던 자리가 접힌다 */
+      var row = giftHost.querySelector('[data-grow="' + k[0] + "|" + k[1] + '"]');
+      if (!row) return;
+      if (fld === "who") row.querySelector(".vp").textContent =
+        (v.who || "").trim() || "누구인지 안 적음";
+      else row.querySelector(".vs").textContent =
+        giftWhat(v) + (v.why ? " · " + v.why : "");
+      return;
+    }
+    var dbox = e.target.closest("input[data-giftdate]");
+    if (dbox) {
+      var a = dbox.getAttribute("data-giftdate").split("|");
+      var to = dbox.value;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(to) || to === a[0]) return;
+      var moved = giftAt(a[0], a[1]);
+      if (!moved) return;
+      state.days[a[0]].gift = state.days[a[0]].gift.filter(function (x) { return x.id !== a[1]; });
+      day(to).gift.push(moved);
+      if (giftOpen === a[0] + "|" + a[1]) giftOpen = to + "|" + a[1];
+      save(); renderGifts();
+    }
+  });
+
+  giftHost.addEventListener("click", function (e) {
+    var db = e.target.closest("button[data-giftdir]");
+    if (db) {
+      var kd = db.getAttribute("data-at").split("|");
+      var vd = giftAt(kd[0], kd[1]);
+      if (vd) { vd.dir = db.getAttribute("data-giftdir"); save(); renderGifts(); }
+      return;
+    }
+    var kb = e.target.closest("button[data-giftkind]");
+    if (kb) {
+      var kk = kb.getAttribute("data-at").split("|");
+      var vk = giftAt(kk[0], kk[1]);
+      /* 갈래를 바꿔도 적어 둔 것은 지우지 않는다 — 잘못 눌렀다가 되돌릴 때
+         물건 이름이나 금액이 사라져 있으면 안 된다. */
+      if (vk) { vk.kind = kb.getAttribute("data-giftkind"); save(); renderGifts(); }
+      return;
+    }
+    var del = e.target.closest("button[data-giftdel]");
+    if (del) {
+      var kx = del.getAttribute("data-giftdel").split("|");
+      var vx = giftAt(kx[0], kx[1]);
+      if (vx && (vx.who || vx.what || vx.amount) &&
+          !confirm("이 선물 기록을 지울까요?\n\n" +
+                   ((vx.who || "누구인지 안 적음") + " · " + giftWhat(vx)))) return;
+      state.days[kx[0]].gift = state.days[kx[0]].gift.filter(function (x) { return x.id !== kx[1]; });
+      save(); renderGifts();
+      return;
+    }
+    var row = e.target.closest("button[data-grow]");
+    if (row) {
+      var at = row.getAttribute("data-grow");
+      giftOpen = (giftOpen === at) ? null : at;
+      renderGifts();
+    }
+  });
+
+  var giftDirBar = document.getElementById("giftDir");
+  if (giftDirBar) giftDirBar.addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-gd]");
+    if (!b) return;
+    giftDir = b.getAttribute("data-gd");
+    Array.prototype.forEach.call(this.querySelectorAll("button[data-gd]"), function (x) {
+      x.setAttribute("aria-pressed", x.getAttribute("data-gd") === giftDir);
+    });
+    giftOpen = null; renderGifts();
+  });
+
+  var giftAddBtn = document.getElementById("giftAdd");
+  if (giftAddBtn) giftAddBtn.addEventListener("click", function () {
+    var v = { id: uid(), dir: giftDir === "out" ? "out" : "in", kind: "item",
+              who: "", what: "", amount: null, why: "", notes: "" };
+    day(selected).gift.push(v);
+    giftOpen = selected + "|" + v.id;
+    save(); renderGifts();
+    var box = giftHost.querySelector('input[data-gift="who"]');
+    if (box) box.focus();
   });
 
   /* ============================ 여행 ============================
@@ -8015,7 +8295,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
      하나도 빠짐없이 여기서도 봐야 한다. 자리를 새로 만들면 여기도 함께 고칠 것. */
   var DAY_LISTS = ["schedule", "meetings", "visits", "money",
                    "faith", "prayer", "worklog", "history", "knowledge",
-                   "memo", "diary", "seen",
+                   "memo", "diary", "seen", "gift",
                    "trip", "movie", "show", "lecture", "book"];
 
   function emptyDay(d) {

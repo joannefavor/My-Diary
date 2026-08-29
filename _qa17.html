@@ -1,0 +1,104 @@
+<!doctype html><meta charset="utf-8"><title>선물 시험</title>
+<div id="out" style="font:13px/1.7 ui-monospace"></div>
+<iframe id="f" src="/_fix_gift.html#/meeting" style="width:1240px;height:100px;border:0"></iframe>
+<script>
+var out=document.getElementById("out"),f=document.getElementById("f"),pass=0,fail=0;
+function log(ok,n,e){(ok?pass++:fail++);
+ out.insertAdjacentHTML("beforeend",(ok?"통과  ":"X 실패  ")+n+(e?"   "+e:"")+"<br>");}
+function ev(w,el,t){el.dispatchEvent(new w.Event(t,{bubbles:true}));}
+f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
+ w.onerror=function(m,s,l){log(false,"앱 오류",m+" ("+l+"줄)");};
+ w.confirm=function(){return true;};
+ setTimeout(function(){
+  var names=[].map.call(d.querySelectorAll('section.panel[data-page="meeting"] h2'),
+    function(h){return h.textContent;});
+  log(names.indexOf("선물")!==-1,"만남 페이지에 선물이 있다",names.join(","));
+  log(names.indexOf("선물")>names.indexOf("만남 기록"),"만남 아래에 있다");
+
+  function all(){var st=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3")||"{}");
+   var a=[];Object.keys(st.days||{}).forEach(function(k){
+    ((st.days[k].gift)||[]).forEach(function(v){a.push(v);});});return a;}
+  function card(){return d.querySelector("#giftList .mt");}
+
+  /* 받은 물건 */
+  d.getElementById("giftAdd").click();
+  setTimeout(function(){
+   log(!!card(),"새로 적으면 칸이 펼쳐진다");
+   var keys=[].map.call(card().querySelectorAll(".mt-key"),function(x){return x.textContent;});
+   log(keys.join(",")==="언제,누구,주고받음,무엇을,무슨 일로,메모","칸이 다 있다",keys.join(","));
+   var who=card().querySelector('input[data-gift="who"]');
+   who.value="어머니"; ev(w,who,"change");
+   var what=card().querySelector('input[data-gift="what"]');
+   log(!!what,"물건이 처음 갈래다");
+   what.value="목도리"; ev(w,what,"change");
+   var why=card().querySelector('input[data-gift="why"]');
+   why.value="생일"; ev(w,why,"change");
+   setTimeout(function(){
+    var g=all()[0];
+    log(g&&g.dir==="in"&&g.who==="어머니"&&g.what==="목도리"&&g.why==="생일",
+      "받은 물건이 저장된다",g&&JSON.stringify([g.dir,g.who,g.what,g.why]));
+    var row=d.querySelector("#giftList [data-grow]");
+    log(row.querySelector(".gdir").textContent==="받음","줄에 '받음' 이 보인다");
+    log(row.querySelector(".vs").textContent.indexOf("목도리")!==-1,"무엇을 받았는지 보인다",
+      row.querySelector(".vs").textContent);
+
+    /* 돈으로 바꾸기 — 적어 둔 물건 이름은 남는다 */
+    card().querySelector('button[data-giftkind="money"]').click();
+    setTimeout(function(){
+     var amt=d.querySelector('#giftList input[data-gift="amount"]');
+     log(!!amt,"돈으로 바꾸면 금액 칸이 나온다");
+     log(all()[0].what==="목도리","갈래를 바꿔도 적어 둔 것은 남는다",all()[0].what);
+     amt.value="100000"; ev(w,amt,"change");
+     setTimeout(function(){
+      log(all()[0].amount===100000,"금액이 숫자로 저장된다",all()[0].amount);
+      var vs=d.querySelector("#giftList [data-grow] .vs").textContent;
+      log(vs.indexOf("10")!==-1,"줄에 금액이 보인다",vs);
+
+      /* 준 선물 하나 더 */
+      d.getElementById("giftAdd").click();
+      setTimeout(function(){
+       d.querySelector("#giftList .mt button[data-giftdir='out']").click();
+       setTimeout(function(){
+        var w2=d.querySelector('#giftList .mt input[data-gift="who"]');
+        w2.value="동생"; ev(w,w2,"change");
+        setTimeout(function(){
+         log(all().length===2,"둘이 된다",all().length+"건");
+         /* 방향으로 거르기 */
+         d.querySelector('#giftDir button[data-gd="out"]').click();
+         setTimeout(function(){
+          var rows=d.querySelectorAll("#giftList [data-grow]");
+          log(rows.length===1&&rows[0].querySelector(".gdir").textContent==="줌",
+            "준 것만 걸러진다",rows.length+"건");
+          d.querySelector('#giftDir button[data-gd="in"]').click();
+          setTimeout(function(){
+           var r2=d.querySelectorAll("#giftList [data-grow]");
+           log(r2.length===1&&r2[0].querySelector(".gdir").textContent==="받음",
+             "받은 것만 걸러진다",r2.length+"건");
+           d.querySelector('#giftDir button[data-gd=""]').click();
+           /* 말로 찾기 */
+           var q=d.querySelector('input[data-find="gift"]');
+           q.value="어머니"; ev(w,q,"input");
+           setTimeout(function(){
+            log(d.querySelectorAll("#giftList [data-grow]").length===1,"누구로 찾힌다");
+            q.value="생일"; ev(w,q,"input");
+            setTimeout(function(){
+             log(d.querySelectorAll("#giftList [data-grow]").length===1,"무슨 일로도 찾힌다");
+             q.value=""; ev(w,q,"input");
+             /* 연도 고르개가 채워지나 */
+             var ys=d.querySelector('select[data-findyear="gift"]');
+             log(ys&&ys.options.length>=2,"연도 고르개가 채워진다",
+               ys?[].map.call(ys.options,function(o){return o.value;}).join(","):"");
+             out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
+            },300);
+           },300);
+          },300);
+         },300);
+        },300);
+       },300);
+      },300);
+     },300);
+    },300);
+   },400);
+  },400);
+ },1200);};
+</script>
