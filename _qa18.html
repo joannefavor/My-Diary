@@ -1,0 +1,94 @@
+<!doctype html><meta charset="utf-8"><title>조건 걸린 채 새로 적기 시험</title>
+<div id="out" style="font:13px/1.7 ui-monospace"></div>
+<iframe id="f" src="/_fix_w2.html#/work" style="width:1240px;height:100px;border:0"></iframe>
+<script>
+var out=document.getElementById("out"),f=document.getElementById("f"),pass=0,fail=0;
+function log(ok,n,e){(ok?pass++:fail++);
+ out.insertAdjacentHTML("beforeend",(ok?"통과  ":"X 실패  ")+n+(e?"   "+e:"")+"<br>");}
+function ev(w,el,t){el.dispatchEvent(new w.Event(t,{bubbles:true}));}
+f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
+ w.onerror=function(m,s,l){log(false,"앱 오류",m+" ("+l+"줄)");};
+ w.confirm=function(){return true;};
+ setTimeout(function(){
+  var nw=d.getElementById("workNew"), add=d.getElementById("workAdd");
+  function put(t){nw.value=t; ev(w,nw,"input"); add.click();}
+  function lines(){return d.querySelectorAll("#workList .wk-line").length;}
+
+  /* 할 일 — 완료 거르개 */
+  put("첫째");
+  setTimeout(function(){
+   d.querySelector('#workDone button[data-wd="done"]').click();
+   setTimeout(function(){
+    log(lines()===0,"완료만 보기로 두면 미완료가 숨는다",lines()+"줄");
+    put("둘째");
+    setTimeout(function(){
+     log(lines()===2,"그 상태로 넣어도 바로 보인다",lines()+"줄");
+     log(d.querySelector('#workDone button[data-wd="all"]').getAttribute("aria-pressed")==="true",
+       "거르개가 '전체' 로 풀린다");
+
+     /* 달 고르개 */
+     var ms=d.querySelector('select[data-findmonth="work"]');
+     ms.value="01"; ev(w,ms,"change");
+     setTimeout(function(){
+      log(lines()===0,"1월만 보기로 두면 숨는다",lines()+"줄");
+      put("셋째");
+      setTimeout(function(){
+       log(lines()===3,"그 상태로 넣어도 바로 보인다",lines()+"줄");
+       log(ms.value==="","달 고르개가 풀린다",'['+ms.value+']');
+
+       /* 기간 */
+       var fr=d.querySelector('input[data-findfrom="work"]');
+       var to=d.querySelector('input[data-findto="work"]');
+       fr.value="2020-01-01"; ev(w,fr,"change");
+       to.value="2020-12-31"; ev(w,to,"change");
+       setTimeout(function(){
+        put("넷째");
+        setTimeout(function(){
+         log(lines()===4,"기간을 걸어 둬도 바로 보인다",lines()+"줄");
+         log(fr.value===""&&to.value==="","기간 칸이 비워진다");
+
+         /* 말로 찾는 중에 넣기 */
+         var q=d.querySelector('input[data-find="work"]');
+         q.value="없는말"; ev(w,q,"input");
+         setTimeout(function(){
+          put("다섯째");
+          setTimeout(function(){
+           log(lines()===5,"찾는 중에 넣어도 바로 보인다",lines()+"줄");
+           log(q.value==="","찾는 말도 비워진다");
+
+           /* 메모도 같은가 */
+           var mm=d.querySelector('select[data-findmonth="memo"]');
+           mm.value="01"; ev(w,mm,"change");
+           setTimeout(function(){
+            d.querySelector('button[data-noteadd="memo"]').click();
+            setTimeout(function(){
+             log(d.querySelectorAll("#memoList .mt").length===1,
+               "메모도 조건이 걸린 채 넣으면 보인다",
+               d.querySelectorAll("#memoList .mt").length+"개");
+             log(mm.value==="","메모 달 고르개도 풀린다");
+
+             /* 선물도 */
+             w.location.hash="#/meeting";
+             setTimeout(function(){
+              d.querySelector('#giftDir button[data-gd="out"]').click();
+              d.getElementById("giftAdd").click();
+              setTimeout(function(){
+               log(d.querySelectorAll("#giftList .mt").length===1,
+                 "선물도 거르개가 걸린 채 넣으면 보인다",
+                 d.querySelectorAll("#giftList .mt").length+"개");
+               out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
+              },400);
+             },500);
+            },400);
+           },400);
+          },400);
+         },400);
+        },400);
+       },400);
+      },400);
+     },400);
+    },400);
+   },400);
+  },500);
+ },1300);};
+</script>

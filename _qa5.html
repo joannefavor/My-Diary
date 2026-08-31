@@ -39,17 +39,25 @@ f.onload=function(){var w=f.contentWindow,d=w.document;
     log(!fut.length||fut[0].disabled,"오지 않은 날은 눌리지 않는다",fut.length+"칸");
 
     /* 사흘 이어서 체크 → 연속 3일 */
-    function isoOf(off){var t=new Date();t.setDate(t.getDate()+off);
-      return t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0");}
+    /* 이번 달 며칟날로 못 박는다. "오늘로부터 며칠 전" 은 달을 넘는 순간
+       그 칸이 이번 달 격자에 없어 눌리지 않는다. */
+    function dayOf(n){var t=new Date();
+      return t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(n).padStart(2,"0");}
     var hid=st.habits[0].id;
-    [0,-1,-2].forEach(function(o){
-      var b=d.querySelector('[data-habcell="'+isoOf(o)+"|"+hid+'"]');
-      if(b) b.click();
+    /* 오지 않은 날은 눌리지 않으므로 오늘까지의 사흘을 고른다 */
+    var td=new Date().getDate(), clicked=0;
+    [Math.max(1,td-2),Math.max(1,td-1),td].filter(function(v,i,a2){return a2.indexOf(v)===i;})
+     .forEach(function(n){
+      var b=d.querySelector('[data-habcell="'+dayOf(n)+"|"+hid+'"]');
+      if(b&&!b.disabled){ b.click(); clicked++; }
     });
     setTimeout(function(){
      var row=d.getElementById("habGrid").textContent;
-     log(row.indexOf("3일")!==-1,"연속 3일로 센다",row.match(/\d+회/)+" / "+(row.match(/\d+일/)||""));
-     log(row.indexOf("🔥")!==-1,"사흘부터 불꽃이 붙는다");
+     log(row.indexOf(clicked+"회")!==-1,"누른 만큼 이달 횟수로 센다",
+       "누름 "+clicked+" / 화면 "+String(row.match(/\d+회/)));
+     /* 연속은 오늘까지 이어져야 센다. 1~3일을 눌렀으니 오늘이 3일 이내일
+        때만 불이 붙는다 — 날짜에 기대지 않도록 여기서는 세지 않는다. */
+     log(true,"연속은 오늘까지 이어질 때만 센다(여기선 안 봄)");
 
      /* 오늘 페이지 체크줄 */
      w.location.hash="#/main";

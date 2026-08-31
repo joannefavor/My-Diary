@@ -4523,6 +4523,35 @@
     gift: renderGifts, trip: renderTrips, visit: renderVisits
   };
 
+  /* 새로 적을 때는 걸어 둔 조건을 모두 푼다. 새로 만든 것은 대개 조건에
+     안 걸려서, 넣기는 됐는데 화면에는 "찾는 것이 없습니다" 만 남는다 —
+     쓰는 사람 눈에는 넣기가 안 된 것으로 보인다.
+     조건을 늘릴 때 여기도 함께 고쳐야 하므로 한 곳에 모아 둔다. */
+  function clearFind(kind) {
+    findWord[kind] = ""; findFrom[kind] = ""; findTo[kind] = "";
+    findYear[kind] = ""; findMonth[kind] = "";
+    ["input[data-find]", "input[data-findfrom]", "input[data-findto]",
+     "select[data-findyear]", "select[data-findmonth]"].forEach(function (sel) {
+      var el = document.querySelector(sel.replace("]", '="' + kind + '"]'));
+      if (el) el.value = "";
+    });
+    /* 갈래마다 따로 있는 거르개도 함께 푼다 */
+    if (kind === "work") {
+      workDone = "all";
+      Array.prototype.forEach.call(
+        document.querySelectorAll("#workDone button[data-wd]"), function (b) {
+          b.setAttribute("aria-pressed", b.getAttribute("data-wd") === "all");
+        });
+    }
+    if (kind === "gift") {
+      giftDir = "";
+      Array.prototype.forEach.call(
+        document.querySelectorAll("#giftDir button[data-gd]"), function (b) {
+          b.setAttribute("aria-pressed", b.getAttribute("data-gd") === "");
+        });
+    }
+  }
+
   function redrawKind(kind) {
     (KIND_RENDER[kind] || function () { renderNotes(kind); })();
   }
@@ -5561,8 +5590,7 @@
       b.addEventListener("click", function () {
         var kind = b.getAttribute("data-noteadd");
         /* 찾는 중이면 새로 만든 빈 것이 조건에 안 걸려 사라진다 */
-        var fbox = document.querySelector('input[data-find="' + kind + '"]');
-        if (fbox) { fbox.value = ""; findWord[kind] = ""; }
+        clearFind(kind);
         var one = { id: uid(), title: "", notes: "" };
         day(selected)[kind].push(one);
         /* 만든 것을 펼쳐 둔다. 평소 화면은 한 칸만 펼치므로, 안 열어 두면
@@ -6227,6 +6255,7 @@
     var v = { id: uid(), dir: giftDir === "out" ? "out" : "in", kind: "item",
               who: "", what: "", amount: null, why: "", notes: "" };
     day(selected).gift.push(v);
+    clearFind("gift");
     giftOpen = selected + "|" + v.id;
     save(); renderGifts();
     var box = giftHost.querySelector('input[data-gift="who"]');
@@ -7018,8 +7047,7 @@
     day(date).todos[slot].text = text;
     tbox.value = "";
     save();
-    var wf = document.querySelector('input[data-find="work"]');
-    if (wf) { wf.value = ""; findWord.work = ""; }
+    clearFind("work");
     renderWork();
   }
 

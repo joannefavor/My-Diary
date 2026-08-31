@@ -6,8 +6,11 @@ var out=document.getElementById("out"),f=document.getElementById("f"),pass=0,fai
 function log(ok,n,e){(ok?pass++:fail++);
  out.insertAdjacentHTML("beforeend",(ok?"통과  ":"X 실패  ")+n+(e?"   "+e:"")+"<br>");}
 function ev(w,el,t){el.dispatchEvent(new w.Event(t,{bubbles:true}));}
-function iso(k){var t=new Date();t.setDate(t.getDate()+k);
- return t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0");}
+/* 이번 달 며칟날. "오늘로부터 며칠 전" 으로 잡으면 달을 넘는 순간
+   그 칸이 이번 달 달력에 없어 시험이 깨진다. */
+function dayOf(n){var t=new Date();
+ return t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(n).padStart(2,"0");}
+function iso(k){return dayOf(k);}
 f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
  w.onerror=function(m,s,l){log(false,"앱 오류",m+" ("+l+"줄)");};
  setTimeout(function(){
@@ -15,35 +18,35 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
   function cell(ds){return cal.querySelector('[data-dpday="'+ds+'"]');}
 
   /* 4박 5일 (오늘-9 ~ 오늘-5) */
-  var days=[-9,-8,-7,-6,-5].map(iso);
+  var days=[3,4,5,6,7].map(dayOf);
   log(days.every(function(ds){var c=cell(ds);return c&&c.classList.contains("band");}),
     "기간에 든 날이 모두 칠해진다",days.map(function(ds){
       var c=cell(ds);return ds.slice(8)+(c&&c.classList.contains("band")?"O":"X");}).join(" "));
-  log(cell(iso(-10))&&!cell(iso(-10)).classList.contains("band"),"떠나기 전날은 안 칠해진다");
-  log(cell(iso(-4))&&!cell(iso(-4)).classList.contains("band"),"돌아온 다음날은 안 칠해진다");
+  log(cell(dayOf(2))&&!cell(dayOf(2)).classList.contains("band"),"떠나기 전날은 안 칠해진다");
+  log(cell(dayOf(8))&&!cell(dayOf(8)).classList.contains("band"),"돌아온 다음날은 안 칠해진다");
 
   /* 양 끝만 둥글게 */
-  log(cell(iso(-9)).classList.contains("a"),"첫날은 시작 표시");
-  log(cell(iso(-5)).classList.contains("b"),"끝날은 끝 표시");
-  log(cell(iso(-7)).classList.contains("mid"),"가운데는 중간 표시");
-  var ra=w.getComputedStyle(cell(iso(-9))).borderTopLeftRadius;
-  var rm=w.getComputedStyle(cell(iso(-7))).borderTopLeftRadius;
+  log(cell(dayOf(3)).classList.contains("a"),"첫날은 시작 표시");
+  log(cell(dayOf(7)).classList.contains("b"),"끝날은 끝 표시");
+  log(cell(dayOf(5)).classList.contains("mid"),"가운데는 중간 표시");
+  var ra=w.getComputedStyle(cell(dayOf(3))).borderTopLeftRadius;
+  var rm=w.getComputedStyle(cell(dayOf(5))).borderTopLeftRadius;
   log(parseFloat(ra)>0&&parseFloat(rm)===0,"양 끝만 둥글다",ra+" / "+rm);
 
   /* 하루짜리 */
-  log(cell(iso(-2)).classList.contains("one"),"하루짜리는 한 칸만");
+  log(cell(dayOf(20)).classList.contains("one"),"하루짜리는 한 칸만");
 
   /* 색이 복숭아보다 진한가 — 칠한 칸과 안 칠한 칸의 밝기를 견준다 */
   function lum(el){var c=w.getComputedStyle(el).backgroundColor.match(/[\d.]+/g);
    if(!c||c.length>3&&Number(c[3])===0) return null;
    return 0.299*c[0]+0.587*c[1]+0.114*c[2];}
-  var dark=lum(cell(iso(-7))), peach=lum(cell(iso(0)));
+  var dark=lum(cell(dayOf(5))), peach=lum(cell(new Date().getFullYear()+"-"+String(new Date().getMonth()+1).padStart(2,"0")+"-"+String(new Date().getDate()).padStart(2,"0")));
   log(dark!==null,"칠한 칸에 색이 있다");
   log(peach!==null&&dark<peach-25,"복숭아색보다 진하다",
     Math.round(dark)+" vs 복숭아 "+Math.round(peach));
 
   /* 이어져 보이는가 — 가운데 칸은 좌우 여백을 음수로 당겨 틈을 메운다 */
-  var ml=w.getComputedStyle(cell(iso(-7))).marginLeft;
+  var ml=w.getComputedStyle(cell(dayOf(5))).marginLeft;
   log(parseFloat(ml)<0,"칸 사이 틈을 메운다",ml);
 
   /* 떠난 날·돌아온 날이 한 줄에 */
@@ -63,9 +66,9 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
 
    /* 돌아온 날을 늘리면 칠도 따라 늘어난다 */
    var toBox=card.querySelector('input[data-trip="to"]');
-   toBox.value=iso(-3); ev(w,toBox,"change");
+   toBox.value=dayOf(9); ev(w,toBox,"change");
    setTimeout(function(){
-    var c2=d.querySelector('[data-cal="trip"] [data-dpday="'+iso(-4)+'"]');
+    var c2=d.querySelector('[data-cal="trip"] [data-dpday="'+dayOf(8)+'"]');
     log(c2&&c2.classList.contains("band"),"기간을 늘리면 칠도 따라 늘어난다");
     out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
    },500);
