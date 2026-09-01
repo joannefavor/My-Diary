@@ -2,6 +2,23 @@
 <div id="out" style="font:13px/1.7 ui-monospace"></div>
 <iframe id="f" src="/#/work" style="width:1240px;height:100px;border:0"></iframe>
 <script>
+/* 할 일은 이제 업무일지 카드 안에 있다. 일지 칸을 하나 열고 그 안에서 넣는다. */
+function openLog(d,cb){
+ var c=d.querySelector("#worklogList .mt");
+ if(c){cb();return;}
+ d.querySelector('button[data-noteadd="worklog"]').click();
+ setTimeout(cb,300);
+}
+function logCard(d){
+ var c=d.querySelector("#worklogList .mt");
+ if(!c){var b=d.querySelector('button[data-noteadd="worklog"]');
+  if(b){b.click(); c=d.querySelector("#worklogList .mt");}}
+ return c;}
+function putTodo(w,d,t){var c=logCard(d);var b=c.querySelector("input[data-todonew]");
+ b.value=t; b.dispatchEvent(new w.Event("input",{bubbles:true}));
+ c.querySelector("button[data-todoadd]").click();}
+function todoLines(d){return d.querySelectorAll("#worklogList .wk-line").length;}
+
 var out=document.getElementById("out"),f=document.getElementById("f"),pass=0,fail=0;
 function log(ok,n,e){(ok?pass++:fail++);
  out.insertAdjacentHTML("beforeend",(ok?"통과  ":"X 실패  ")+n+(e?"   "+e:"")+"<br>");}
@@ -13,26 +30,25 @@ f.onload=function(){var w=f.contentWindow,d=w.document;
   /* 메모 목록은 _qa7 이 맡는다. 여기서는 할 일만 본다 */
   setTimeout(function(){
    /* 할 일 넣고 체크 */
-   var nw=d.getElementById("workNew"); nw.value="계약서 초안"; ev(w,nw,"input");
-   d.getElementById("workAdd").click();
+   putTodo(w,d,"계약서 초안");
    setTimeout(function(){
-    var boxes=d.querySelectorAll('#workList input[data-work]');
+    var boxes=d.querySelectorAll('#worklogList input[data-work]');
     log(boxes.length>0,"할 일이 들어갔다",boxes.length+"개");
-    var line=d.querySelector("#workList .wk-line");
+    var line=d.querySelector("#worklogList .wk-line");
     log(!!line,"할 일이 한 줄로 선다");
     log(!!line.querySelector("input.wk-note"),"메모 칸이 있다");
     log(!line.querySelector("input[data-workdate]"),"아직 안 끝냈으니 완료일 칸이 없다");
 
     boxes[0].checked=true; ev(w,boxes[0],"change");
     setTimeout(function(){
-     var at=d.querySelector("#workList input[data-workdate]");
+     var at=d.querySelector("#worklogList input[data-workdate]");
      log(!!at,"체크하면 완료일 칸이 생긴다");
      log(at&&/^\d{4}-\d{2}-\d{2}$/.test(at.value),"오늘 날짜가 자동으로 들어간다",at&&at.value);
      /* 고쳐 쓸 수 있어야 한다 — 예전에 체크해 둔 것은 끝낸 날을 모른다 */
      at.value="2026-08-20"; ev(w,at,"change");
 
      /* 할 일 메모 적기 */
-     var wn=d.querySelector("#workList input.wk-note");
+     var wn=d.querySelector("#worklogList input.wk-note");
      wn.value="법무팀 확인 필요"; ev(w,wn,"change");
      setTimeout(function(){
       var st2=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3"));
@@ -43,7 +59,7 @@ f.onload=function(){var w=f.contentWindow,d=w.document;
       log(hit&&hit.doneAt==="2026-08-20","고쳐 쓴 완료일이 저장된다",hit&&hit.doneAt);
 
       /* 체크를 풀면 완료일이 지워진다 */
-      var b2=d.querySelector('#workList input[data-work]');
+      var b2=d.querySelector('#worklogList input[data-work]');
       b2.checked=false; ev(w,b2,"change");
       setTimeout(function(){
        var st3=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3"));

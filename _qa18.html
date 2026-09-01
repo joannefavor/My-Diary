@@ -1,7 +1,25 @@
 <!doctype html><meta charset="utf-8"><title>조건 걸린 채 새로 적기 시험</title>
 <div id="out" style="font:13px/1.7 ui-monospace"></div>
+<script>window.onerror=function(m,src,l){document.getElementById("out").insertAdjacentHTML("beforeend","X 시험 오류  "+m+" ("+l+"줄)<br>");};</script>
 <iframe id="f" src="/_fix_w2.html#/work" style="width:1240px;height:100px;border:0"></iframe>
 <script>
+/* 할 일은 이제 업무일지 카드 안에 있다. 일지 칸을 하나 열고 그 안에서 넣는다. */
+function openLog(d,cb){
+ var c=d.querySelector("#worklogList .mt");
+ if(c){cb();return;}
+ d.querySelector('button[data-noteadd="worklog"]').click();
+ setTimeout(cb,300);
+}
+function logCard(d){
+ var c=d.querySelector("#worklogList .mt");
+ if(!c){var b=d.querySelector('button[data-noteadd="worklog"]');
+  if(b){b.click(); c=d.querySelector("#worklogList .mt");}}
+ return c;}
+function putTodo(w,d,t){var c=logCard(d);var b=c.querySelector("input[data-todonew]");
+ b.value=t; b.dispatchEvent(new w.Event("input",{bubbles:true}));
+ c.querySelector("button[data-todoadd]").click();}
+function todoLines(d){return d.querySelectorAll("#worklogList .wk-line").length;}
+
 var out=document.getElementById("out"),f=document.getElementById("f"),pass=0,fail=0;
 function log(ok,n,e){(ok?pass++:fail++);
  out.insertAdjacentHTML("beforeend",(ok?"통과  ":"X 실패  ")+n+(e?"   "+e:"")+"<br>");}
@@ -10,9 +28,10 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
  w.onerror=function(m,s,l){log(false,"앱 오류",m+" ("+l+"줄)");};
  w.confirm=function(){return true;};
  setTimeout(function(){
-  var nw=d.getElementById("workNew"), add=d.getElementById("workAdd");
-  function put(t){nw.value=t; ev(w,nw,"input"); add.click();}
-  function lines(){return d.querySelectorAll("#workList .wk-line").length;}
+  /* 넣을 때마다 목록이 다시 그려져 앞서 잡아 둔 칸은 문서에서 떨어져 나간다.
+     그래서 put 은 부를 때마다 칸을 새로 잡는다. */
+  function put(t){putTodo(w,d,t);}
+  function lines(){return d.querySelectorAll("#worklogList .wk-line").length;}
 
   /* 할 일 — 완료 거르개 */
   put("첫째");
@@ -27,7 +46,7 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
        "거르개가 '전체' 로 풀린다");
 
      /* 달 고르개 */
-     var ms=d.querySelector('select[data-findmonth="work"]');
+     var ms=d.querySelector('select[data-findmonth="worklog"]');
      ms.value="01"; ev(w,ms,"change");
      setTimeout(function(){
       log(lines()===0,"1월만 보기로 두면 숨는다",lines()+"줄");
@@ -37,8 +56,8 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
        log(ms.value==="","달 고르개가 풀린다",'['+ms.value+']');
 
        /* 기간 */
-       var fr=d.querySelector('input[data-findfrom="work"]');
-       var to=d.querySelector('input[data-findto="work"]');
+       var fr=d.querySelector('input[data-findfrom="worklog"]');
+       var to=d.querySelector('input[data-findto="worklog"]');
        fr.value="2020-01-01"; ev(w,fr,"change");
        to.value="2020-12-31"; ev(w,to,"change");
        setTimeout(function(){
@@ -48,7 +67,7 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
          log(fr.value===""&&to.value==="","기간 칸이 비워진다");
 
          /* 말로 찾는 중에 넣기 */
-         var q=d.querySelector('input[data-find="work"]');
+         var q=d.querySelector('input[data-find="worklog"]');
          q.value="없는말"; ev(w,q,"input");
          setTimeout(function(){
           put("다섯째");

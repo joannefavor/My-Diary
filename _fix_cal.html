@@ -263,6 +263,17 @@
   .wk-note:hover { border-color: var(--hair); }
   .wk-note:focus { border-color: var(--accent-ink); background: var(--surface); color: inherit; }
   .wk-note:not(:placeholder-shown) { color: inherit; }
+  /* 업무일지 카드 안의 할 일 */
+  .mt-todos { border-top: 1px dashed var(--hair); margin-top: 10px; padding-top: 9px; }
+  .mt-todohead { font-size: 11px; color: var(--muted); padding: 0 2px 4px; }
+  .mt-todoadd { display: flex; gap: 6px; margin-top: 6px; }
+  .mt-todoadd input {
+    flex: 1; min-width: 0; font: inherit; font-size: 12.5px;
+    padding: 4px 8px; border: 1px solid var(--hair);
+    border-radius: 7px; background: var(--surface); color: inherit;
+  }
+  .wk-empty.small { font-size: 12px; padding: 6px 2px; text-align: left; }
+
   .wk-del {
     flex: none; border: 0; background: none; cursor: pointer;
     color: var(--muted); font-size: 12px; padding: 0 4px; opacity: 0;
@@ -2069,7 +2080,19 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       <button class="ghost" data-noteadd="worklog">+ 새로 적기</button>
     </header>
     <div class="daybar">
-      <input type="search" data-find="worklog" placeholder="단어로 찾기" aria-label="업무일지 찾기">
+      <span class="viewtoggle" id="workDone" role="group" aria-label="완료 여부">
+        <button type="button" data-wd="all" aria-pressed="true">전체</button>
+        <button type="button" data-wd="todo" aria-pressed="false">미완료</button>
+        <button type="button" data-wd="done" aria-pressed="false">완료</button>
+      </span>
+      <input type="search" data-find="worklog" placeholder="일지·할 일에서 찾기"
+        aria-label="업무일지 찾기">
+      <span class="findrange">
+        <select data-findyear="worklog" aria-label="찾을 연도"><option value="">연도 전체</option></select>
+        <select data-findmonth="worklog" aria-label="찾을 달">
+          <option value="">달 전체</option><option value="01">1월</option><option value="02">2월</option><option value="03">3월</option><option value="04">4월</option><option value="05">5월</option><option value="06">6월</option><option value="07">7월</option><option value="08">8월</option><option value="09">9월</option><option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
+        </select>
+      </span>
       <span class="findrange">
         <input type="date" data-findfrom="worklog" aria-label="찾을 기간 시작">
         <span class="tilde">~</span>
@@ -2083,39 +2106,6 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     </div>
   </section>
 
-  <section class="panel" data-page="work">
-    <header>
-      <h2>할 일</h2>
-      <div class="datepick">
-        <input type="text" id="workNew" placeholder="할 일" aria-label="할 일 내용">
-        <button class="ghost" id="workAdd">+ 넣기</button>
-      </div>
-    </header>
-    <div class="daybar">
-      <span class="viewtoggle" id="workDone" role="group" aria-label="완료 여부">
-        <button type="button" data-wd="all" aria-pressed="true">전체</button>
-        <button type="button" data-wd="todo" aria-pressed="false">미완료</button>
-        <button type="button" data-wd="done" aria-pressed="false">완료</button>
-      </span>
-      <input type="search" data-find="work" placeholder="단어로 찾기" aria-label="할 일 찾기">
-      <span class="findrange">
-        <select data-findyear="work" aria-label="찾을 연도"><option value="">연도 전체</option></select>
-        <select data-findmonth="work" aria-label="찾을 달">
-          <option value="">달 전체</option><option value="01">1월</option><option value="02">2월</option><option value="03">3월</option><option value="04">4월</option><option value="05">5월</option><option value="06">6월</option><option value="07">7월</option><option value="08">8월</option><option value="09">9월</option><option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
-        </select>
-      </span>
-      <span class="findrange">
-        <input type="date" data-findfrom="work" aria-label="찾을 기간 시작">
-        <span class="tilde">~</span>
-        <input type="date" data-findto="work" aria-label="찾을 기간 끝">
-      </span>
-      <span class="visit-count" data-count="work"></span>
-    </div>
-    <div class="withcal">
-      <div class="panelcal" data-cal="work"></div>
-      <div class="worklist" id="workList"></div>
-    </div>
-  </section>
 
   <section class="panel" data-page="work">
     <header>
@@ -4339,7 +4329,6 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     renderTabs();
     renderQuick();
     renderToday();
-    renderWork();
     renderNotes("memo");
     renderMeetings();
     renderNotes("history");
@@ -4527,7 +4516,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
      여기에 안 적어서, 찾기 칸에 글자를 넣는 순간 화면이 멈췄다.
      제 목록을 따로 그리는 갈래는 여기에 적고, 나머지는 갈래 엔진이 맡는다. */
   var KIND_RENDER = {
-    meeting: renderMeetings, work: renderWork, money: renderMoney,
+    meeting: renderMeetings, money: renderMoney,
     gift: renderGifts, trip: renderTrips, visit: renderVisits
   };
 
@@ -4543,8 +4532,11 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       var el = document.querySelector(sel.replace("]", '="' + kind + '"]'));
       if (el) el.value = "";
     });
-    /* 갈래마다 따로 있는 거르개도 함께 푼다 */
-    if (kind === "work") {
+    /* 갈래마다 따로 있는 거르개도 함께 푼다.
+       완료 거르개는 할 일이 업무일지 안으로 들어오면서 worklog 로 옮겨 왔다 —
+       여기 이름을 "work" 인 채로 두었더니, 완료만 보기 상태에서 새로 적으면
+       아무것도 안 보였다. */
+    if (kind === "worklog") {
       workDone = "all";
       Array.prototype.forEach.call(
         document.querySelectorAll("#workDone button[data-wd]"), function (b) {
@@ -4601,7 +4593,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       document.querySelectorAll("#workDone button[data-wd]"), function (x) {
         x.setAttribute("aria-pressed", String(x.getAttribute("data-wd") === workDone));
       });
-    renderWork();
+    renderNotes("worklog");
   });
 
   /* ---------- 달력에서 고르기 ----------
@@ -5185,7 +5177,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     knowledge: { list: "knowledgeList", title: "무엇을 알게 되었나" },
     faith:     { list: "faithList",     title: "오늘 마음에 남은 것" },
     prayer:    { list: "prayerList",    title: "무엇을 위해 기도하는가" },
-    worklog:   { list: "worklogList",   title: "무슨 일을 했나" },
+    worklog:   { list: "worklogList",   title: "무슨 일을 했나", todos: true },
     memo:      { list: "memoList",      title: "무엇을 남길까" },
     /* 일기는 날짜와 마음 한 칸뿐이다. 제목을 두면 적기 전에 제목부터 지어야 해서
        손이 무거워진다 — 그날 마음을 적는 자리에는 그게 걸림돌이 된다. */
@@ -5314,6 +5306,9 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     return true;
   }
   function findingNow(kind) {
+    /* 업무일지는 완료 거르개도 찾는 조건이다. 미완료만 보려면 오늘 것만이
+       아니라 지난 날 것까지 훑어야 뜻이 있다. */
+    if (kind === "worklog" && workDone !== "all") return true;
     return !!((findWord[kind] || "").trim() || findFrom[kind] || findTo[kind] ||
               findYear[kind] || findMonth[kind]);
   }
@@ -5325,9 +5320,10 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     for (var date in state.days) {
       var d = state.days[date];
       if (!d) continue;
-      var has = kind === "work"
-        ? (d.todos || []).filter(function (t, i) { return i > 0 && t && t.text; }).length
-        : (d[kind] || []).length;
+      var has = (d[kind] || []).length;
+      if (!has && NOTE_KINDS[kind] && NOTE_KINDS[kind].todos) {
+        has = (d.todos || []).filter(function (t, i) { return i > 0 && t && t.text; }).length;
+      }
       if (has) out.push(date);
     }
     return out;
@@ -5373,9 +5369,42 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
 
   /* 펼친 카드. 고른 날 것과 지난 것을 펼쳤을 때가 같은 모양이라야 하므로
      한 곳에서 만든다 — 두 곳에 적어 두면 한쪽만 고쳐져 갈라진다. */
+  /* 찾을 때 훑는 글. 업무일지는 그날 할 일까지 함께 뒤진다 — 할 일이 그
+     안에 들어와 있으니 따로 찾을 곳이 없어졌기 때문이다. */
+  /* 완료 거르개가 켜졌을 때, 걸린 할 일이 하나도 없는 날은 내보내지 않는다.
+     안 그러면 빈 할 일 칸만 달린 일지가 줄줄이 나온다. */
+  function noteKeep(kind, date, n) {
+    if (!hitWord(kind, noteText(kind, date, n))) return false;
+    if (kind !== "worklog" || workDone === "all") return true;
+    return todoItems(date).some(function (s) {
+      return s.text && (workDone === "done" ? s.done : !s.done);
+    });
+  }
+
+  function noteText(kind, date, n) {
+    var out = [n.title, n.place, n.who, n.notes, n.feel];
+    if (NOTE_KINDS[kind].todos) {
+      todoItems(date).forEach(function (s) { if (s.text) out.push(s.text, s.note); });
+    }
+    return out.filter(Boolean).join(" ");
+  }
+
   function noteCard(kind, date, n) {
     var conf = NOTE_KINDS[kind];
     var at = kind + "|" + date + "|" + n.id;
+    /* 할 일만 있는 날에 세운 빈 일지. 적을 칸을 두면 적어도 저장될 곳이 없다 —
+       그날 일지를 적으려면 '+ 새로 적기' 를 누르면 된다. */
+    if (n.id === "todos") {
+      var dt0 = parseISO(date);
+      return '<div class="mt">' +
+        '<div class="mt-top">' +
+          '<span class="mt-when">' + dt0.getFullYear() + "." +
+            pad(dt0.getMonth() + 1) + "." + pad(dt0.getDate()) + " " + dowOf(date) + "</span>" +
+          '<span class="mt-fill"></span>' +
+          '<span class="hint">할 일만 적어 둔 날</span>' +
+        "</div>" + todoBlock(date) +
+      "</div>";
+    }
     var dt = parseISO(date);
     var when = dt.getFullYear() + "." + pad(dt.getMonth() + 1) + "." + pad(dt.getDate()) +
       " " + dowOf(date);
@@ -5418,6 +5447,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
             '" placeholder="' + esc(conf.feel) + '" aria-label="느낌">' +
             esc(n.feel || "") + "</textarea></div>"
         : "") +
+      (conf.todos ? todoBlock(date) : "") +
     "</div>";
   }
 
@@ -5426,8 +5456,9 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     var host = document.getElementById(conf.list);
     if (!host) return;
     var all = noteDates(kind);
-    var total = 0;
-    all.forEach(function (d0) { total += state.days[d0][kind].length; });
+    /* 세는 것도 목록과 같은 눈으로 봐야 한다. 업무일지는 할 일만 있는 날도
+       한 건으로 치므로, 여기서 글만 세면 그런 날이 "없습니다" 로 묻힌다. */
+    var total = noteRows(kind).length;
 
     var finding = findingNow(kind);
     /* 찾는 중이 아니면 고른 날 것만 펼친다. 지난 것은 아래에 줄로만 몇 개 보인다 —
@@ -5437,10 +5468,8 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       : (all.indexOf(selected) !== -1 ? [selected] : []);
 
     var shown = 0;
-    dates.forEach(function (d0) {
-      state.days[d0][kind].forEach(function (n) {
-        if (hitWord(kind, [n.title, n.place, n.who, n.notes, n.feel].filter(Boolean).join(" "))) shown++;
-      });
+    noteRows(kind).forEach(function (r) {
+      if ((!finding || inFindRange(kind, r.date)) && noteKeep(kind, r.date, r.n)) shown++;
     });
     dayBarPaint(kind, shown, total);
 
@@ -5456,13 +5485,9 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
 
     /* 찾는 중이면 걸린 것을 다 펼쳐 보여준다. 그때는 전부가 답이라서. */
     if (finding) {
-      host.innerHTML = dates.map(function (date) {
-        return state.days[date][kind].filter(function (n) {
-          return hitWord(kind, [n.title, n.place, n.who, n.notes, n.feel].filter(Boolean).join(" "));
-        }).map(function (n) {
-          return noteCard(kind, date, n);
-        }).join("");
-      }).join("");
+      host.innerHTML = noteRows(kind).filter(function (r) {
+        return inFindRange(kind, r.date) && noteKeep(kind, r.date, r.n);
+      }).map(function (r) { return noteCard(kind, r.date, r.n); }).join("");
       return;
     }
 
@@ -5475,6 +5500,28 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
   var RECENT_MAX = 3;
   var noteOpen = {};
 
+  /* 목록에 올릴 것들. 업무일지는 글 없이 할 일만 적어 둔 날도 함께 올린다 —
+     할 일이 일지 안으로 들어오면서, 글이 없는 날의 할 일이 갈 곳을 잃었다.
+     그런 날은 빈 일지 하나를 세워 그 안에 할 일을 담는다(저장은 하지 않는다). */
+  function noteRows(kind) {
+    var rows = [], seen = {};
+    noteDates(kind).forEach(function (d0) {
+      seen[d0] = 1;
+      (state.days[d0][kind] || []).forEach(function (n) { rows.push({ date: d0, n: n }); });
+    });
+    if (NOTE_KINDS[kind].todos) {
+      var extra = [];
+      for (var date in state.days) {
+        if (seen[date]) continue;
+        if (todoItems(date).some(function (s) { return s.text; })) {
+          extra.push({ date: date, n: { id: "todos", title: "", notes: "" } });
+        }
+      }
+      rows = rows.concat(extra);
+    }
+    return rows.sort(function (a, b) { return b.date.localeCompare(a.date); });
+  }
+
   function noteSummary(n) {
     var t = [n.title, n.notes, n.feel].filter(Boolean).join(" · ")
       .split(/\n/)[0].trim();
@@ -5482,10 +5529,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
   }
 
   function recentNotes(kind) {
-    var rows = [];
-    noteDates(kind).forEach(function (d0) {
-      (state.days[d0][kind] || []).forEach(function (n) { rows.push({ date: d0, n: n }); });
-    });
+    var rows = noteRows(kind);
     if (!rows.length) return '<div class="wk-empty">아직 적어 둔 것이 없습니다.</div>';
 
     var at = noteOpen[kind];
@@ -6945,126 +6989,106 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
   /* ---------- 업무 목록 ----------
      그날 할 일 칸(QT 다음 칸부터)을 이번 주 것만 모아 보여준다.
      같은 자료를 일정 페이지의 Todo 칸과 나눠 쓰므로 어느 쪽에서 고쳐도 함께 바뀐다. */
-  function renderWork() {
-    var host = document.getElementById("workList");
-    if (!host) return;
-    var today = iso(new Date()), any = false;
-
-    /* 평소엔 고른 날 것만. 찾거나 기간을 고르거나 완료 여부를 고르면
-       날짜를 넘어 뒤진다 — "지난달에 못 끝낸 것" 을 찾으려면 그래야 한다. */
-    var findingW = findingNow("work") || workDone !== "all";
-    var wDates = [];
-    var wTotal = 0, wShown = 0;
-
-    function keepTodo(t) {
-      if (!t || !t.text) return false;
-      if (!hitWord("work", t.text)) return false;
-      if (workDone === "todo" && t.done) return false;
-      if (workDone === "done" && !t.done) return false;
-      return true;
+  /* 그날 할 일들. todosOf 는 달력 주 보기에 맞춰 다섯 칸으로 끊지만,
+     여기서는 뒤로 이어 붙은 것까지 다 본다. */
+  function todoItems(date) {
+    var raw = (state.days[date] && state.days[date].todos) || [];
+    var out = [];
+    for (var i = 1; i < Math.max(TODO_SLOTS, raw.length); i++) {
+      var s0 = raw[i] || { text: "", done: false };
+      out.push({ text: s0.text, done: s0.done, doneAt: s0.doneAt,
+                 note: s0.note, idx: i });
     }
-
-    for (var wk in state.days) {
-      var td = (state.days[wk] && state.days[wk].todos) || [];
-      for (var wi = 1; wi < td.length; wi++) if (td[wi] && td[wi].text) wTotal++;
-    }
-    if (findingW) {
-      for (var wk2 in state.days) {
-        if (!inFindRange("work", wk2)) continue;
-        var td2 = (state.days[wk2] && state.days[wk2].todos) || [];
-        for (var wj = 1; wj < td2.length; wj++) {
-          if (keepTodo(td2[wj])) { wDates.push(wk2); break; }
-        }
-      }
-      wDates.sort().reverse();
-    } else {
-      wDates = [selected];
-    }
-    wDates.forEach(function (d0) {
-      var rawc = (state.days[d0] && state.days[d0].todos) || [];
-      rawc.forEach(function (t, ti) { if (ti > 0 && keepTodo(t)) wShown++; });
-    });
-    dayBarPaint("work", wShown, wTotal);
-
-    host.innerHTML = wDates.map(function (date) {
-      var i = dowIndex(parseISO(date));
-      /* todosOf 는 달력 주 보기에 맞춰 다섯 칸으로 끊는다. 이 화면에서는
-         뒤로 이어 붙은 것까지 다 보여야 한다. */
-      var raw = (state.days[date] && state.days[date].todos) || [];
-      var items = [];
-      for (var ti2 = 1; ti2 < Math.max(TODO_SLOTS, raw.length); ti2++) {
-        var s0 = raw[ti2] || { text: "", done: false };
-        var one = { text: s0.text, done: s0.done, doneAt: s0.doneAt,
-                    note: s0.note, idx: ti2 };
-        if (keepTodo(one)) items.push(one);
-      }
-      if (!items.length) return "";
-      any = true;
-      var dt = parseISO(date);
-      return '<div class="wk-day">' +
-        '<div class="wk-date' + (date === today ? " today" : "") + '">' +
-          (dt.getMonth() + 1) + "/" + dt.getDate() + " " + DOW[i] + "</div>" +
-        items.map(function (s) {
-          var at = date + "|" + s.idx;
-          return '<div class="wk-line">' +
-            '<label class="wk-item' + (s.done ? " done" : "") + '">' +
-              '<input type="checkbox" data-work="' + at + '"' +
-                (s.done ? " checked" : "") + ">" +
-              "<span>" + esc(s.text) + "</span></label>" +
-            /* 끝낸 것에만 완료일 칸을 둔다. 고칠 수 있게 한 것은, 예전에
-               체크해 둔 것들은 끝낸 날을 모르기 때문이다 — 그때는 이 칸이
-               없었다. 뒤늦게 채워 넣을 길이 있어야 한다. */
-            (s.done ? '<span class="wk-at"><i>✓</i>' +
-              '<input type="date" data-workdate="' + at + '" value="' +
-              esc(s.doneAt || "") + '" title="끝낸 날" aria-label="' +
-              esc(s.text) + ' 끝낸 날"></span>' : "") +
-            '<input class="wk-note" data-worknote="' + at +
-              '" value="' + esc(s.note || "") + '" placeholder="메모" ' +
-              'aria-label="' + esc(s.text) + ' 메모">' +
-            '<button type="button" class="wk-del" data-workdel="' + at +
-              '" title="지우기" aria-label="' + esc(s.text) + ' 지우기">✕</button>' +
-          "</div>";
-        }).join("") +
-      "</div>";
-    }).join("");
-
-    if (!any) {
-      host.innerHTML = '<div class="wk-empty">' +
-        (findingW ? "찾는 할 일이 없습니다."
-                  : (wTotal ? "이 날에 적어 둔 할 일이 없습니다." : "아직 적어 둔 할 일이 없습니다.")) +
-        "</div>";
-    }
+    return out;
   }
 
-  /* 업무 페이지에서 날짜를 골라 지난 날에도 적을 수 있게 한다.
-     할 일은 그날의 정해진 칸에 들어가므로, 빈 칸이 없으면 넣지 않고 알린다. */
-  function workAdd() {
-    var tbox = document.getElementById("workNew");
-    /* 넣을 날짜는 옆 달력에서 고른 날이다. 날짜 칸을 따로 두면 둘이 어긋난다. */
-    var date = selected, text = tbox.value.trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !text) return;
-    /* 앞의 빈 칸부터 채우고, 다 찼으면 뒤로 이어 붙인다. 예전에는 여기서
-       "칸이 다 찼습니다" 하고 멈췄는데, 정작 이 화면에는 지우는 단추가 없어서
-       한 번 차면 그날은 영영 못 적었다. 달력 주 보기는 앞의 다섯 칸을 쓰므로
-       그 뒤에 붙은 것은 이 화면과 찾기에서 본다. */
+  /* 할 일 한 줄. 업무일지 카드 안과 할 일 목록이 같은 모양이라야 하므로
+     한 곳에서 만든다 — 두 곳에 적어 두면 한쪽만 고쳐져 갈라진다. */
+  function todoLine(date, s) {
+    var at = date + "|" + s.idx;
+    return '<div class="wk-line">' +
+      '<label class="wk-item' + (s.done ? " done" : "") + '">' +
+        '<input type="checkbox" data-work="' + at + '"' +
+          (s.done ? " checked" : "") + ">" +
+        "<span>" + esc(s.text) + "</span></label>" +
+      /* 끝낸 것에만 완료일 칸을 둔다. 고칠 수 있게 한 것은, 예전에 체크해 둔
+         것들은 끝낸 날을 모르기 때문이다 — 그때는 이 칸이 없었다. */
+      (s.done ? '<span class="wk-at"><i>✓</i>' +
+        '<input type="date" data-workdate="' + at + '" value="' +
+        esc(s.doneAt || "") + '" title="끝낸 날" aria-label="' +
+        esc(s.text) + ' 끝낸 날"></span>' : "") +
+      '<input class="wk-note" data-worknote="' + at +
+        '" value="' + esc(s.note || "") + '" placeholder="메모" ' +
+        'aria-label="' + esc(s.text) + ' 메모">' +
+      '<button type="button" class="wk-del" data-workdel="' + at +
+        '" title="지우기" aria-label="' + esc(s.text) + ' 지우기">✕</button>' +
+    "</div>";
+  }
+
+  /* 업무일지를 적는 자리 아래에 그날 할 일을 함께 둔다. 무엇을 했나와
+     무엇을 할까는 같은 자리에서 오가는 생각이라, 화면을 나누면 오히려
+     둘 사이를 왔다 갔다 하게 된다.
+
+     할 일은 날짜에 매여 있고 업무일지는 하루에 여러 개일 수 있다. 그래서
+     같은 날 일지가 둘이면 둘 다 같은 할 일을 보여준다 — 할 일이 일지에
+     딸린 것이 아니라 그날에 딸린 것이기 때문이다. */
+  /* 업무일지 카드 안에서 할 일을 넣는다. 넣을 날짜는 그 카드의 날짜다 —
+     카드마다 제 날짜를 들고 있으므로 어느 날에 들어갈지 헷갈릴 일이 없다. */
+  function addTodo(date, text) {
     var d0 = day(date), slot = -1;
     for (var i = 1; i < TODO_SLOTS; i++) {
       if (!todoSlot(date, i).text) { slot = i; break; }
     }
     if (slot < 0) { d0.todos.push({ text: "", done: false }); slot = d0.todos.length - 1; }
     day(date).todos[slot].text = text;
-    tbox.value = "";
     save();
-    clearFind("work");
-    renderWork();
   }
 
-  document.getElementById("workAdd").addEventListener("click", workAdd);
-  document.getElementById("workNew").addEventListener("keydown", function (e) {
-    if (e.key === "Enter") { e.preventDefault(); workAdd(); }
+  function putTodoFrom(box) {
+    var date = box.getAttribute("data-todonew");
+    var text = box.value.trim();
+    if (!text) return;
+    addTodo(date, text);
+    box.value = "";
+    clearFind("worklog");
+    renderNotes("worklog");
+  }
+
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-todoadd]");
+    if (!b) return;
+    var box = document.querySelector(
+      'input[data-todonew="' + b.getAttribute("data-todoadd") + '"]');
+    if (box) putTodoFrom(box);
   });
 
-  document.getElementById("workList").addEventListener("click", function (e) {
+  document.addEventListener("keydown", function (e) {
+    var box = e.target.closest("input[data-todonew]");
+    if (box && e.key === "Enter") { e.preventDefault(); putTodoFrom(box); }
+  });
+
+  function todoBlock(date) {
+    var items = todoItems(date).filter(function (s) {
+      if (!s.text) return false;
+      if (workDone === "todo" && s.done) return false;
+      if (workDone === "done" && !s.done) return false;
+      return true;
+    });
+    return '<div class="mt-todos">' +
+      '<div class="mt-todohead">할 일</div>' +
+      (items.length ? items.map(function (s) { return todoLine(date, s); }).join("")
+                    : '<div class="wk-empty small">이 날 적어 둔 할 일이 없습니다.</div>') +
+      '<div class="mt-todoadd">' +
+        '<input type="text" data-todonew="' + date +
+          '" placeholder="할 일 적기" aria-label="할 일 적기">' +
+        '<button type="button" class="ghost" data-todoadd="' + date + '">+ 넣기</button>' +
+      "</div>" +
+    "</div>";
+  }
+
+  /* 할 일 줄은 이제 업무일지 카드 안에 있다. 사라진 #workList 대신 문서에
+     붙여, 어디에 그려지든 눌리게 한다. */
+  document.addEventListener("click", function (e) {
     var del = e.target.closest("button[data-workdel]");
     if (!del) return;
     var k = del.getAttribute("data-workdel").split("|");
@@ -7078,7 +7102,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     persist();
   });
 
-  document.getElementById("workList").addEventListener("change", function (e) {
+  document.addEventListener("change", function (e) {
     var nb = e.target.closest("input[data-worknote]");
     if (nb) {
       var nk = nb.getAttribute("data-worknote").split("|");

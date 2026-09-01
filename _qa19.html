@@ -1,0 +1,94 @@
+<!doctype html><meta charset="utf-8"><title>업무일지 안의 할 일 시험</title>
+<div id="out" style="font:13px/1.7 ui-monospace"></div>
+<iframe id="f" src="/_fix_wl.html#/work" style="width:1240px;height:100px;border:0"></iframe>
+<script>
+var out=document.getElementById("out"),f=document.getElementById("f"),pass=0,fail=0;
+function log(ok,n,e){(ok?pass++:fail++);
+ out.insertAdjacentHTML("beforeend",(ok?"통과  ":"X 실패  ")+n+(e?"   "+e:"")+"<br>");}
+function ev(w,el,t){el.dispatchEvent(new w.Event(t,{bubbles:true}));}
+f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
+ w.onerror=function(m,s,l){log(false,"앱 오류",m+" ("+l+"줄)");};
+ w.confirm=function(){return true;};
+ setTimeout(function(){
+  var names=[].map.call(d.querySelectorAll('section.panel[data-page="work"] h2'),
+    function(h){return h.textContent;});
+  log(names.join(",")==="업무일지,메모","일 페이지가 업무일지·메모 둘로",names.join(","));
+  log(!d.getElementById("workList"),"할 일 패널이 없다");
+  log(!!d.getElementById("workDone"),"완료 거르개가 업무일지 줄에 있다");
+  log(!!d.querySelector('select[data-findyear="worklog"]'),"연도 고르개도 있다");
+
+  function saved(){var st=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3")||"{}");
+   var a=[];Object.keys(st.days||{}).forEach(function(k){
+    ((st.days[k].todos)||[]).forEach(function(t,i){if(i>0&&t&&t.text)a.push(t.text);});});return a;}
+  function card(){return d.querySelector("#worklogList .mt");}
+  function put(t){var b=card().querySelector("input[data-todonew]");
+   b.value=t; ev(w,b,"input"); card().querySelector("button[data-todoadd]").click();}
+
+  d.querySelector('button[data-noteadd="worklog"]').click();
+  setTimeout(function(){
+   log(!!card().querySelector(".mt-todos"),"일지 칸 아래에 할 일 자리가 있다");
+   log(card().querySelector(".mt-todos").getBoundingClientRect().top >
+       card().querySelector(".mt-title").getBoundingClientRect().top,
+     "할 일이 일지 아래에 온다");
+   var ti=card().querySelector('input[data-note="title"]');
+   ti.value="계약 건 정리"; ev(w,ti,"change");
+
+   put("계약서 초안");
+   setTimeout(function(){
+    put("주간보고 정리");
+    setTimeout(function(){
+     log(saved().length===2,"일지 안에서 할 일이 들어간다",saved().join(","));
+     log(d.querySelectorAll("#worklogList .wk-line").length===2,"두 줄이 보인다",
+       d.querySelectorAll("#worklogList .wk-line").length+"줄");
+
+     /* 체크·완료일·메모·지우기가 그대로 되는가 */
+     var cb=d.querySelectorAll('#worklogList input[data-work]')[0];
+     cb.checked=true; ev(w,cb,"change");
+     setTimeout(function(){
+      log(!!d.querySelector("#worklogList input[data-workdate]"),"체크하면 완료일이 붙는다");
+      var nb=d.querySelector("#worklogList input[data-worknote]");
+      nb.value="법무팀 확인"; ev(w,nb,"change");
+      setTimeout(function(){
+       var st=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3"));
+       var ok=false;Object.keys(st.days).forEach(function(k){
+        ((st.days[k].todos)||[]).forEach(function(t){if(t&&t.note==="법무팀 확인")ok=true;});});
+       log(ok,"할 일 메모도 저장된다");
+
+       /* 완료 거르개 */
+       d.querySelector('#workDone button[data-wd="todo"]').click();
+       setTimeout(function(){
+        log(d.querySelectorAll("#worklogList .wk-line").length===1,"미완료만 보기",
+          d.querySelectorAll("#worklogList .wk-line").length+"줄");
+        d.querySelector('#workDone button[data-wd="done"]').click();
+        setTimeout(function(){
+         log(d.querySelectorAll("#worklogList .wk-line").length===1,"완료만 보기",
+           d.querySelectorAll("#worklogList .wk-line").length+"줄");
+         d.querySelector('#workDone button[data-wd="all"]').click();
+         setTimeout(function(){
+          /* 업무일지 찾기가 할 일까지 뒤진다 */
+          var q=d.querySelector('input[data-find="worklog"]');
+          q.value="주간보고"; ev(w,q,"input");
+          setTimeout(function(){
+           log(d.querySelectorAll("#worklogList .mt").length===1,
+             "할 일 글자로 일지가 찾힌다",
+             d.querySelectorAll("#worklogList .mt").length+"개");
+           q.value=""; ev(w,q,"input");
+           /* 지우기 */
+           setTimeout(function(){
+            d.querySelectorAll("#worklogList button[data-workdel]")[0].click();
+            setTimeout(function(){
+             log(saved().length===1,"할 일을 지울 수 있다",saved().join(","));
+             out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
+            },400);
+           },300);
+          },400);
+         },300);
+        },300);
+       },300);
+      },300);
+     },400);
+    },400);
+   },400);
+  },500);
+ },1300);};
+</script>
