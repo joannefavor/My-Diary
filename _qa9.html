@@ -70,8 +70,8 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
    var q=d.querySelector('input[data-find="movie"]');
    q.value="메가박스"; ev(w,q,"input");
    setTimeout(function(){
-    log(d.querySelectorAll("#movieList .mt").length===1,"어디서로 찾을 수 있다",
-      d.querySelectorAll("#movieList .mt").length+"개");
+    log(d.querySelectorAll("#movieList [data-nrow]").length===1,"어디서로 찾을 수 있다",
+      d.querySelectorAll("#movieList [data-nrow]").length+"줄");
     out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
    },300);
   },300);

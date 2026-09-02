@@ -5475,15 +5475,10 @@
       return;
     }
 
-    /* 찾는 중이면 걸린 것을 다 펼쳐 보여준다. 그때는 전부가 답이라서. */
-    if (finding) {
-      host.innerHTML = noteRows(kind).filter(function (r) {
-        return inFindRange(kind, r.date) && noteKeep(kind, r.date, r.n);
-      }).map(function (r) { return noteCard(kind, r.date, r.n); }).join("");
-      return;
-    }
-
-    host.innerHTML = recentNotes(kind);
+    /* 찾을 때도 줄로 보여주고 펼친 칸은 하나다. 예전에는 걸린 것을 다 펼쳤는데,
+       미완료 거르개처럼 많이 걸리는 조건에서는 카드가 줄줄이 늘어서
+       무엇이 걸렸는지 오히려 보이지 않았다. */
+    host.innerHTML = recentNotes(kind, finding);
   }
 
   /* 평소 화면. 펼친 칸은 하나뿐이고 나머지는 한 줄 요약으로 세 개 보인다.
@@ -5514,17 +5509,39 @@
     return rows.sort(function (a, b) { return b.date.localeCompare(a.date); });
   }
 
-  function noteSummary(n) {
+  /* 줄에 보일 한 마디. 업무일지는 적어 둔 글이 없으면 그날 할 일로 대신한다 —
+     할 일만 적어 둔 날이 "적은 것 없음" 으로만 보이면 무엇이 있는지 알 수 없다. */
+  function noteSummary(n, kind, date) {
     var t = [n.title, n.notes, n.feel].filter(Boolean).join(" · ")
       .split(/\n/)[0].trim();
+    if (!t && kind && NOTE_KINDS[kind].todos && date) {
+      var ts = todoItems(date).filter(function (x) { return x.text; })
+        .map(function (x) { return (x.done ? "✓ " : "") + x.text; });
+      if (ts.length) t = ts.join(" · ");
+    }
     return t || "적은 것 없음";
   }
 
-  function recentNotes(kind) {
+  function recentNotes(kind, finding) {
     var rows = noteRows(kind);
+    if (finding) {
+      rows = rows.filter(function (r) {
+        return inFindRange(kind, r.date) && noteKeep(kind, r.date, r.n);
+      });
+      if (!rows.length) return '<div class="wk-empty">찾는 것이 없습니다.</div>';
+    }
     if (!rows.length) return '<div class="wk-empty">아직 적어 둔 것이 없습니다.</div>';
 
+    /* 옆 달력에서 고른 날을 맨 위로 올린다. 날을 눌렀는데 목록이 그대로면
+       눌린 것이 아무 데도 안 보여서, 달력이 무엇에 쓰는 것인지 알 수 없다. */
+    var mine = finding ? [] : rows.filter(function (r) { return r.date === selected; });
+    if (!finding) rows = mine.concat(rows.filter(function (r) { return r.date !== selected; }));
+
     var at = noteOpen[kind];
+    var valid = at && rows.some(function (r) { return keyOf(kind, r) === at; });
+    /* 따로 펼쳐 둔 것이 없으면 고른 날 것을 펼친다 */
+    if (!valid) at = mine.length ? keyOf(kind, mine[0]) : null;
+
     var show = rows.slice(0, RECENT_MAX);
     /* 펼쳐 둔 것이 최근 셋에 안 들면 맨 위에 끼워 넣는다 — 지난 날짜로 적으면
        그 자리가 아래로 밀려, 적던 칸이 눈앞에서 사라져 버린다. */
@@ -5543,8 +5560,9 @@
         '<span class="vd">' + (dt.getMonth() + 1) + "." + pad(dt.getDate()) +
           "<small> " + dt.getFullYear() + "</small></span>" +
         (NOTE_KINDS[kind].noTitle ? ""
-          : '<span class="vp">' + esc((r.n.title || "").trim() || "제목 없음") + "</span>") +
-        '<span class="vs">' + esc(noteSummary(r.n)) + "</span>" +
+          : '<span class="vp">' + esc((r.n.title || "").trim() ||
+              (r.n.id === "todos" ? "할 일만" : "제목 없음")) + "</span>") +
+        '<span class="vs">' + esc(noteSummary(r.n, kind, r.date)) + "</span>" +
         (r.n.star ? starText(r.n.star) : "") +
         "</button>";
       if (open) html += '<div class="vopen">' + noteCard(kind, r.date, r.n) + "</div>";
@@ -7149,6 +7167,9 @@
      안 그러면 요약·차트가 딴 주를 가리킨 채로 남는다. */
   function goToDate(date) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+    /* 날을 옮기면 펼쳐 둔 표시를 푼다. 안 그러면 지난 날 카드가 펼쳐진 채라
+       달력에서 다른 날을 눌러도 그 날 것이 안 보인다. */
+    if (date !== selected) noteOpen = {};
     selected = date;
     var wk = weekStartOf(parseISO(date));
     if (iso(wk) !== iso(weekStart)) weekStart = wk;

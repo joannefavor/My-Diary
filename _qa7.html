@@ -19,7 +19,9 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
     "옮긴 뒤 예전 자리는 비워진다");
 
   /* 평소엔 펼친 칸 없이 요약 줄만 */
-  log(d.querySelectorAll("#memoList .mt").length===0,"평소엔 펼친 칸이 없다");
+  /* 고른 날 것이 기본으로 펼쳐진다 */
+  log(d.querySelectorAll("#memoList .mt").length===1,"고른 날 것이 펼쳐진다",
+    d.querySelectorAll("#memoList .mt").length+"개");
   log(d.querySelectorAll("#memoList [data-nrow]").length===2,"요약 줄로 보인다",
     d.querySelectorAll("#memoList [data-nrow]").length+"줄");
 
@@ -42,8 +44,9 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
     var q=d.querySelector('input[data-find="memo"]');
     q.value="서버"; ev(w,q,"input");
     setTimeout(function(){
-     var n=d.querySelectorAll("#memoList .mt").length;
-     log(n===1,"단어로 찾으면 지난 날 것도 걸린다",n+"개");
+     /* 찾을 때는 줄로 보여준다 */
+     var n=d.querySelectorAll("#memoList [data-nrow]").length;
+     log(n===1,"단어로 찾으면 지난 날 것도 걸린다",n+"줄");
      log(d.getElementById("memoList").textContent.indexOf("서버 이전")!==-1,"찾은 것이 맞다");
 
      /* 기간으로 찾기 */

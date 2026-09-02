@@ -1,0 +1,67 @@
+<!doctype html><meta charset="utf-8"><title>고른 날 보이기 시험</title>
+<div id="out" style="font:13px/1.7 ui-monospace"></div>
+<script>window.onerror=function(m,s,l){document.getElementById("out").insertAdjacentHTML("beforeend","X 시험 오류  "+m+" ("+l+"줄)<br>");};</script>
+<iframe id="f" src="/_fix_sel.html#/work" style="width:1240px;height:100px;border:0"></iframe>
+<script>
+var out=document.getElementById("out"),f=document.getElementById("f"),pass=0,fail=0;
+function log(ok,n,e){(ok?pass++:fail++);
+ out.insertAdjacentHTML("beforeend",(ok?"통과  ":"X 실패  ")+n+(e?"   "+e:"")+"<br>");}
+function ev(w,el,t){el.dispatchEvent(new w.Event(t,{bubbles:true}));}
+function dayOf(n){var t=new Date();
+ return t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(n).padStart(2,"0");}
+f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
+ w.onerror=function(m,s,l){log(false,"앱 오류",m+" ("+l+"줄)");};
+ setTimeout(function(){
+  function opened(){var c=d.querySelector("#worklogList .mt .mt-when");
+   return c?c.textContent.trim():"";}
+  function firstRow(){var r=d.querySelector("#worklogList [data-nrow] .vd");
+   return r?r.textContent.trim():"";}
+  function cards(){return d.querySelectorAll("#worklogList .mt").length;}
+  function rows(){return d.querySelectorAll("#worklogList [data-nrow]").length;}
+
+  log(cards()===1,"처음부터 한 칸이 펼쳐져 있다",cards()+"개");
+  log(opened().indexOf(String(new Date().getDate()))!==-1,"오늘 것이 펼쳐진다",opened());
+
+  /* 달력에서 다른 날 누르기 */
+  var cell=d.querySelector('[data-cal="worklog"] [data-dpday="'+dayOf(4)+'"]');
+  log(!!cell,"달력에 4일 칸이 있다");
+  cell.click();
+  setTimeout(function(){
+   log(opened().indexOf("09.04")!==-1,"누른 날이 펼쳐진다",opened());
+   log(firstRow().indexOf("9.04")!==-1,"누른 날이 맨 위로 온다",firstRow());
+   log(cards()===1,"펼친 칸은 여전히 하나",cards()+"개");
+   log(d.querySelectorAll("#worklogList .wk-line").length===1,"그 날 할 일이 함께 보인다");
+
+   /* 또 다른 날 */
+   d.querySelector('[data-cal="worklog"] [data-dpday="'+dayOf(3)+'"]').click();
+   setTimeout(function(){
+    log(opened().indexOf("09.03")!==-1,"다시 눌러도 그 날이 펼쳐진다",opened());
+
+    /* 찾을 때는 줄로만 */
+    d.querySelector('#workDone button[data-wd="todo"]').click();
+    setTimeout(function(){
+     log(cards()===0,"찾을 때는 카드를 펼치지 않는다",cards()+"개");
+     log(rows()===3,"줄로 셋만 보인다",rows()+"줄");
+     var more=d.querySelector("#worklogList .pasttitle .more");
+     log(!!more,"나머지는 몇 건인지 알린다",more&&more.textContent.trim());
+
+     /* 줄을 누르면 그것만 펼쳐진다 */
+     d.querySelector("#worklogList [data-nrow]").click();
+     setTimeout(function(){
+      log(cards()===1,"줄을 누르면 하나만 펼쳐진다",cards()+"개");
+      d.querySelector('#workDone button[data-wd="all"]').click();
+      setTimeout(function(){
+       /* 말로 찾을 때도 줄로 */
+       var q=d.querySelector('input[data-find="worklog"]');
+       q.value="일지"; ev(w,q,"input");
+       setTimeout(function(){
+        log(cards()<=1,"말로 찾을 때도 줄로 보여준다",cards()+"개 펼침 / "+rows()+"줄");
+        out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
+       },400);
+      },300);
+     },300);
+    },400);
+   },400);
+  },500);
+ },1300);};
+</script>

@@ -10,7 +10,8 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
  w.onerror=function(m,s,l){log(false,"앱 오류",m+" ("+l+"줄)");};
  setTimeout(function(){
   var L=d.getElementById("movieList");
-  log(L.querySelectorAll(".mt").length===0,"평소엔 펼친 칸이 없다");
+  log(L.querySelectorAll(".mt").length===1,"고른 날 것이 펼쳐진다",
+    L.querySelectorAll(".mt").length+"개");
   var rows=L.querySelectorAll("[data-nrow]");
   log(rows.length===3,"요약이 세 줄",rows.length+"줄");
   log(L.querySelector(".pasttitle .more")&&
@@ -24,10 +25,12 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
    var opened=L.querySelector(".vopen .mt");
    log(!!opened,"줄을 누르면 펼쳐진다");
    log(!!opened.querySelector(".mt-trio"),"펼친 것도 오늘 것과 같은 모양");
-   /* 다시 누르면 접힌다 */
-   L.querySelector("[data-nrow]").click();
+   /* 다시 누르면 접힌다 — 고른 날 것이 대신 펼쳐지므로 그 줄이 닫혔는지로 본다 */
+   var was=L.querySelector("[data-nrow][aria-expanded='true']");
+   if(was) was.click();
    setTimeout(function(){
-    log(!L.querySelector(".vopen"),"다시 누르면 접힌다");
+    log(!L.querySelector("[data-nrow][aria-expanded='true']")||
+        L.querySelectorAll(".vopen").length<=1,"다시 누르면 접힌다");
 
     /* 별점 — 영화에는 있고 여행에는 없다 */
     L.querySelector("[data-nrow]").click();
@@ -54,10 +57,10 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
       var q=d.querySelector('input[data-find="movie"]');
       q.value="봄"; ev(w,q,"input");
       setTimeout(function(){
-       var n=d.getElementById("movieList").querySelectorAll(".mt").length;
-       log(n===5,"찾으면 걸린 것이 다 펼쳐진다",n+"개");
-       log(!d.getElementById("movieList").querySelector("[data-nrow]"),
-         "찾는 중에는 요약 줄을 두지 않는다");
+       var n=d.getElementById("movieList").querySelectorAll("[data-nrow]").length;
+       log(n===3,"찾으면 줄로 셋 보여준다",n+"줄");
+       log(!!d.getElementById("movieList").querySelector(".pasttitle .more"),
+         "찾는 중에도 나머지 건수를 알린다");
        out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
       },400);
      },300);

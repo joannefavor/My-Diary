@@ -37,7 +37,8 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
   log([].map.call(msel("worklog").options,function(o){return o.value;}).filter(Boolean).length===12,
     "달은 열둘 다");
 
-  function lines(){return d.querySelectorAll("#worklogList .wk-line").length;}
+  /* 찾을 때는 카드를 펼치지 않으므로 줄 수로 센다 */
+  function lines(){return d.querySelectorAll("#worklogList [data-nrow]").length;}
   function memos(){return d.querySelectorAll("#memoList [data-nrow], #memoList .mt").length;}
 
   /* 연도로 좁히기 */
@@ -69,9 +70,11 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
        ysel("memo").value="2025"; ev(w,ysel("memo"),"change");
        setTimeout(function(){
         function mtitles(){
-         return [].map.call(
-           d.querySelectorAll('#memoList input[data-note="title"]'),
-           function(x){return x.value;}).join(",");}
+         var a1=[].map.call(d.querySelectorAll('#memoList input[data-note="title"]'),
+           function(x){return x.value;});
+         var a2=[].map.call(d.querySelectorAll("#memoList [data-nrow] .vp"),
+           function(x){return x.textContent;});
+         return a2.concat(a1).filter(function(v,i,arr){return arr.indexOf(v)===i;}).join(",");}
         log(mtitles()==="작년팔월 메모,작년삼월 메모",
           "메모도 연도로 좁혀진다",mtitles());
         msel("memo").value="03"; ev(w,msel("memo"),"change");

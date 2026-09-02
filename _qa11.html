@@ -52,7 +52,8 @@ f.onload=function(){var w=f.contentWindow,d=w.document;
     var q=panel.querySelector('input[data-find="diary"]');
     q.value="우산"; ev(w,q,"input");
     setTimeout(function(){
-     log(d.querySelectorAll("#diaryList .mt").length===1,"단어로 찾힌다");
+     log(d.querySelectorAll("#diaryList [data-nrow]").length===1,"단어로 찾힌다",
+       d.querySelectorAll("#diaryList [data-nrow]").length+"줄");
      q.value=""; ev(w,q,"input");
      /* 빠르게 찾기 */
      w.location.hash="#/main";

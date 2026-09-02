@@ -27,7 +27,8 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
   var L=d.getElementById("movieList");
   log(L.querySelectorAll("[data-nrow]").length===3,"요약이 세 줄",
     L.querySelectorAll("[data-nrow]").length+"줄");
-  log(L.querySelectorAll(".mt").length===0,"평소엔 펼친 칸이 없다");
+  log(L.querySelectorAll(".mt").length===1,"고른 날 것이 펼쳐진다",
+    L.querySelectorAll(".mt").length+"개");
   log(L.querySelector(".pasttitle .more").textContent.indexOf("4건")!==-1,
     "나머지는 몇 건인지만",L.querySelector(".pasttitle .more").textContent.trim());
 
@@ -65,9 +66,9 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
      var q=d.querySelector('input[data-find="movie"]');
      q.value="봄"; ev(w,q,"input");
      setTimeout(function(){
-      log(d.getElementById("movieList").querySelectorAll(".mt").length===4,
-        "찾으면 걸린 것이 다 펼쳐진다",
-        d.getElementById("movieList").querySelectorAll(".mt").length+"개");
+      log(d.getElementById("movieList").querySelectorAll("[data-nrow]").length===3,
+        "찾으면 줄로 보여준다",
+        d.getElementById("movieList").querySelectorAll("[data-nrow]").length+"줄");
       out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
      },400);
     },300);
