@@ -38,6 +38,13 @@ st.days[iso(t)]={
         {id:"m3",title:"기생충",place:"롯데시네마",who:"혼자",notes:"계단",feel:"",star:5}]};
 localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
 SEED
+python3 _mkdbg.py _fix_hide.html <<'SEED'
+var st={days:{},meds:[],habits:[]};
+for(var i=1;i<=12;i++){var k="2026-07-"+String(i).padStart(2,"0");
+ st.days[k]={faith:[{id:"fa"+i,title:"묵상"+i,notes:""}],
+             memo:[{id:"me"+i,title:"메모"+i,notes:""}]};}
+localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
+SEED
 python3 _mkdbg.py _fix_sel.html <<'SEED'
 var t=new Date();
 function dayOf(n){return t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(n).padStart(2,"0");}
@@ -133,7 +140,7 @@ done
 
 echo
 echo "— 화면 시험"
-for f in _qa.html _qa3.html _qa4.html _qa5.html _qa6.html _qa7.html _qa8.html _qa9.html _qa10.html _qa11.html _qa12.html _qa13.html _qa14.html _qa15.html _qa16.html _qa17.html _qa18.html _qa19.html _qa20.html; do
+for f in _qa.html _qa3.html _qa4.html _qa5.html _qa6.html _qa7.html _qa8.html _qa9.html _qa10.html _qa11.html _qa12.html _qa13.html _qa14.html _qa15.html _qa16.html _qa17.html _qa18.html _qa19.html _qa20.html _qa21.html; do
   printf "%-12s " "$f"
   out=$("$CHROME" --headless --disable-gpu --window-size=1240,900 \
         --virtual-time-budget=20000 --dump-dom "http://localhost:$PORT/$f" 2>/dev/null \

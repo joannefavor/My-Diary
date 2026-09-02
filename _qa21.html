@@ -1,0 +1,51 @@
+<!doctype html><meta charset="utf-8"><title>모두 보기 시험</title>
+<div id="out" style="font:13px/1.7 ui-monospace"></div>
+<script>window.onerror=function(m,s,l){document.getElementById("out").insertAdjacentHTML("beforeend","X 시험 오류  "+m+" ("+l+"줄)<br>");};</script>
+<iframe id="f" src="/_fix_hide.html#/faith" style="width:1240px;height:100px;border:0"></iframe>
+<script>
+var out=document.getElementById("out"),f=document.getElementById("f"),pass=0,fail=0;
+function log(ok,n,e){(ok?pass++:fail++);
+ out.insertAdjacentHTML("beforeend",(ok?"통과  ":"X 실패  ")+n+(e?"   "+e:"")+"<br>");}
+f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
+ w.onerror=function(m,s,l){log(false,"앱 오류",m+" ("+l+"줄)");};
+ setTimeout(function(){
+  /* 적어 둔 것이 하나도 안 지워졌나 */
+  var st=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3"));
+  var n=0;Object.keys(st.days).forEach(function(k){n+=((st.days[k].faith)||[]).length;});
+  log(n===12,"적어 둔 12건이 그대로 있다",n+"건");
+
+  var h=d.getElementById("faithList");
+  function rows(){return h.querySelectorAll("[data-nrow]").length;}
+  log(rows()===3,"평소엔 줄 셋만",rows()+"줄");
+  log(d.querySelector('[data-count="faith"]').textContent.indexOf("12")!==-1,
+    "개수는 12건으로 알린다",d.querySelector('[data-count="faith"]').textContent.trim());
+
+  var b=h.querySelector("button[data-notemore]");
+  log(!!b,"'모두 보기' 가 눌리는 단추다");
+  log(b.textContent.indexOf("모두 보기")!==-1,"낱말을 몰라도 볼 수 있다고 알린다",
+    b.textContent.trim());
+  b.click();
+  setTimeout(function(){
+   log(rows()===12,"누르면 12건이 다 보인다",rows()+"줄");
+   var b2=h.querySelector("button[data-notemore]");
+   log(b2&&b2.textContent.indexOf("줄여서")!==-1,"다시 줄일 수 있다",b2&&b2.textContent.trim());
+   b2.click();
+   setTimeout(function(){
+    log(rows()===3,"줄이면 셋으로 돌아온다",rows()+"줄");
+
+    /* 메모 쪽도 따로 움직인다 */
+    var mh=d.getElementById("memoList");
+    var mb=mh.querySelector("button[data-notemore]");
+    log(!!mb,"메모에도 있다");
+    mb.click();
+    setTimeout(function(){
+     log(mh.querySelectorAll("[data-nrow]").length===12,"메모도 다 보인다",
+       mh.querySelectorAll("[data-nrow]").length+"줄");
+     log(h.querySelectorAll("[data-nrow]").length===3,"갈래마다 따로 움직인다",
+       h.querySelectorAll("[data-nrow]").length+"줄");
+     out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
+    },400);
+   },400);
+  },400);
+ },1500);};
+</script>

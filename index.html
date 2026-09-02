@@ -184,7 +184,12 @@
     font-size: 11px; color: var(--muted); padding: 0 2px 4px;
     display: flex; gap: 8px; align-items: baseline;
   }
-  .pasttitle .more { color: var(--accent-ink); }
+  .pasttitle .more {
+    color: var(--accent-ink); background: none; border: 0; cursor: pointer;
+    font: inherit; font-size: 11px; padding: 2px 6px; border-radius: 6px;
+    text-decoration: underline; text-underline-offset: 2px;
+  }
+  .pasttitle .more:hover { background: var(--surface-2); }
 
   /* 언제·어디서·누구랑을 한 줄에. 좁아지면 두 줄로 접힌다 —
      세 칸을 억지로 한 줄에 두면 글자가 서너 자밖에 안 보인다. */
@@ -5486,6 +5491,9 @@
      날짜는 펼친 칸 안에서 고르므로, 지난 날 것도 여기서 그대로 적는다. */
   var RECENT_MAX = 3;
   var noteOpen = {};
+  /* 줄을 셋만 보이면 그 뒤 것은 찾을 낱말을 알아야만 볼 수 있다. 그냥 훑어보려는
+     때에는 사라진 것과 다름없어서, 눌러서 다 펴는 길을 함께 둔다. */
+  var noteMore = {};
 
   /* 목록에 올릴 것들. 업무일지는 글 없이 할 일만 적어 둔 날도 함께 올린다 —
      할 일이 일지 안으로 들어오면서, 글이 없는 날의 할 일이 갈 곳을 잃었다.
@@ -5542,7 +5550,7 @@
     /* 따로 펼쳐 둔 것이 없으면 고른 날 것을 펼친다 */
     if (!valid) at = mine.length ? keyOf(kind, mine[0]) : null;
 
-    var show = rows.slice(0, RECENT_MAX);
+    var show = noteMore[kind] ? rows : rows.slice(0, RECENT_MAX);
     /* 펼쳐 둔 것이 최근 셋에 안 들면 맨 위에 끼워 넣는다 — 지난 날짜로 적으면
        그 자리가 아래로 밀려, 적던 칸이 눈앞에서 사라져 버린다. */
     if (at && !show.some(function (r) { return keyOf(kind, r) === at; })) {
@@ -5570,9 +5578,14 @@
     }).join("");
 
     return out + (more > 0
-      ? '<div class="pasttitle"><span class="more">그 밖에 ' + more +
-        "건 — 위에서 찾아보세요</span></div>"
-      : "");
+      ? '<div class="pasttitle">' +
+          '<button type="button" class="more" data-notemore="' + kind + '">' +
+          "그 밖에 " + more + "건 — 모두 보기</button></div>"
+      : (noteMore[kind] && rows.length > RECENT_MAX
+          ? '<div class="pasttitle">' +
+              '<button type="button" class="more" data-notemore="' + kind + '">' +
+              "줄여서 보기</button></div>"
+          : ""));
   }
 
   function keyOf(kind, r) { return kind + "|" + r.date + "|" + r.n.id; }
@@ -5608,6 +5621,13 @@
     });
 
     host.addEventListener("click", function (e) {
+      var mb = e.target.closest("button[data-notemore]");
+      if (mb) {
+        var mk = mb.getAttribute("data-notemore");
+        noteMore[mk] = !noteMore[mk];
+        renderNotes(mk);
+        return;
+      }
       var nr = e.target.closest("button[data-nrow]");
       if (nr) {
         var at2 = nr.getAttribute("data-nrow");
@@ -6220,15 +6240,20 @@
     }
 
     /* 다른 목록과 같이 펼친 칸은 하나, 나머지는 줄로 셋 */
-    var show = rows.slice(0, RECENT_MAX);
+    var show = noteMore.gift ? rows : rows.slice(0, RECENT_MAX);
     if (giftOpen && !show.some(function (r) { return r.date + "|" + r.v.id === giftOpen; })) {
       var got = rows.filter(function (r) { return r.date + "|" + r.v.id === giftOpen; })[0];
       if (got) show = [got].concat(show.slice(0, RECENT_MAX - 1));
     }
     var more = rows.length - show.length;
     host.innerHTML = show.map(function (r) { return giftRow(r.date, r.v); }).join("") +
-      (more > 0 ? '<div class="pasttitle"><span class="more">그 밖에 ' + more +
-        "건 — 위에서 찾아보세요</span></div>" : "");
+      (more > 0
+        ? '<div class="pasttitle"><button type="button" class="more" ' +
+          'data-giftmore>그 밖에 ' + more + "건 — 모두 보기</button></div>"
+        : (noteMore.gift && rows.length > RECENT_MAX
+            ? '<div class="pasttitle"><button type="button" class="more" ' +
+              "data-giftmore>줄여서 보기</button></div>"
+            : ""));
   }
 
   var giftHost = document.getElementById("giftList");
@@ -6291,6 +6316,11 @@
                    ((vx.who || "누구인지 안 적음") + " · " + giftWhat(vx)))) return;
       state.days[kx[0]].gift = state.days[kx[0]].gift.filter(function (x) { return x.id !== kx[1]; });
       save(); renderGifts();
+      return;
+    }
+    if (e.target.closest("button[data-giftmore]")) {
+      noteMore.gift = !noteMore.gift;
+      renderGifts();
       return;
     }
     var row = e.target.closest("button[data-grow]");
