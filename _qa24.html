@@ -1,0 +1,66 @@
+<!doctype html><meta charset="utf-8"><title>카드 문자 시험</title>
+<div id="out" style="font:13px/1.7 ui-monospace"></div>
+<script>window.onerror=function(m,s,l){document.getElementById("out").insertAdjacentHTML("beforeend","X 시험 오류  "+m+" ("+l+"줄)<br>");};</script>
+<iframe id="f" src="/_fix_card.html#/main" style="width:1240px;height:100px;border:0"></iframe>
+<script>
+var out=document.getElementById("out"),f=document.getElementById("f"),pass=0,fail=0;
+function log(ok,n,e){(ok?pass++:fail++);
+ out.insertAdjacentHTML("beforeend",(ok?"통과  ":"X 실패  ")+n+(e?"   "+e:"")+"<br>");}
+function ev(w,el,t){el.dispatchEvent(new w.Event(t,{bubbles:true}));}
+f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
+ w.onerror=function(m,s,l){log(false,"앱 오류",m+" ("+l+"줄)");};
+ function put(t,cb){var ta=d.getElementById("quickText");
+  ta.value=t; ev(w,ta,"input"); d.getElementById("quickAdd").click(); setTimeout(cb,350);}
+ function dump(){var st=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3")||"{}");
+  var v=[],m=[];Object.keys(st.days||{}).sort().forEach(function(k){
+   ((st.days[k].visits)||[]).forEach(function(x){v.push({d:k,x:x});});
+   ((st.days[k].money)||[]).forEach(function(x){m.push({d:k,x:x});});});
+  return {v:v,m:m};}
+
+ setTimeout(function(){
+  /* 1) 병원 카드문자 — 태그 없이 */
+  put("[Web발신]\n신한카드(1234) 승인\n12,690원 일시불\n09/03 14:23\n연세내과의원\n누적 1,234,567원", function(){
+   var g=dump();
+   log(g.v.length===1,"태그 없이도 카드 문자를 알아본다",g.v.length+"건");
+   log(g.v[0]&&g.v[0].x.place==="연세내과의원","병원이면 병원기록으로",g.v[0]&&g.v[0].x.place);
+   log(g.v[0]&&g.v[0].x.cost===12690,"승인 금액을 담는다 (누적 아님)",g.v[0]&&g.v[0].x.cost);
+   log(g.v[0]&&g.v[0].d.slice(5)==="09-03","문자에 적힌 날로",g.v[0]&&g.v[0].d);
+   log(g.v[0]&&g.v[0].x.notes.indexOf("신한카드")!==-1,"카드사를 남긴다",g.v[0]&&g.v[0].x.notes);
+   log(g.m.length===0,"돈에는 안 들어간다");
+
+   /* 2) 가게 카드문자 */
+   put("[Web발신]\nKB국민카드 승인\n8,500원 일시불\n09/05 12:10\n스타벅스 역삼점", function(){
+    var g2=dump();
+    log(g2.m.length===1,"병원이 아니면 돈으로",g2.m.length+"건");
+    log(g2.m[0]&&g2.m[0].x.note==="스타벅스 역삼점","가게 이름을 뽑는다",g2.m[0]&&g2.m[0].x.note);
+    log(g2.m[0]&&g2.m[0].x.pay==="KB국민카드","카드사 이름이 안 잘린다",g2.m[0]&&g2.m[0].x.pay);
+    log(g2.m[0]&&g2.m[0].x.kind==="out","지출로 담는다",g2.m[0]&&g2.m[0].x.kind);
+
+    /* 3) 한 줄짜리 */
+    put("현대카드 45,000원 일시불 08/28 19:40 이마트 성수점", function(){
+     var g3=dump();
+     var one=g3.m.filter(function(x){return x.x.amount===45000;})[0];
+     log(!!one,"한 줄짜리도 된다");
+     log(one&&one.x.note==="이마트 성수점","한 줄에서도 가게를 뽑는다",one&&one.x.note);
+
+     /* 4) 약국도 병원기록으로 */
+     put("[Web발신]\n삼성카드 승인\n4,200원\n09/06 10:00\n건강약국", function(){
+      var g4=dump();
+      var ph=g4.v.filter(function(x){return x.x.place==="건강약국";})[0];
+      log(!!ph,"약국도 병원기록으로",ph&&ph.x.place);
+
+      /* 5) 카드 문자가 아닌 것은 예전대로 */
+      var pk=d.querySelector('#quickPicks button[data-pick="money"]');
+      if(pk) pk.click();
+      put("점심 12000 식비", function(){
+       var g5=dump();
+       var lunch=g5.m.filter(function(x){return x.x.amount===12000;})[0];
+       log(!!lunch&&lunch.x.cat==="식비","보통 가계부 적기는 그대로",lunch&&lunch.x.cat);
+       out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
+      });
+     });
+    });
+   });
+  });
+ },1300);};
+</script>
