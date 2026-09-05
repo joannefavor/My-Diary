@@ -1966,6 +1966,8 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
   <section class="panel" data-page="health">
     <header>
       <h2>병원기록</h2>
+      <span class="hint">처방전 사진의 글자를 복사해 <b>빠르게 쓰기</b>에
+        <code>#병원</code> 과 함께 붙여넣으면 알아서 갈라 담습니다</span>
       <div class="viewtoggle" id="visitView" role="group" aria-label="병원기록 보기 방식">
         <button data-vv="date" aria-pressed="true">날짜별</button>
         <button data-vv="place" aria-pressed="false">병원별</button>
@@ -5215,13 +5217,90 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
   }
 
   /* 빠르게 쓰기에서 #병원 으로 넣는다. 고르는 단추를 여덟 개로 늘리면
-     왼쪽 페이지 막대와 차례가 어긋나므로 태그로만 받는다. */
+     왼쪽 페이지 막대와 차례가 어긋나므로 태그로만 받는다.
+
+     처방전 사진에서 글자를 떠 붙여넣는 것을 받는다. 휴대폰 사진 앱이 읽어 준
+     글자를 그대로 붙이면 되도록, 여러 줄을 있는 그대로 받아 갈래를 나눈다.
+     사진 자체는 받지 않는다 — 한 장이 2~4MB 라, 5년치 글 기록(1.7MB)보다 크고
+     동기화 한도(900KB)를 첫 장에서 넘긴다. 원본은 휴대폰 앨범에 남는다. */
+
+  /* 병원 이름으로 보이는 말. 진료과 이름이 뒤에 붙는 것이 거의 규칙이라 그것으로 찾는다 */
+  var CLINIC = "(?:의원|병원|내과|외과|치과|한의원|정형외과|신경외과|이비인후과|안과|" +
+               "피부과|산부인과|소아과|소아청소년과|비뇨의학과|정신건강의학과|재활의학과|" +
+               "가정의학과|영상의학과|클리닉|의료원|보건소|약국)";
+
+  function findClinic(lines) {
+    var re = new RegExp("(\\\\S*" + CLINIC + ")");
+    for (var i = 0; i < lines.length; i++) {
+      var m2 = lines[i].match(re);
+      /* 약국은 병원 이름이 아니라 받은 곳이므로, 다른 것이 있으면 그쪽을 쓴다 */
+      if (m2 && m2[1].length > 1 && m2[1].indexOf("약국") === -1) return m2[1];
+    }
+    for (var j = 0; j < lines.length; j++) {
+      var m3 = lines[j].match(re);
+      if (m3 && m3[1].length > 1) return m3[1];
+    }
+    return "";
+  }
+
+  /* 약 줄인가 — 용량이나 복용법이 적혀 있으면 처방으로 본다 */
+  function looksLikeDrug(line) {
+    return /\d+\s*(?:mg|밀리그램|mcg|g|ml|정|캡슐|포|시럽)/i.test(line) ||
+           /1일\s*\d+\s*회/.test(line) ||
+           /\d+\s*일\s*분/.test(line) ||
+           /하루\s*\d+\s*(?:번|회)/.test(line);
+  }
+
+  /* 사진에서 뜬 글자에는 쓸모없는 줄이 섞인다. 그런 줄은 버린다 */
+  function junkLine(line) {
+    return !line ||
+      /^[-=·•*\s]+$/.test(line) ||
+      /^(처방전|처방\s*의약품의?\s*명칭|교부번호|요양기관|사업자|주민등록|면허|서명|약사|조제|바코드)/.test(line);
+  }
+
   function parseVisit(text, base) {
-    var w = takeWhen(" " + String(text).replace(/\s+/g, " ").trim() + " ", base);
-    var place = w.rest.replace(/\s+/g, " ").trim();
+    /* 날짜를 뽑을 때는 한 줄로 눕혀서 본다. 나머지 나누기는 줄 그대로 한다 */
+    var flat = " " + String(text).replace(/[ \t]+/g, " ").replace(/\n/g, " ") + " ";
+    var w = takeWhen(flat, base);
+    var when = w.date;
+
+    var lines = String(text).split(/\n+/)
+      .map(function (l) { return l.replace(/[ \t]+/g, " ").trim(); })
+      .filter(function (l) { return !junkLine(l); });
+
+    /* 방문일로 쓰인 말만 줄에서 덜어 낸다. 처음 나온 하나만 지우는 것은,
+       "다음 예약 9월 17일" 처럼 뒤에 오는 날짜는 내용으로 남아야 해서다.
+       takeWhen 이 처음 걸린 것을 쓰므로 여기서도 처음 것만 지운다. */
+    var DATEISH = /(\d{4}[-.]\d{1,2}[-.]\d{1,2})|(\d{1,2}\s*월\s*\d{1,2}\s*일)|(\b\d{1,2}\/\d{1,2}\b)|(오늘|어제|내일|모레)/;
+    var wiped = false;
+    lines = lines.map(function (l) {
+      if (wiped) return l;
+      var m4 = l.match(DATEISH);
+      if (!m4) return l;
+      wiped = true;
+      return l.replace(DATEISH, " ").replace(/\s+/g, " ").trim();
+    }).filter(function (l) { return l; });
+
+    var place = findClinic(lines);
+    var drugs = [], notes = [];
+    lines.forEach(function (l) {
+      if (place && l.indexOf(place) !== -1) {
+        var rest = l.split(place).join(" ").trim();
+        if (rest) notes.push(rest);
+        return;
+      }
+      (looksLikeDrug(l) ? drugs : notes).push(l);
+    });
+
+    /* 병원 이름을 못 찾았으면 첫 줄을 이름으로 본다 — 예전처럼 한 줄만 적는 때 */
+    if (!place && notes.length) place = notes.shift();
+    if (!place && drugs.length) place = "이름 없음";
     if (!place) return null;
-    day(w.date).visits.push({ id: uid(), place: place, notes: "" });
-    return { date: w.date, label: "병원 " + place };
+
+    day(when).visits.push({ id: uid(), place: place,
+                            drug: drugs.join("\n"), notes: notes.join("\n") });
+    return { date: when,
+             label: "병원 " + place + (drugs.length ? " · 처방 " + drugs.length + "줄" : "") };
   }
 
   /* ---------- 가계부 ----------
@@ -5730,9 +5809,13 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
       "</div>" +
       '<div class="mt-row"><span class="mt-key">방문일</span>' +
         dayField('data-visitdate="' + at + '"', date, "방문 날짜") + "</div>" +
+      '<div class="mt-row"><span class="mt-key">처방</span>' +
+        '<textarea data-visit="drug" data-at="' + at +
+        '" placeholder="약 이름 · 용량 · 며칠분" aria-label="처방">' +
+        esc(v.drug || "") + "</textarea></div>" +
       '<div class="mt-row"><span class="mt-key">내용</span>' +
         '<textarea data-visit="notes" data-at="' + at +
-        '" placeholder="진료 내용, 처방, 다음 예약" aria-label="내용">' + esc(v.notes) +
+        '" placeholder="진료 내용, 다음 예약" aria-label="내용">' + esc(v.notes) +
         "</textarea></div>" +
     "</div>";
   }
@@ -5752,13 +5835,14 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
   function visitMatches(r, place, q) {
     if (place && (r.v.place || "").trim() !== place) return false;
     if (!q) return true;
-    return ((r.v.place || "") + " " + (r.v.notes || "")).toLowerCase()
-      .indexOf(q.toLowerCase()) !== -1;
+    return [r.v.place, r.v.notes, r.v.drug].filter(Boolean).join(" ")
+      .toLowerCase().indexOf(q.toLowerCase()) !== -1;
   }
 
-  /* 한 줄에 보일 요약 — 내용의 첫 줄만 */
+  /* 한 줄에 보일 요약 — 적어 둔 것의 첫 줄. 내용이 비었으면 처방으로 대신한다 */
   function visitSummary(v) {
     var t = (v.notes || "").split(/\n/)[0].trim();
+    if (!t) t = (v.drug || "").split(/\n/)[0].trim();
     return t || "내용 없음";
   }
 
@@ -5927,7 +6011,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
   });
 
   document.getElementById("visitAdd").addEventListener("click", function () {
-    var v = { id: uid(), place: "", notes: "" };
+    var v = { id: uid(), place: "", drug: "", notes: "" };
     day(selected).visits.push(v);
     /* 새로 만든 것은 찾기에 걸리지 않을 수 있으니 조건을 비우고 그것을 펼친다 */
     document.getElementById("visitPlace").value = "";
@@ -7234,6 +7318,9 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
     }
     /* 태그를 썼으면 고른 자리도 그쪽으로 옮겨, 어디로 갔는지 보이게 한다 */
     var t = takeTag(" " + text.replace(/\s+/g, " ") + " ");
+    /* 줄바꿈을 살린 것도 따로 만들어 둔다. 병원기록은 처방전을 붙여넣는 자리라
+       줄이 갈래를 가르는 실마리인데, 한 줄로 눕히면 그 실마리가 사라진다. */
+    var rawRest = t.tag ? text.replace(/#\S+/, " ") : text;
     if (t.tag) { quickPick = t.tag; renderPicks(); }
     var kind = t.tag || quickTarget();
     var got, unknown = "", where = selected;
@@ -7256,7 +7343,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
              : kind === "movie"     ? parseNote("movie")
              : kind === "lecture"   ? parseNote("lecture")
              : kind === "book"      ? parseNote("book")
-             : kind === "visit"     ? parseVisit
+             : kind === "visit"     ? function (tx, bs) { return parseVisit(rawRest, bs); }
              : kind === "money"     ? parseMoney
              : parseWork;
       var one = fn(t.rest, selected);
@@ -7339,7 +7426,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
         hit(date, "미팅", [m.title, m.people, m.notes].filter(Boolean).join(" · "));
       });
       (d.visits || []).forEach(function (v) {
-        hit(date, "병원", [v.place, v.notes].filter(Boolean).join(" · "));
+        hit(date, "병원", [v.place, v.drug, v.notes].filter(Boolean).join(" · "));
       });
       [["faith", "묵상일기"], ["prayer", "기도"], ["worklog", "업무일지"],
        ["history", "나의역사"], ["knowledge", "지식창고"],

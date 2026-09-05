@@ -1,0 +1,81 @@
+<!doctype html><meta charset="utf-8"><title>처방전 붙여넣기 시험</title>
+<div id="out" style="font:13px/1.7 ui-monospace"></div>
+<script>window.onerror=function(m,s,l){document.getElementById("out").insertAdjacentHTML("beforeend","X 시험 오류  "+m+" ("+l+"줄)<br>");};</script>
+<iframe id="f" src="/_fix_rx.html#/main" style="width:1240px;height:100px;border:0"></iframe>
+<script>
+var out=document.getElementById("out"),f=document.getElementById("f"),pass=0,fail=0;
+function log(ok,n,e){(ok?pass++:fail++);
+ out.insertAdjacentHTML("beforeend",(ok?"통과  ":"X 실패  ")+n+(e?"   "+e:"")+"<br>");}
+f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
+ w.onerror=function(m,s,l){log(false,"앱 오류",m+" ("+l+"줄)");};
+ function put(t,cb){var ta=d.getElementById("quickText");
+  ta.value=t; ta.dispatchEvent(new w.Event("input",{bubbles:true}));
+  d.getElementById("quickAdd").click(); setTimeout(cb,350);}
+ function all(){var st=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3")||"{}");
+  var a=[];Object.keys(st.days||{}).sort().forEach(function(k){
+   ((st.days[k].visits)||[]).forEach(function(v){a.push({date:k,v:v});});});return a;}
+
+ setTimeout(function(){
+  /* 1) 처방전 붙여넣기 */
+  put("#병원\n처방전\n연세내과의원  9월 3일\n아목시실린 500mg  1일3회 5일분\n타이레놀 650mg  1일3회 3일분\n다음 예약 9월 17일\n교부번호 12345", function(){
+   var r=all()[0];
+   log(!!r,"기록이 만들어진다");
+   log(r&&r.date.slice(5)==="09-03","적힌 날짜로 들어간다",r&&r.date);
+   log(r&&r.v.place==="연세내과의원","병원 이름만 뽑는다",r&&r.v.place);
+   log(r&&r.v.drug.split("\n").length===2,"약 두 줄이 처방으로",r&&JSON.stringify(r.v.drug));
+   log(r&&r.v.drug.indexOf("아목시실린")!==-1&&r.v.drug.indexOf("타이레놀")!==-1,
+     "약 이름이 남는다");
+   log(r&&r.v.notes.indexOf("다음 예약")!==-1,"약이 아닌 줄은 내용으로",r&&r.v.notes);
+   log(r&&r.v.notes.indexOf("9월 17일")!==-1,"뒤에 오는 날짜는 지우지 않는다");
+   log(r&&r.v.notes.indexOf("교부번호")===-1&&r.v.drug.indexOf("교부번호")===-1,
+     "쓸모없는 줄은 버린다");
+   log(r&&r.v.notes.indexOf("처방전")===-1,"'처방전' 머리글도 버린다");
+
+   /* 2) 예전처럼 한 줄만 적어도 되는가 */
+   put("#병원 어제 서울치과", function(){
+    var r2=all().filter(function(x){return x.v.place==="서울치과";})[0];
+    log(!!r2,"한 줄만 적어도 그대로 된다",r2&&r2.v.place);
+    log(r2&&!r2.v.drug,"그때는 처방이 비어 있다");
+
+    /* 3) 병원 이름이 없는 처방전 */
+    put("#병원\n오늘\n록소프로펜 60mg 1일3회 3일분", function(){
+     var r3=all().filter(function(x){return x.v.drug.indexOf("록소프로펜")!==-1;})[0];
+     log(!!r3,"병원 이름이 없어도 처방은 남는다",r3&&r3.v.place);
+     log(r3&&r3.v.drug.indexOf("록소프로펜")!==-1,"약이 처방 칸으로 간다");
+
+     /* 4) 화면에 처방 칸이 있는가 */
+     w.location.hash="#/health";
+     setTimeout(function(){
+      var rows=d.querySelectorAll("#visitList [data-vrow]");
+      log(rows.length>0,"병원기록 목록에 보인다",rows.length+"줄");
+      rows[0].click();
+      setTimeout(function(){
+       var card=d.querySelector("#visitList .mt");
+       var keys=[].map.call(card.querySelectorAll(".mt-key"),function(x){return x.textContent;});
+       log(keys.join(",")==="방문일,처방,내용","처방 칸이 따로 있다",keys.join(","));
+       /* 5) 약 이름으로 찾을 수 있는가 */
+       var q=d.getElementById("visitQuery");
+       q.value="아목시실린"; q.dispatchEvent(new w.Event("input",{bubbles:true}));
+       setTimeout(function(){
+        log(d.querySelectorAll("#visitList [data-vrow]").length===1,"약 이름으로 찾힌다",
+          d.querySelectorAll("#visitList [data-vrow]").length+"줄");
+        q.value=""; q.dispatchEvent(new w.Event("input",{bubbles:true}));
+        /* 6) 빠르게 찾기에도 */
+        w.location.hash="#/main";
+        setTimeout(function(){
+         var fi=d.getElementById("findAll");
+         fi.value="타이레놀"; fi.dispatchEvent(new w.Event("input",{bubbles:true}));
+         setTimeout(function(){
+          log(d.getElementById("findList").textContent.indexOf("타이레놀")!==-1,
+            "빠르게 찾기에도 걸린다");
+          out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
+         },350);
+        },500);
+       },350);
+      },350);
+     },500);
+    });
+   });
+  });
+ },1300);};
+</script>

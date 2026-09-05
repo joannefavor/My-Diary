@@ -38,6 +38,9 @@ st.days[iso(t)]={
         {id:"m3",title:"기생충",place:"롯데시네마",who:"혼자",notes:"계단",feel:"",star:5}]};
 localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
 SEED
+python3 _mkdbg.py _fix_rx.html <<'SEED'
+localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],habits:[]}));
+SEED
 python3 _mkdbg.py _fix_hide.html <<'SEED'
 var st={days:{},meds:[],habits:[]};
 for(var i=1;i<=12;i++){var k="2026-07-"+String(i).padStart(2,"0");
@@ -49,7 +52,10 @@ python3 _mkdbg.py _fix_sel.html <<'SEED'
 var t=new Date();
 function dayOf(n){return t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(n).padStart(2,"0");}
 var st={days:{},meds:[],habits:[]};
-[1,2,3,4,5].forEach(function(n){
+/* 오늘도 함께 넣는다 — 오늘 것이 없으면 "고른 날이 펼쳐진다" 를 볼 수가 없다.
+   달이 지나 오늘이 5일을 넘어가면서 시험이 깨진 적이 있다. */
+var days=[1,2,3,4,5]; if(days.indexOf(t.getDate())===-1) days.push(t.getDate());
+days.forEach(function(n){
  st.days[dayOf(n)]={
   worklog:[{id:"w"+n,title:n+"일 일지",notes:n+"일에 한 일"}],
   todos:[{text:"QT",done:false},{text:n+"일 할일",done:false}]};
@@ -140,7 +146,7 @@ done
 
 echo
 echo "— 화면 시험"
-for f in _qa.html _qa3.html _qa4.html _qa5.html _qa6.html _qa7.html _qa8.html _qa9.html _qa10.html _qa11.html _qa12.html _qa13.html _qa14.html _qa15.html _qa16.html _qa17.html _qa18.html _qa19.html _qa20.html _qa21.html; do
+for f in _qa.html _qa3.html _qa4.html _qa5.html _qa6.html _qa7.html _qa8.html _qa9.html _qa10.html _qa11.html _qa12.html _qa13.html _qa14.html _qa15.html _qa16.html _qa17.html _qa18.html _qa19.html _qa20.html _qa21.html _qa22.html; do
   printf "%-12s " "$f"
   out=$("$CHROME" --headless --disable-gpu --window-size=1240,900 \
         --virtual-time-budget=20000 --dump-dom "http://localhost:$PORT/$f" 2>/dev/null \
