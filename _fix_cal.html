@@ -219,6 +219,33 @@
   /* 칸 안에서 쓰는 작은 고르개 */
   .viewtoggle.inline { flex: none; }
   .gwon { flex: none; font-size: 12px; color: var(--muted); }
+  /* 한 줄에서 금액은 오른쪽 끝에. 숫자끼리 세로로 맞아야 눈으로 견줄 수 있다 */
+  /* 합계 표. 숫자는 오른쪽 끝에 몰아 세로로 맞춘다 */
+  .sumtable { display: flex; flex-direction: column; }
+  .sum-head, .sum-row, .sum-foot {
+    display: grid; grid-template-columns: 1fr auto auto; gap: 12px;
+    align-items: center; padding: 7px 12px; text-align: left;
+  }
+  .sum-head { font-size: 11px; color: var(--muted); border-bottom: 1px solid var(--hair); }
+  .sum-head span:not(:first-child), .sum-row .n, .sum-row .won,
+  .sum-foot .n, .sum-foot .won { text-align: right; font-family: var(--mono); }
+  .sum-row {
+    background: none; border: 0; border-bottom: 1px solid var(--hair);
+    cursor: pointer; font: inherit; color: inherit; font-size: 13px;
+  }
+  .sum-row:hover { background: var(--surface-2); }
+  .sum-row .n { color: var(--muted); font-size: 11.5px; min-width: 46px; }
+  .sum-row .won { color: var(--accent-ink); min-width: 84px; }
+  .sum-foot {
+    font-weight: 700; font-size: 13px; padding-top: 9px;
+  }
+  .sum-foot .n { color: var(--muted); font-weight: 400; font-size: 11.5px; }
+  .sum-foot .won { color: var(--accent-ink); }
+
+  .vcost {
+    flex: none; margin-left: auto; font-family: var(--mono);
+    font-size: 11.5px; color: var(--accent-ink); white-space: nowrap;
+  }
 
   /* 며칠짜리 여행이었나. 날짜 옆이 아니라 오른쪽에 두는 것은, 날짜는 언제인지를
      묻는 것이고 이건 얼마나였는지를 묻는 것이라 서로 다른 물음이라서다. */
@@ -1966,6 +1993,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       <div class="viewtoggle" id="visitView" role="group" aria-label="병원기록 보기 방식">
         <button data-vv="date" aria-pressed="true">날짜별</button>
         <button data-vv="place" aria-pressed="false">병원별</button>
+        <button data-vv="sum" aria-pressed="false">합계</button>
       </div>
       <button class="ghost" id="visitAdd">+ 새로 적기</button>
     </header>
@@ -1981,6 +2009,12 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       <select id="visitPlace"><option value="">전체</option></select>
       <input type="search" id="visitQuery" placeholder="병원 이름·내용으로 찾기"
         aria-label="병원 방문 찾기">
+      <span class="findrange">
+        <select id="visitYear" aria-label="찾을 연도"><option value="">연도 전체</option></select>
+        <select id="visitMonth" aria-label="찾을 달">
+          <option value="">달 전체</option><option value="01">1월</option><option value="02">2월</option><option value="03">3월</option><option value="04">4월</option><option value="05">5월</option><option value="06">6월</option><option value="07">7월</option><option value="08">8월</option><option value="09">9월</option><option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
+        </select>
+      </span>
       <span class="visit-count" id="visitCount"></span>
     </div>
     <div class="notelist" id="visitList"></div>
@@ -5238,6 +5272,35 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     return "";
   }
 
+  /* 진료비 영수증에서 낸 돈을 찾는다.
+
+     영수증마다 이름이 다르고 숫자가 여럿 적혀 있다(급여·비급여·공단부담·본인부담…).
+     그래서 어느 이름을 먼저 믿을지 차례를 정해 둔다 — 앞쪽일수록 "실제로 내가 낸 돈"
+     에 가깝다. 공단이 낸 몫이나 총진료비를 집으면 낸 것보다 큰 수가 들어간다. */
+  var COST_KEYS = [
+    ["납부", 1], ["수납", 1], ["결제", 1], ["카드", 1], ["현금", 1],
+    ["본인부담", 2], ["환자부담", 2], ["본인일부부담", 2],
+    ["청구", 3], ["합계", 3], ["총액", 3], ["계", 4]
+  ];
+  /* 이 말이 있는 줄의 숫자는 내가 낸 돈이 아니다 */
+  var COST_SKIP = /(공단|보험자|지원금|감면|할인|이전|미납|잔액|총진료비|급여\s*계)/;
+
+  function pickCost(lines) {
+    var best = null;
+    lines.forEach(function (l) {
+      if (COST_SKIP.test(l)) return;
+      var num = l.match(/(\d{1,3}(?:,\d{3})+|\d{4,})\s*원?/);
+      if (!num) return;
+      var val = Number(num[1].replace(/,/g, ""));
+      if (!val || val > 100000000) return;
+      COST_KEYS.forEach(function (k) {
+        if (l.indexOf(k[0]) === -1) return;
+        if (!best || k[1] < best.rank) best = { rank: k[1], val: val, line: l };
+      });
+    });
+    return best;
+  }
+
   /* 약 줄인가 — 용량이나 복용법이 적혀 있으면 처방으로 본다 */
   function looksLikeDrug(line) {
     return /\d+\s*(?:mg|밀리그램|mcg|g|ml|정|캡슐|포|시럽)/i.test(line) ||
@@ -5250,7 +5313,8 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
   function junkLine(line) {
     return !line ||
       /^[-=·•*\s]+$/.test(line) ||
-      /^(처방전|처방\s*의약품의?\s*명칭|교부번호|요양기관|사업자|주민등록|면허|서명|약사|조제|바코드)/.test(line);
+      /^(처방전|처방\s*의약품의?\s*명칭|교부번호|요양기관|사업자|주민등록|면허|서명|약사|조제|바코드)/.test(line) ||
+      /^(진료비\s*(계산서|영수증|납입확인서)|영수증|계산서|납입확인서|환자번호|진료과목|사업자등록)/.test(line);
   }
 
   function parseVisit(text, base) {
@@ -5274,11 +5338,17 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       if (!m4) return l;
       wiped = true;
       return l.replace(DATEISH, " ").replace(/\s+/g, " ").trim();
-    }).filter(function (l) { return l; });
+    }).filter(function (l) {
+      /* 날짜를 떼고 나면 "진료일자" 처럼 이름표만 남는 줄이 생긴다. 그런 줄은 버린다 */
+      return l && !/^(진료\s*일자|진료\s*기간|진료\s*일|일자|기간|발행일|작성일)$/.test(l);
+    });
 
     var place = findClinic(lines);
+    var money = pickCost(lines);
     var drugs = [], notes = [];
     lines.forEach(function (l) {
+      /* 금액으로 집은 줄은 따로 담았으니 내용에 또 넣지 않는다 */
+      if (money && l === money.line) return;
       if (place && l.indexOf(place) !== -1) {
         var rest = l.split(place).join(" ").trim();
         if (rest) notes.push(rest);
@@ -5292,10 +5362,12 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     if (!place && drugs.length) place = "이름 없음";
     if (!place) return null;
 
-    day(when).visits.push({ id: uid(), place: place,
+    day(when).visits.push({ id: uid(), place: place, cost: money ? money.val : null,
                             drug: drugs.join("\n"), notes: notes.join("\n") });
     return { date: when,
-             label: "병원 " + place + (drugs.length ? " · 처방 " + drugs.length + "줄" : "") };
+             label: "병원 " + place +
+               (drugs.length ? " · 처방 " + drugs.length + "줄" : "") +
+               (money ? " · " + wonText(money.val) : "") };
   }
 
   /* ---------- 가계부 ----------
@@ -5804,6 +5876,11 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       "</div>" +
       '<div class="mt-row"><span class="mt-key">방문일</span>' +
         dayField('data-visitdate="' + at + '"', date, "방문 날짜") + "</div>" +
+      '<div class="mt-row"><span class="mt-key">낸 돈</span>' +
+        '<input type="number" inputmode="numeric" data-visit="cost" data-at="' + at +
+        '" value="' + esc(v.cost == null ? "" : v.cost) +
+        '" placeholder="본인이 낸 금액" aria-label="낸 돈"><span class="gwon">원</span>' +
+        '<span class="hint">영수증의 <b>납부액</b>(본인부담)을 적습니다</span></div>' +
       '<div class="mt-row"><span class="mt-key">처방</span>' +
         '<textarea data-visit="drug" data-at="' + at +
         '" placeholder="약 이름 · 용량 · 며칠분" aria-label="처방">' +
@@ -5827,8 +5904,10 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     return out.sort(function (a, b) { return a.localeCompare(b); });
   }
 
-  function visitMatches(r, place, q) {
+  function visitMatches(r, place, q, y, m) {
     if (place && (r.v.place || "").trim() !== place) return false;
+    if (y && r.date.slice(0, 4) !== y) return false;
+    if (m && r.date.slice(5, 7) !== m) return false;
     if (!q) return true;
     return [r.v.place, r.v.notes, r.v.drug].filter(Boolean).join(" ")
       .toLowerCase().indexOf(q.toLowerCase()) !== -1;
@@ -5851,6 +5930,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
         "<small> " + dt.getFullYear() + "</small></span>" +
       '<span class="vp">' + esc((v.place || "").trim() || "이름 없음") + "</span>" +
       '<span class="vs">' + esc(visitSummary(v)) + "</span>" +
+      (v.cost ? '<span class="vcost">' + esc(wonText(v.cost)) + "</span>" : "") +
       "</button>";
     if (open) html += '<div class="vopen">' + visitCard(date, v) + "</div>";
     return html;
@@ -5873,12 +5953,26 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     var q = document.getElementById("visitQuery").value.trim();
     var all = allVisits();
 
+    /* 연도 고르개는 다녀온 해로만 채운다 */
+    var ysel = document.getElementById("visitYear");
+    var ykeep = ysel.value, yseen = {}, years = [];
+    all.forEach(function (r) {
+      var y0 = r.date.slice(0, 4);
+      if (!yseen[y0]) { yseen[y0] = 1; years.push(y0); }
+    });
+    years.sort().reverse();
+    ysel.innerHTML = '<option value="">연도 전체</option>' + years.map(function (y0) {
+      return '<option value="' + y0 + '">' + y0 + "년</option>";
+    }).join("");
+    ysel.value = years.indexOf(ykeep) !== -1 ? ykeep : "";
+    var vy = ysel.value, vm = document.getElementById("visitMonth").value;
+
     /* 평소엔 고른 날 것만. 병원을 고르거나 말을 적었을 때만 날짜를 넘어 전부 뒤진다 —
        "그 병원에 언제 갔더라"가 이 화면을 여는 큰 이유다. */
-    var wide = !!(place || q);
+    var wide = !!(place || q || vy || vm || visitView === "sum");
     var rows = all.filter(function (r) {
       if (!wide && r.date !== selected) return false;
-      return visitMatches(r, place, q);
+      return visitMatches(r, place, q, vy, vm);
     });
 
     var dbox = document.querySelector('input[data-dayof="visit"]');
@@ -5888,9 +5982,11 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       if (vdot) vdot.classList.toggle("is-today", selected === iso(new Date()));
     }
 
+    var paid = rows.reduce(function (a, r) { return a + (Number(r.v.cost) || 0); }, 0);
     var count = document.getElementById("visitCount");
     count.textContent = !all.length ? ""
-      : (wide ? rows.length + " / " + all.length + "번 (전체에서 찾음)" : rows.length + "번");
+      : (wide ? rows.length + " / " + all.length + "번" : rows.length + "번") +
+        (paid ? " · " + wonText(paid) : "");
 
     if (!all.length) {
       host.innerHTML = '<div class="wk-empty">아직 적어 둔 병원기록이 없습니다.</div>';
@@ -5902,6 +5998,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       return;
     }
 
+    if (visitView === "sum") { host.innerHTML = visitSumHTML(rows, vy); return; }
     if (visitView === "date") {
       host.innerHTML = rows.map(function (r) { return visitRow(r.date, r.v); }).join("");
     } else {
@@ -5920,6 +6017,40 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     }
   }
 
+  /* 합계 보기. 연도를 안 골랐으면 해마다, 골랐으면 그 해의 달마다 모아 준다 —
+     "올해 병원비 얼마 썼나" 에서 "그럼 몇 월에 많이 썼나" 로 자연스레 이어진다. */
+  function visitSumHTML(rows, year) {
+    var by = {}, order = [];
+    rows.forEach(function (r) {
+      var k = year ? r.date.slice(0, 7) : r.date.slice(0, 4);
+      if (!by[k]) { by[k] = { n: 0, won: 0 }; order.push(k); }
+      by[k].n++;
+      by[k].won += Number(r.v.cost) || 0;
+    });
+    if (!order.length) return '<div class="wk-empty">모을 기록이 없습니다.</div>';
+    order.sort().reverse();
+
+    var total = order.reduce(function (a, k) { return a + by[k].won; }, 0);
+    var visits = order.reduce(function (a, k) { return a + by[k].n; }, 0);
+
+    return '<div class="sumtable">' +
+      '<div class="sum-head"><span>' + (year ? "달" : "해") + "</span>" +
+        "<span>다녀온 횟수</span><span>낸 돈</span></div>" +
+      order.map(function (k) {
+        var label = year ? Number(k.slice(5, 7)) + "월" : k + "년";
+        return '<button type="button" class="sum-row" data-sumkey="' + k + '">' +
+          "<span>" + label + "</span>" +
+          '<span class="n">' + by[k].n + "번</span>" +
+          '<span class="won">' + (by[k].won ? esc(wonText(by[k].won)) : "—") + "</span>" +
+        "</button>";
+      }).join("") +
+      '<div class="sum-foot"><span>합계</span>' +
+        '<span class="n">' + visits + "번</span>" +
+        '<span class="won">' + (total ? esc(wonText(total)) : "—") + "</span></div>" +
+      (total ? "" : '<div class="wk-empty small">아직 낸 돈을 적어 둔 기록이 없습니다.</div>') +
+    "</div>";
+  }
+
   function visitAt(date, id) {
     var list = day(date).visits;
     for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
@@ -5935,8 +6066,11 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       var v = visitAt(k[0], k[1]);
       if (!v) return;
       var field = f.getAttribute("data-visit");
-      v[field] = f.value.trim();
+      /* 돈은 숫자로 담는다. 글자로 담으면 나중에 합을 못 낸다 */
+      v[field] = field === "cost"
+        ? (f.value === "" ? null : Number(f.value)) : f.value.trim();
       save();
+      if (field === "cost") { renderVisits(); return; }
       /* 병원별로 보는 중에 이름을 바꾸면 묶음이 달라지므로 그때만 다시 그린다 */
       if (visitView === "place" && field === "place") { renderVisits(); return; }
       /* 나머지는 위의 한 줄만 고쳐 쓴다. 통째로 다시 그리면 적던 자리가 접힌다 */
@@ -5993,6 +6127,28 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
   document.getElementById("visitQuery").addEventListener("input", function () {
     visitOpen = null; renderVisits();
   });
+  ["visitYear", "visitMonth"].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener("change", function () { visitOpen = null; renderVisits(); });
+  });
+
+  /* 합계에서 해를 누르면 그 해의 달별로, 달을 누르면 그 달 기록으로 파고든다 */
+  document.getElementById("visitList").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-sumkey]");
+    if (!b) return;
+    var k = b.getAttribute("data-sumkey");
+    if (k.length === 4) { document.getElementById("visitYear").value = k; }
+    else {
+      document.getElementById("visitYear").value = k.slice(0, 4);
+      document.getElementById("visitMonth").value = k.slice(5, 7);
+      visitView = "date";
+      Array.prototype.forEach.call(
+        document.querySelectorAll("#visitView button[data-vv]"), function (x) {
+          x.setAttribute("aria-pressed", String(x.getAttribute("data-vv") === "date"));
+        });
+    }
+    visitOpen = null; renderVisits();
+  });
 
   document.getElementById("visitView").addEventListener("click", function (e) {
     var b = e.target.closest("button[data-vv]");
@@ -6006,7 +6162,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
   });
 
   document.getElementById("visitAdd").addEventListener("click", function () {
-    var v = { id: uid(), place: "", drug: "", notes: "" };
+    var v = { id: uid(), place: "", cost: null, drug: "", notes: "" };
     day(selected).visits.push(v);
     /* 새로 만든 것은 찾기에 걸리지 않을 수 있으니 조건을 비우고 그것을 펼친다 */
     document.getElementById("visitPlace").value = "";
@@ -7421,7 +7577,8 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
         hit(date, "미팅", [m.title, m.people, m.notes].filter(Boolean).join(" · "));
       });
       (d.visits || []).forEach(function (v) {
-        hit(date, "병원", [v.place, v.drug, v.notes].filter(Boolean).join(" · "));
+        hit(date, "병원", [v.place, v.drug, v.notes,
+          v.cost ? wonText(v.cost) : ""].filter(Boolean).join(" · "));
       });
       [["faith", "묵상일기"], ["prayer", "기도"], ["worklog", "업무일지"],
        ["history", "나의역사"], ["knowledge", "지식창고"],

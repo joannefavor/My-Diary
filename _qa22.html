@@ -52,7 +52,8 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
       setTimeout(function(){
        var card=d.querySelector("#visitList .mt");
        var keys=[].map.call(card.querySelectorAll(".mt-key"),function(x){return x.textContent;});
-       log(keys.join(",")==="방문일,처방,내용","처방 칸이 따로 있다",keys.join(","));
+       log(keys.join(",")==="방문일,낸 돈,처방,내용",
+         "방문일·낸 돈·처방·내용 칸이 따로 있다",keys.join(","));
        /* 5) 약 이름으로 찾을 수 있는가 */
        var q=d.getElementById("visitQuery");
        q.value="아목시실린"; q.dispatchEvent(new w.Event("input",{bubbles:true}));

@@ -1,0 +1,85 @@
+<!doctype html><meta charset="utf-8"><title>진료비 영수증·합계 시험</title>
+<div id="out" style="font:13px/1.7 ui-monospace"></div>
+<script>window.onerror=function(m,s,l){document.getElementById("out").insertAdjacentHTML("beforeend","X 시험 오류  "+m+" ("+l+"줄)<br>");};</script>
+<iframe id="f" src="/_fix_rc.html#/main" style="width:1240px;height:100px;border:0"></iframe>
+<script>
+var out=document.getElementById("out"),f=document.getElementById("f"),pass=0,fail=0;
+function log(ok,n,e){(ok?pass++:fail++);
+ out.insertAdjacentHTML("beforeend",(ok?"통과  ":"X 실패  ")+n+(e?"   "+e:"")+"<br>");}
+function ev(w,el,t){el.dispatchEvent(new w.Event(t,{bubbles:true}));}
+f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
+ w.onerror=function(m,s,l){log(false,"앱 오류",m+" ("+l+"줄)");};
+ function put(t,cb){var ta=d.getElementById("quickText");
+  ta.value=t; ev(w,ta,"input"); d.getElementById("quickAdd").click(); setTimeout(cb,350);}
+ function all(){var st=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3")||"{}");
+  var a=[];Object.keys(st.days||{}).sort().forEach(function(k){
+   ((st.days[k].visits)||[]).forEach(function(v){a.push({date:k,v:v});});});return a;}
+
+ setTimeout(function(){
+  put("#병원\n진료비 계산서·영수증\n연세내과의원\n진료일자 2026-09-03\n총진료비 42,300\n공단부담금 29,610\n본인부담금 12,690\n납부할금액 12,690", function(){
+   var r=all()[0];
+   log(!!r,"영수증이 기록이 된다");
+   log(r&&r.v.cost===12690,"낸 돈만 집는다 (총진료비·공단부담 아님)",r&&r.v.cost);
+   log(r&&r.v.place==="연세내과의원","병원 이름을 뽑는다",r&&r.v.place);
+   log(r&&r.date==="2026-09-03","진료일자로 들어간다",r&&r.date);
+   log(r&&r.v.notes.indexOf("진료일자")===-1,"이름표만 남은 줄은 버린다");
+   log(r&&r.v.notes.indexOf("총진료비")!==-1,"나머지 금액은 내용에 남긴다");
+
+   /* 다른 달·다른 해·다른 병원 */
+   put("#병원\n서울치과\n2026-09-20\n납부금액 35,000", function(){
+    put("#병원\n연세내과의원\n2026-08-11\n수납액 8,400", function(){
+     put("#병원\n한빛한의원\n2025-11-02\n본인부담금 21,000", function(){
+      log(all().length===4,"네 건이 쌓인다",all().length+"건");
+
+      w.location.hash="#/health";
+      setTimeout(function(){
+       var ys=d.getElementById("visitYear"), ms=d.getElementById("visitMonth");
+       log(!!ys&&!!ms,"연도·달 고르개가 있다");
+       var yv=[].map.call(ys.options,function(o){return o.value;}).filter(Boolean);
+       log(yv.join(",")==="2026,2025","다녀온 해만 나온다",yv.join(","));
+
+       /* 합계 보기 */
+       d.querySelector('#visitView button[data-vv="sum"]').click();
+       setTimeout(function(){
+        var rows=d.querySelectorAll("#visitList .sum-row");
+        log(rows.length===2,"해마다 한 줄",rows.length+"줄");
+        var foot=d.querySelector("#visitList .sum-foot .won").textContent;
+        log(foot.indexOf("77,090")!==-1,"모두 더한 값이 맞다",foot);
+
+        /* 해를 누르면 그 해 달별로 */
+        rows[0].click();
+        setTimeout(function(){
+         log(ys.value==="2026","해를 누르면 그 해로 좁혀진다",ys.value);
+         var r2=d.querySelectorAll("#visitList .sum-row");
+         log(r2.length===2,"2026년은 두 달",r2.length+"줄");
+         var f2=d.querySelector("#visitList .sum-foot .won").textContent;
+         log(f2.indexOf("56,090")!==-1,"그 해 합계가 맞다",f2);
+
+         /* 달을 누르면 그 달 기록으로 */
+         r2[0].click();
+         setTimeout(function(){
+          log(ms.value==="09","달을 누르면 그 달로",ms.value);
+          log(d.querySelectorAll("#visitList [data-vrow]").length===2,"9월 기록 둘",
+            d.querySelectorAll("#visitList [data-vrow]").length+"줄");
+          var cnt=d.getElementById("visitCount").textContent;
+          log(cnt.indexOf("47,690")!==-1,"고른 기간 합계를 함께 알린다",cnt.trim());
+
+          /* 병원별로 좁히기 */
+          ms.value=""; ev(w,ms,"change");
+          d.getElementById("visitPlace").value="연세내과의원";
+          ev(w,d.getElementById("visitPlace"),"change");
+          setTimeout(function(){
+           var c2=d.getElementById("visitCount").textContent;
+           log(c2.indexOf("21,090")!==-1,"병원별 합계도 맞다",c2.trim());
+           out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
+          },400);
+         },400);
+        },400);
+       },400);
+      },500);
+     });
+    });
+   });
+  });
+ },1300);};
+</script>
