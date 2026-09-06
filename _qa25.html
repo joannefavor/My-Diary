@@ -1,0 +1,77 @@
+<!doctype html><meta charset="utf-8"><title>중복·줄 지우기 시험</title>
+<div id="out" style="font:13px/1.7 ui-monospace"></div>
+<script>window.onerror=function(m,s,l){document.getElementById("out").insertAdjacentHTML("beforeend","X 시험 오류  "+m+" ("+l+"줄)<br>");};</script>
+<iframe id="f" src="/_fix_dup.html#/work" style="width:1240px;height:100px;border:0"></iframe>
+<script>
+var out=document.getElementById("out"),f=document.getElementById("f"),pass=0,fail=0;
+function log(ok,n,e){(ok?pass++:fail++);
+ out.insertAdjacentHTML("beforeend",(ok?"통과  ":"X 실패  ")+n+(e?"   "+e:"")+"<br>");}
+f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
+ w.onerror=function(m,s,l){log(false,"앱 오류",m+" ("+l+"줄)");};
+ w.confirm=function(){return true;};
+ setTimeout(function(){
+  function todosIn(){return [].map.call(
+    d.querySelectorAll("#worklogList .wk-line label span"),
+    function(x){return x.textContent;});}
+
+  /* 1) 같은 날 일지가 둘이어도 할 일은 한 번만 */
+  var rows=d.querySelectorAll("#worklogList [data-nrow]");
+  log(rows.length===2,"그 날 일지 둘이 줄로 보인다",rows.length+"줄");
+  rows[0].click();
+  setTimeout(function(){
+   var first=todosIn();
+   log(first.indexOf("계약서 초안")!==-1,"첫 일지에 그 날 할 일이 붙는다",first.join(","));
+   d.querySelectorAll("#worklogList [data-nrow]")[1].click();
+   setTimeout(function(){
+    var second=todosIn();
+    /* 펼친 칸은 한 번에 하나뿐이라 겹치지 않는다.
+       어느 일지에서든 그 날 할 일을 넣고 지울 수 있어야 한다. */
+    log(second.indexOf("계약서 초안")!==-1,"둘째 일지에서도 할 일을 다룰 수 있다",
+      second.join(","));
+    log(d.querySelectorAll("#worklogList .mt").length===1,"펼친 칸은 언제나 하나",
+      d.querySelectorAll("#worklogList .mt").length+"개");
+
+    /* 1-2) 제목 없는 일지가 둘이면 요약이 겹치지 않는가 */
+    var sums=[].map.call(d.querySelectorAll("#worklogList [data-nrow] .vs"),
+      function(x){return x.textContent;});
+    log(sums.length<2||sums[0]!==sums[1],"요약 줄이 서로 다르다",sums.join(" / "));
+
+    /* 2) 요약 줄의 지우기 */
+    var dels=d.querySelectorAll("#worklogList .rowdel");
+    log(dels.length===2,"줄마다 지우기가 있다",dels.length+"개");
+    log(w.getComputedStyle(dels[0]).position==="absolute","줄 오른쪽 끝에 선다");
+    log(w.getComputedStyle(dels[0]).opacity==="0","평소엔 감춰 둔다");
+
+    function logs(){var st=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3")||"{}");
+     var a=[];Object.keys(st.days||{}).forEach(function(k){
+      ((st.days[k].worklog)||[]).forEach(function(x){a.push(x.title);});});return a;}
+    log(logs().length===2,"지우기 전 둘",logs().join(","));
+    dels[0].click();
+    setTimeout(function(){
+     log(logs().length===1,"펼치지 않고 지워진다",logs().join(","));
+     log(logs()[0]==="오후 일지","고른 것만 지워진다",logs()[0]);
+
+     /* 3) 할 일만 있는 날에는 지우기를 안 붙인다 */
+     w.location.hash="#/health";
+     setTimeout(function(){
+      w.location.hash="#/work";
+      setTimeout(function(){
+       /* 4) 다른 갈래에도 있는가 */
+       var md=d.querySelectorAll("#memoList .rowdel");
+       log(md.length===1,"메모 줄에도 있다",md.length+"개");
+       w.location.hash="#/seen";
+       setTimeout(function(){
+        log(!!d.querySelector("#tripList") ,"여행 목록이 있다");
+        w.location.hash="#/meeting";
+        setTimeout(function(){
+         log(!!d.getElementById("giftList"),"선물 목록이 있다");
+         out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
+        },400);
+       },400);
+      },400);
+     },400);
+    },400);
+   },400);
+  },400);
+ },1300);};
+</script>

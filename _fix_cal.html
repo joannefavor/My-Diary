@@ -787,13 +787,29 @@
   .visit-count { font-size: 11.5px; color: var(--muted); flex: none; }
 
   /* 평소엔 한 줄. 누른 것만 펼친다 */
+  /* 줄과 지우기를 나란히. 지우기는 평소엔 감춰 두고 손이 닿을 때만 보인다 —
+     늘 보이면 지우는 것이 적는 것보다 눈에 먼저 들어온다. */
+  .vline { position: relative; }
+  .rowdel {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    border: 0; background: none; cursor: pointer; color: var(--muted);
+    font-size: 12px; padding: 3px 6px; border-radius: 6px; opacity: 0;
+  }
+  .rowdel:hover { background: var(--surface-2); color: var(--s2); }
+  .vline:hover .rowdel, .rowdel:focus { opacity: 1; }
+  /* 손가락으로 쓰는 화면에는 올려 둘 손이 없으므로 늘 보인다 */
+  @media (hover: none) { .rowdel { opacity: .55; } }
+
   .vrow {
     display: flex; align-items: baseline; gap: 10px; width: 100%;
     padding: 8px 10px; border: 0; border-radius: 8px;
     background: transparent; text-align: left; cursor: pointer;
   }
   .vrow:hover { background: var(--surface-2); }
-  .vrow + .vrow, .vopen + .vrow { border-top: 1px solid var(--hair); border-radius: 0; }
+  .vrow + .vrow, .vopen + .vrow,
+  .vline + .vline > .vrow, .vopen + .vline > .vrow {
+    border-top: 1px solid var(--hair); border-radius: 0;
+  }
   .vrow .vd {
     font-family: var(--mono); font-size: 11.5px; color: var(--muted); flex: none;
   }
@@ -5782,7 +5798,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
   function noteSummary(n, kind, date) {
     var t = [n.title, n.notes, n.feel].filter(Boolean).join(" · ")
       .split(/\n/)[0].trim();
-    if (!t && kind && NOTE_KINDS[kind].todos && date) {
+    if (!t && kind && NOTE_KINDS[kind].todos && date && ownsTodos(kind, date, n)) {
       var ts = todoItems(date).filter(function (x) { return x.text; })
         .map(function (x) { return (x.done ? "✓ " : "") + x.text; });
       if (ts.length) t = ts.join(" · ");
@@ -5833,6 +5849,9 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
         '<span class="vs">' + esc(noteSummary(r.n, kind, r.date)) + "</span>" +
         (r.n.star ? starText(r.n.star) : "") +
         "</button>";
+      html = r.n.id === "todos" ? rowLine(html, "", "", "")
+        : rowLine(html, "notedel", k,
+            (r.n.title || "").trim() || noteSummary(r.n, kind, r.date));
       if (open) html += '<div class="vopen">' + noteCard(kind, r.date, r.n) + "</div>";
       return html;
     }).join("");
@@ -6033,6 +6052,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       '<span class="vs">' + esc(visitSummary(v)) + "</span>" +
       (v.cost ? '<span class="vcost">' + esc(wonText(v.cost)) + "</span>" : "") +
       "</button>";
+    html = rowLine(html, "visitdel", at, (v.place || "").trim() || "이름 없음");
     if (open) html += '<div class="vopen">' + visitCard(date, v) + "</div>";
     return html;
   }
@@ -6508,6 +6528,8 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       '<span class="vs">' + esc(giftWhat(v)) +
         (v.why ? " · " + esc(v.why) : "") + "</span>" +
       "</button>";
+    html = rowLine(html, "giftdel", at,
+      (v.who || "누구인지 안 적음") + " · " + giftWhat(v));
     if (open) html += '<div class="vopen">' + giftCard(date, v) + "</div>";
     return html;
   }
@@ -6728,6 +6750,22 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
   }
 
   /* 별 다섯. 빈 별도 그려야 몇 점인지 눈으로 세지 않아도 된다 */
+  /* 요약 줄 옆의 지우기. 펼치지 않고도 지울 수 있어야 한다 — 펼쳐야 보이면
+     지울 때마다 한 손이 더 간다. 갈래마다 이름만 다르고 생김새는 같으므로
+     한 곳에서 만든다. */
+  function rowDel(attr, at, what) {
+    return '<button type="button" class="rowdel" data-' + attr + '="' + at + '"' +
+      ' data-what="' + esc(what) + '" title="지우기"' +
+      ' aria-label="' + esc(what) + ' 지우기">✕</button>';
+  }
+
+  /* 줄과 지우기를 한 칸에 묶는다. 지우기가 줄 오른쪽 끝에 겹쳐 서려면
+     기준이 될 칸이 있어야 한다 — 목록을 기준으로 삼으면 다 같은 자리에 겹친다. */
+  function rowLine(rowHtml, attr, at, what) {
+    return '<div class="vline">' + rowHtml +
+      (attr ? rowDel(attr, at, what) : "") + "</div>";
+  }
+
   function starText(n) {
     n = Math.max(0, Math.min(5, Number(n) || 0));
     if (!n) return '<span class="stars off">☆☆☆☆☆</span>';
@@ -6789,6 +6827,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       '<span class="vs">' + esc((v.who || "").trim()) + "</span>" +
       (span ? '<span class="tspan">' + esc(span) + "</span>" : "") +
       "</button>";
+    html = rowLine(html, "tripdel", at, (v.place || "").trim() || "어디였더라");
     if (open) html += '<div class="vopen">' + tripCard(date, v) + "</div>";
     return html;
   }
@@ -7455,6 +7494,20 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     var box = e.target.closest("input[data-todonew]");
     if (box && e.key === "Enter") { e.preventDefault(); putTodoFrom(box); }
   });
+
+  /* 요약 줄에서 그날 할 일로 채워도 되는 자리인가.
+
+     할 일은 일지가 아니라 그날에 딸려 있다. 그래서 제목 없이 적은 일지가 같은 날
+     둘이면 두 줄이 똑같은 할 일로 채워져, 같은 것이 두 번 뜬 것처럼 보였다.
+     그날 첫 일지만 그렇게 채운다.
+
+     펼친 칸은 이렇게 가르지 않는다 — 한 번에 하나만 열리므로 겹칠 일이 없고,
+     어느 일지에서든 그날 할 일을 넣고 지울 수 있어야 하기 때문이다. */
+  function ownsTodos(kind, date, n) {
+    if (n.id === "todos") return true;
+    var list = (state.days[date] && state.days[date][kind]) || [];
+    return !list.length || list[0].id === n.id;
+  }
 
   function todoBlock(date) {
     var items = todoItems(date).filter(function (s) {
