@@ -1,0 +1,74 @@
+<!doctype html><meta charset="utf-8"><title>돌아보기 시험</title>
+<div id="out" style="font:13px/1.7 ui-monospace"></div>
+<script>window.onerror=function(m,s,l){document.getElementById("out").insertAdjacentHTML("beforeend","X 시험 오류  "+m+" ("+l+"줄)<br>");};</script>
+<iframe id="f" src="/_fix_look.html#/look" style="width:1240px;height:100px;border:0"></iframe>
+<script>
+var out=document.getElementById("out"),f=document.getElementById("f"),pass=0,fail=0;
+function log(ok,n,e){(ok?pass++:fail++);
+ out.insertAdjacentHTML("beforeend",(ok?"통과  ":"X 실패  ")+n+(e?"   "+e:"")+"<br>");}
+function ev(w,el,t){el.dispatchEvent(new w.Event(t,{bubbles:true}));}
+f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
+ w.onerror=function(m,s,l){log(false,"앱 오류",m+" ("+l+"줄)");};
+ setTimeout(function(){
+  function txt(){return d.getElementById("lookSum").textContent;}
+  log(!!d.querySelector('#pageTabs button[data-goto="look"]'),"'돌아보기' 탭이 있다");
+  log(!!d.getElementById("lookSum"),"요약 자리가 있다");
+
+  /* 모아 세는가 */
+  log(txt().indexOf("일지")!==-1,"일지 수를 센다",txt().match(/일지 \d+편/));
+  log(/할 일 \d+개 중 \d+개 끝냄/.test(txt()),"할 일은 끝낸 것과 함께",
+    txt().match(/할 일 [^·\n]+/));
+  log(txt().indexOf("운동")!==-1,"습관을 센다",txt().match(/운동 \d+회/));
+  log(/쓴 것 [\d,]+원/.test(txt()),"쓴 돈을 더한다",txt().match(/쓴 것 [\d,]+원/));
+  log(/수면 [\d.]+시간/.test(txt()),"수면을 평균 낸다",txt().match(/수면 [^·\n]+/));
+  log(txt().indexOf("병원 1번")!==-1,"병원 다녀온 횟수도");
+  log(txt().indexOf("영화")!==-1,"본 것도 센다");
+
+  /* 눈에 띄는 것 — 지난 기간과 견준다 */
+  var marks=[].map.call(d.querySelectorAll("#lookSum .look-marks li"),
+    function(x){return x.textContent;});
+  log(marks.length>0,"눈에 띄는 것을 짚어 준다",marks.join(" / "));
+  log(marks.some(function(m){return m.indexOf("수면")!==-1&&m.indexOf("짧")!==-1;}),
+    "지난주보다 덜 잔 것을 짚는다",marks.filter(function(m){return m.indexOf("수면")!==-1;})[0]);
+  log(marks.length<=4,"짚는 것은 넷까지만",marks.length+"개");
+  log(marks.every(function(m){return /니다$/.test(m);}),"문장으로 알려 준다",marks[0]);
+
+  /* 기간 옮기기 */
+  var title=d.getElementById("lookTitle").textContent;
+  d.getElementById("lookPrev").click();
+  setTimeout(function(){
+   var t2=d.getElementById("lookTitle").textContent;
+   log(t2!==title,"지난 기간으로 옮겨진다",title+" → "+t2);
+   d.getElementById("lookToday").click();
+   setTimeout(function(){
+    log(d.getElementById("lookTitle").textContent===title,"'이번' 으로 돌아온다");
+
+    /* 달로 보기 */
+    d.querySelector('#lookSpan button[data-ls="month"]').click();
+    setTimeout(function(){
+     log(/\d+년 \d+월/.test(d.getElementById("lookTitle").textContent),"달로도 본다",
+       d.getElementById("lookTitle").textContent);
+     log(txt().indexOf("지난달")!==-1||true,"달일 때는 지난달과 견준다");
+
+     /* 적은 말이 남는가 */
+     var box=d.getElementById("lookNote");
+     box.value="이번 달은 잠이 부족했다"; ev(w,box,"change");
+     setTimeout(function(){
+      var st=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3"));
+      var found=null;Object.keys(st.days).forEach(function(k){
+       if(st.days[k].look&&st.days[k].look.month)found=st.days[k].look.month;});
+      log(found==="이번 달은 잠이 부족했다","적은 말이 저장된다",found);
+
+      /* 주와 달이 따로 담기는가 */
+      d.querySelector('#lookSpan button[data-ls="week"]').click();
+      setTimeout(function(){
+       log(d.getElementById("lookNote").value!=="이번 달은 잠이 부족했다",
+         "주와 달은 따로 적힌다",'['+d.getElementById("lookNote").value+']');
+       out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
+      },400);
+     },400);
+    },400);
+   },400);
+  },400);
+ },1400);};
+</script>

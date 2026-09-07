@@ -38,6 +38,29 @@ st.days[iso(t)]={
         {id:"m3",title:"기생충",place:"롯데시네마",who:"혼자",notes:"계단",feel:"",star:5}]};
 localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
 SEED
+python3 _mkdbg.py _fix_look.html <<'SEED'
+var t=new Date();
+function dayOf(off){var d=new Date(t);d.setDate(d.getDate()+off);
+ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+var st={days:{},meds:[],habits:[{id:"h1",name:"운동"},{id:"h2",name:"일기쓰기"}]};
+function put(off,o){var k=dayOf(off);st.days[k]=Object.assign(st.days[k]||{},o);}
+[0,-1,-2,-3].forEach(function(o,i){
+ put(o,{worklog:[{id:"w"+i,title:"일지"+i,notes:""}],
+  todos:[{text:"QT",done:false},{text:"할일"+i,done:i<3},{text:"또"+i,done:false}],
+  diary:[{id:"d"+i,title:"",notes:"오늘"+i}],
+  sleep:{from:"23:00",to:"05:30"}, overall:4,
+  money:[{id:"m"+i,kind:"out",amount:40000,note:"밥"}],
+  habitDone:{h1:true}});
+});
+put(0,{movie:[{id:"mv",title:"오펜하이머",notes:"",feel:""}],
+       visits:[{id:"v1",place:"연세내과",cost:12690,drug:"",notes:""}]});
+[-7,-8,-9,-10].forEach(function(o,i){
+ put(o,{sleep:{from:"22:00",to:"06:30"}, overall:3,
+  money:[{id:"pm"+i,kind:"out",amount:10000,note:"밥"}],
+  habitDone:{h1:true}});
+});
+localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
+SEED
 python3 _mkdbg.py _fix_dup.html <<'SEED'
 var st={days:{},meds:[],habits:[]};
 st.days["2026-09-03"]={
@@ -160,7 +183,7 @@ done
 
 echo
 echo "— 화면 시험"
-for f in _qa.html _qa3.html _qa4.html _qa5.html _qa6.html _qa7.html _qa8.html _qa9.html _qa10.html _qa11.html _qa12.html _qa13.html _qa14.html _qa15.html _qa16.html _qa17.html _qa18.html _qa19.html _qa20.html _qa21.html _qa22.html _qa23.html _qa24.html _qa25.html; do
+for f in _qa.html _qa3.html _qa4.html _qa5.html _qa6.html _qa7.html _qa8.html _qa9.html _qa10.html _qa11.html _qa12.html _qa13.html _qa14.html _qa15.html _qa16.html _qa17.html _qa18.html _qa19.html _qa20.html _qa21.html _qa22.html _qa23.html _qa24.html _qa25.html _qa26.html; do
   printf "%-12s " "$f"
   out=$("$CHROME" --headless --disable-gpu --window-size=1240,900 \
         --virtual-time-budget=20000 --dump-dom "http://localhost:$PORT/$f" 2>/dev/null \
