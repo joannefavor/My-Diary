@@ -6624,6 +6624,24 @@
       '<span class="look-val">' + text + "</span></div>";
   }
 
+  /* 적는 칸의 말머리. 기간에 따라 다르게 묻는다 — "이 기간" 은 아무 말도
+     아니어서, 무엇을 돌아보는지 되레 흐려진다.
+     지난 기간을 보고 있을 때는 '이번' 이 아니라 '그' 로 묻는다. */
+  function lookAsk(start, span) {
+    var now = span === "week" ? iso(weekStart)
+            : span === "year" ? iso(new Date()).slice(0, 4) + "-01-01"
+            : iso(new Date()).slice(0, 7) + "-01";
+    var here = start === now;
+    var what = span === "week" ? (here ? "이번 주" : "그 주")
+             : span === "month" ? (here ? "이번 달" : "그 달")
+             : (here ? "올해" : "그 해");
+    /* 받침이 있으면 '을', 없으면 '를'. "이번 달를" 이라고 나오던 것을 고친다.
+       한글 낱자에서 받침 자리는 (코드 - 0xAC00) % 28 로 안다. */
+    var last = what.charCodeAt(what.length - 1);
+    var jong = last >= 0xAC00 && last <= 0xD7A3 ? (last - 0xAC00) % 28 : 0;
+    return what + (jong ? "을" : "를") + " 돌아보며 — 좋았던 것, 아쉬운 것, 다음에 할 것";
+  }
+
   function renderLook() {
     var host = document.getElementById("lookSum");
     if (!host) return;
@@ -6693,6 +6711,7 @@
     var d0 = peek(start);
     var v = (d0 && d0.look && d0.look[span]) || "";
     if (document.activeElement !== box && box.value !== v) box.value = v;
+    box.placeholder = lookAsk(start, span);
 
     Array.prototype.forEach.call(
       document.querySelectorAll("#lookSpan button[data-ls]"), function (b) {
