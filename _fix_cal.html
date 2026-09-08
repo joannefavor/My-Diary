@@ -8941,7 +8941,9 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
   var SYNC_DEBOUNCE = 3000;
   var CODE_ALPHABET = "23456789abcdefghjkmnpqrstuvwxyz";   // 0/O, 1/l/I 처럼 헷갈리는 글자는 뺐다
 
-  var sync = { code: "", id: "", key: null, rev: 0, busy: false, timer: null };
+  /* dirty: 아직 안 올린 것이 있다  ·  merging: 받아 합치는 중이라 올리기를 걸지 않는다 */
+  var sync = { code: "", id: "", key: null, rev: 0,
+               busy: false, dirty: false, merging: false, timer: null };
 
   var syncEls = {
     panel: document.getElementById("syncPanel"),
@@ -8955,6 +8957,9 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
   };
 
   function syncSay(msg, tone) {
+    /* 이 칸은 '기기 간 동기화' 를 펴야 보인다. 접혀 있으면 못 보므로
+       잘못된 소식만은 늘 보이는 아래 저장 표시에도 함께 낸다. */
+    if (tone === "bad" && msg) stamp(msg);
     syncEls.status.textContent = msg || "";
     if (tone) syncEls.status.setAttribute("data-tone", tone);
     else syncEls.status.removeAttribute("data-tone");
@@ -9330,16 +9335,20 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
   function realDay(d) { return emptyDay(d) ? undefined : d; }
 
   function mergeDays(base, local, remote) {
-    var out = {}, conflicts = [], seen = {};
+    var out = {}, conflicts = [], seen = {}, changed = false;
     [base, local, remote].forEach(function (s) {
       Object.keys((s && s.days) || {}).forEach(function (d) { seen[d] = 1; });
     });
     Object.keys(seen).sort().forEach(function (d) {
-      var got = pick3(realDay(base.days[d]), realDay(local.days[d]), realDay(remote.days[d]));
+      var mine = realDay(local.days[d]);
+      var got = pick3(realDay(base.days[d]), mine, realDay(remote.days[d]));
       if (got.v) out[d] = got.v;
+      /* 고른 것이 이 기기 것 그대로가 아니면 저쪽에서 뭔가 들어온 것이다.
+         pick3 는 넘겨준 객체를 그대로 돌려주므로 참조만 견주면 된다. */
+      if (got.v !== mine) changed = true;
       if (got.conflict) conflicts.push(d);
     });
-    return { days: out, conflicts: conflicts };
+    return { days: out, conflicts: conflicts, changed: changed };
   }
 
   /* 설정 목록(약·습관)을 합친다. 날짜 밑에 있지 않아서 mergeDays 가 못 다룬다.
@@ -9372,11 +9381,13 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
                  meds: (remote && remote.meds) || [],
                  habits: (remote && remote.habits) || [] };
     var d = mergeDays(base, local, safe);
-    state = asState(null, d.days,
-      mergeNamedList(base, local, safe, "meds"),
-      mergeNamedList(base, local, safe, "habits"));
+    var meds = mergeNamedList(base, local, safe, "meds");
+    var habits = mergeNamedList(base, local, safe, "habits");
+    var changed = d.changed ||
+      stable(meds) !== stable(local.meds) || stable(habits) !== stable(local.habits);
+    state = asState(null, d.days, meds, habits);
     normalize();
-    return d.conflicts;
+    return { conflicts: d.conflicts, changed: changed };
   }
 
   /* ---------- 서버 주고받기 ---------- */
@@ -9401,18 +9412,27 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
   }
 
   /* 내려받아 합친다. 선택한 날이 바뀌었을 때만 입력 폼까지 다시 그린다. */
-  function syncPull() {
+  function syncPull(skipSame) {
     return syncApi("GET").then(function (r) {
       if (!r.ok) throw new Error(r.body.error || "받지 못했습니다.");
+      var was = sync.rev;
       sync.rev = r.body.rev || 0;
-      if (!r.body.blob) return { conflicts: [], changed: false };
+      /* 엿보는 중이고 저쪽 번호가 그대로면 새로 올라온 것이 없다.
+         푸는 데 드는 품을 아낀다. 연결할 때의 첫 받기는 코드가 맞는지
+         확인하는 자리이기도 하므로 여기서 건너뛰지 않는다. */
+      if (skipSame && was && sync.rev === was) return { conflicts: [], got: false };
+      if (!r.body.blob) return { conflicts: [], got: false };
       return unseal(sync.key, r.body.blob).then(function (remote) {
         var before = stable(state.days[selected]);
-        var conflicts = mergeInto(remote);
-        var changed = stable(state.days[selected]) !== before;
+        var res = mergeInto(remote);
+        var shown = stable(state.days[selected]) !== before;
+        /* 합쳐서 생긴 저장은 사람이 적은 것이 아니다. 여기서 올리기를 예약하면
+           받자마자 되올리는 일이 끝없이 오간다. */
+        sync.merging = true;
         save();
-        if (changed) render(); else renderExceptForm();
-        return { conflicts: conflicts, changed: changed };
+        sync.merging = false;
+        if (shown) render(); else renderExceptForm();
+        return { conflicts: res.conflicts, got: res.changed };
       }, function () {
         throw new Error("코드가 다릅니다 — 올려둔 기록을 열지 못했습니다.");
       });
@@ -9443,6 +9463,9 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
   function syncRun(label) {
     if (!syncOnline() || sync.busy) return Promise.resolve();
     sync.busy = true;
+    /* 여기서부터 올릴 것은 모두 담긴다. 이 뒤에 적히는 것만 다음 차례로 넘긴다. */
+    sync.dirty = false;
+    clearTimeout(sync.timer);
     syncSay(label || "맞추는 중…");
     return syncPull()
       .then(function (res) {
@@ -9467,18 +9490,65 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
         }
       })
       .catch(function (e) {
+        /* 못 올렸으면 아직 안 보낸 것이 남아 있다. 표를 도로 세워 다음에 다시 보낸다. */
+        sync.dirty = true;
         syncSay(e.message || "동기화하지 못했습니다.", "bad");
       })
-      .then(function () { sync.busy = false; });
+      .then(function () {
+        sync.busy = false;
+        /* 맞추는 동안 적은 것이 있으면 한 번 더 */
+        if (sync.dirty) queueSync();
+      });
   }
 
   /* 적을 때마다 올리면 요청이 너무 잦으므로 잠시 모았다 올린다 */
   function queueSync() {
-    /* 맞추는 도중에도 save()를 지나므로, 그때 걸린 예약은 무시한다 */
-    if (!syncOnline() || sync.busy) return;
+    if (!syncOnline() || sync.merging) return;
+    /* 아직 안 올린 것이 있다는 표. 맞추는 중이라 지금 예약을 못 걸어도
+       이 표는 남으므로, 끝난 뒤에 이어서 올린다.
+       예전에는 그냥 돌아가서, 맞추는 사이에 적은 것이 다음에 또 적을 때까지
+       올라가지 않았다. */
+    sync.dirty = true;
+    if (sync.busy) return;
     clearTimeout(sync.timer);
     sync.timer = setTimeout(function () { syncRun("올리는 중…"); }, SYNC_DEBOUNCE);
   }
+
+  /* 화면을 덮거나 앱을 나갈 때는 기다리지 않고 바로 올린다.
+     휴대폰은 화면이 꺼지면 예약해 둔 3초를 채우지 못하고 멈춰 서서,
+     방금 적은 것이 그대로 이 기기에만 남곤 했다. */
+  function syncFlush() {
+    if (!syncOnline() || !sync.dirty || sync.busy) return;
+    clearTimeout(sync.timer);
+    syncRun("올리는 중…");
+  }
+
+  /* 켜 둔 채로 있는 기기는 스스로 받아오지 않으면 저쪽 기록을 모른다.
+     PC 를 열어 둔 채 휴대폰에서 적으면 하루 종일 넘어오지 않았다. */
+  var SYNC_POLL = 60000;
+  function syncPeek() {
+    if (!syncOnline() || sync.busy || document.hidden) return;
+    sync.busy = true;
+    syncPull(true).then(function (res) {
+      if (res && res.got) {
+        var t = new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+        syncSay("다른 기기에서 적은 것을 받았습니다 · " + t, "ok");
+        stamp("다른 기기에서 적은 것을 받았습니다 · " + t);
+        sync.dirty = true;   /* 합친 결과를 저쪽에도 알린다 */
+      }
+    }, function () { /* 잠깐 끊겼을 수 있다. 다음 차례에 다시 본다 */ })
+      .then(function () {
+        sync.busy = false;
+        if (sync.dirty) queueSync();
+      });
+  }
+  setInterval(syncPeek, SYNC_POLL);
+
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) syncFlush();   /* 나가기 전에 올리고 */
+    else syncPeek();                    /* 돌아오면 받아온다 */
+  });
+  window.addEventListener("pagehide", syncFlush);
 
   function syncConnect(code, quiet) {
     if (!syncUsable()) {
@@ -9505,7 +9575,8 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
 
   function syncDisconnect() {
     clearTimeout(sync.timer);
-    sync = { code: "", id: "", key: null, rev: 0, busy: false, timer: null };
+    sync = { code: "", id: "", key: null, rev: 0,
+             busy: false, dirty: false, merging: false, timer: null };
     try {
       localStorage.removeItem(SYNC_STORE);
       localStorage.removeItem(SYNC_BASE_STORE);

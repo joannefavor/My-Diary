@@ -179,7 +179,7 @@ SEED
 echo
 echo "— node 시험"
 fail=0
-for f in _emptyday_qa.js _state_qa.js; do
+for f in _emptyday_qa.js _state_qa.js _sync_qa.js; do
   printf "%-18s " "$f"
   node "$f" | tail -1 || fail=1
 done
