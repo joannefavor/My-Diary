@@ -1,0 +1,85 @@
+<!doctype html><meta charset="utf-8"><title>말한 것 시험</title>
+<div id="out" style="font:13px/1.7 ui-monospace"></div>
+<script>window.onerror=function(m,s,l){document.getElementById("out").insertAdjacentHTML("beforeend","X 시험 오류  "+m+" ("+l+"줄)<br>");};</script>
+<iframe id="f" src="/_fix_voice.html#/main" style="width:1240px;height:100px;border:0"></iframe>
+<script>
+var out=document.getElementById("out"),f=document.getElementById("f"),pass=0,fail=0;
+function log(ok,n,e){(ok?pass++:fail++);
+ out.insertAdjacentHTML("beforeend",(ok?"통과  ":"X 실패  ")+n+(e?"   "+e:"")+"<br>");}
+function ev(w,el,t){el.dispatchEvent(new w.Event(t,{bubbles:true}));}
+f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
+ w.onerror=function(m,s,l){log(false,"앱 오류",m+" ("+l+"줄)");};
+ function say(t,cb){var ta=d.getElementById("quickText");
+  ta.value=t; ev(w,ta,"input"); d.getElementById("quickAdd").click(); setTimeout(cb,400);}
+ function plan(){return [].map.call(d.querySelectorAll("#voicePlan .vp-row"),function(r){
+  return {where:r.querySelector(".vp-where").textContent,
+          when:r.querySelector(".vp-when").textContent,
+          text:r.querySelector(".vp-text").textContent};});}
+ function saved(){var st=JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3")||"{}");
+  var a=[];Object.keys(st.days||{}).sort().forEach(function(k){var x=st.days[k];
+   ["visits","schedule","movie","meetings","money","diary","trip","book","lecture"].forEach(function(g){
+    (x[g]||[]).forEach(function(v){a.push({d:k,g:g,t:v.place||v.title||v.note||""});});});
+   (x.todos||[]).forEach(function(t,i){if(i>0&&t&&t.text)a.push({d:k,g:"todo",t:t.text});});});
+  return a;}
+
+ setTimeout(function(){
+  log(!!d.querySelector('#quickPicks button[data-pick="voice"]'),"'말한 것' 단추가 있다");
+  d.querySelector('#quickPicks button[data-pick="voice"]').click();
+
+  /* 여러 갈래가 섞인 한 마디 */
+  say("오늘 연세내과 갔고 혈압약 받았어. 내일 오후 두시에 법무팀 회의 있고, 저녁엔 오펜하이머 보기로 했다", function(){
+   var p=plan();
+   log(p.length===3,"셋으로 나눈다",p.length+"가지");
+   log(saved().length===0,"보여주기만 하고 아직 안 넣는다",saved().length+"건");
+   log(p[0]&&p[0].where==="병원기록","병원 이야기는 병원기록으로",p[0]&&p[0].where);
+   log(p[1]&&p[1].where==="일정","시각이 있으면 일정으로",p[1]&&p[1].where);
+   log(p[2]&&p[2].where==="영화·공연","본 것은 영화로",p[2]&&p[2].where);
+   log(p[2]&&p[2].text==="오펜하이머","말꼬리를 덜어 낸다",p[2]&&p[2].text);
+   log(p[1]&&p[1].when!==p[0].when,"'내일' 은 다른 날로",p[0].when+" / "+p[1].when);
+
+   /* 하나를 빼고 넣기 */
+   d.querySelector('#voicePlan input[data-vp="1"]').click();
+   setTimeout(function(){
+    d.getElementById("voiceOk").click();
+    setTimeout(function(){
+     var g=saved();
+     log(g.length===2,"고른 것만 들어간다",g.length+"건");
+     log(!g.some(function(x){return x.g==="schedule";}),"뺀 것은 안 들어간다");
+     log(d.getElementById("voicePlan").hidden,"넣고 나면 확인 창이 닫힌다");
+     log(d.getElementById("quickText").value==="","적은 칸이 비워진다");
+
+     /* 그만두기 */
+     say("어제 김대리 만났어", function(){
+      log(plan().length===1,"한 마디도 된다");
+      log(plan()[0].where==="만남","시각 없는 만남은 만남으로",plan()[0].where);
+      var before=saved().length;
+      d.getElementById("voiceCancel").click();
+      setTimeout(function(){
+       log(saved().length===before,"그만두면 안 들어간다");
+       log(d.getElementById("voicePlan").hidden,"그만두면 창이 닫힌다");
+
+       /* 여러 말투 */
+       say("책 총 균 쇠 읽었어", function(){
+        log(plan()[0].where==="책","책은 책으로",plan()[0].where);
+        log(plan()[0].text==="총 균 쇠","읽었어를 덜어 낸다",plan()[0].text);
+        d.getElementById("voiceCancel").click();
+        setTimeout(function(){
+         say("점심에 만이천원 썼어", function(){
+          log(plan()[0].where==="돈","돈 이야기는 돈으로",plan()[0].where);
+          d.getElementById("voiceCancel").click();
+          setTimeout(function(){
+           say("오늘은 그냥 좀 지쳤다", function(){
+            log(plan()[0].where==="일기","어디에도 안 걸리면 일기로",plan()[0].where);
+            out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
+           });
+          },300);
+         });
+        },300);
+       });
+      },300);
+     });
+    },400);
+   },300);
+  });
+ },1300);};
+</script>

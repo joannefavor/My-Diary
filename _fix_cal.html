@@ -484,6 +484,25 @@
     border: 1px solid var(--hair); border-radius: 9px; padding: 11px 13px;
   }
   .quick textarea:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 1px; }
+  /* 넣기 전에 보여주는 확인 창 */
+  .voiceplan {
+    margin-top: 8px; border: 1px solid var(--hair); border-radius: 10px;
+    background: var(--surface-2); padding: 9px 10px;
+  }
+  .vp-head { font-size: 11px; color: var(--muted); padding-bottom: 6px; }
+  .vp-row {
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 5px 2px; border-top: 1px solid var(--hair); font-size: 12.5px;
+  }
+  .vp-where {
+    flex: none; min-width: 58px; font-size: 11px;
+    color: var(--accent-ink); background: var(--surface);
+    border-radius: 999px; padding: 2px 8px; text-align: center;
+  }
+  .vp-when { flex: none; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .vp-text { flex: 1; min-width: 0; }
+  .vp-foot { display: flex; justify-content: flex-end; gap: 8px; padding-top: 9px; }
+
   .quick-foot {
     display: flex; flex-wrap: wrap; align-items: center;
     justify-content: space-between; gap: 10px 16px;
@@ -1951,6 +1970,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     <div class="quick">
       <div class="quick-picks" id="quickPicks" role="group" aria-label="어디에 넣을지"></div>
       <textarea id="quickText" rows="2"></textarea>
+      <div class="voiceplan" id="voicePlan" hidden></div>
       <div class="quick-foot">
         <p class="quick-msg" id="quickMsg">넣을 곳을 고르고 적으세요.</p>
         <button id="quickAdd">기록에 넣기</button>
@@ -5212,7 +5232,11 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     { id: "knowledge", label: "배움",   ph: "복리 계산법 — 72 법칙" },
     /* 본 것은 갈래가 다섯이라 단추를 다섯 개 늘어놓으면 왼쪽 페이지 막대와
        차례가 어긋난다. 대표로 영화만 두고 나머지는 #여행 #공연 처럼 태그로 받는다. */
-    { id: "movie",     label: "본 것", ph: "오펜하이머    ·    #여행 속초    ·    #책 총, 균, 쇠" }
+    { id: "movie",     label: "본 것", ph: "오펜하이머    ·    #여행 속초    ·    #책 총, 균, 쇠" },
+    /* 휴대폰 자판의 마이크로 받아쓴 말을 그대로 붙여넣는 자리.
+       한 번 말한 것이 여러 갈래로 흩어지므로 넣기 전에 보여주고 확인받는다. */
+    { id: "voice",     label: "말한 것",
+      ph: "오늘 연세내과 갔고 혈압약 받았어. 내일 오후 두시에 법무팀 회의 있고, 저녁엔 오펜하이머 보기로 했다" }
   ];
   /* 새 이름과 예전 이름을 함께 받는다. 손에 익은 말을 못 쓰게 하면 안 된다. */
   var QUICK_TAGS = {
@@ -6345,6 +6369,127 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     if (box) box.focus();
   });
 
+  /* ============================ 말한 것 ============================
+
+     휴대폰 받아쓰기(키보드 마이크)로 만든 글자를 그대로 받는다. 앱이 소리를 듣지
+     않는 것은, 음성 1분이 500KB~1MB 인데 동기화 한도가 900KB 라 원본을 담을 수
+     없고, 진료 이야기가 섞이는 자리라 소리를 밖으로 보내고 싶지 않아서다.
+     사진에서 글자만 받은 것과 같은 길이다.
+
+     한 번 말하면 여러 갈래로 흩어지므로, 넣기 전에 무엇을 어디에 넣을지 보여주고
+     확인을 받는다 — 세 곳에 잘못 들어가면 세 곳을 찾아다니며 지워야 한다. */
+
+  /* 말을 토막으로 나눈다. 문장 끝과 쉼표, '그리고' 로 끊는다.
+     '~고' 로도 끊고 싶지만 "갔고 약 받았어" 처럼 한 가지 이야기인 때가 많아 둔다. */
+  function voiceChunks(text) {
+    return String(text)
+      .replace(/\s*그리고\s*/g, "\n")
+      .replace(/([.!?])\s*/g, "$1\n")
+      .replace(/,\s*/g, "\n")
+      .split(/\n+/)
+      .map(function (l) { return l.replace(/[.!?]\s*$/, "").replace(/\s+/g, " ").trim(); })
+      .filter(function (l) { return l.length > 1; });
+  }
+
+  /* 토막 하나가 어느 갈래인지 — 앞에 오는 것이 먼저 걸린다.
+     앞쪽일수록 말투가 뚜렷해 잘못 걸릴 일이 적은 것들이다. */
+  var VOICE_RULES = [
+    { kind: "visit",   re: /(병원|의원|내과|외과|치과|한의원|약국|진료|처방|약\s*받|주사|검진)/ },
+    { kind: "money",   re: /(\d[\d,]*\s*원|결제|계산|샀|썼|지출|입금|월급)/ },
+    { kind: "movie",   re: /(영화|공연|봤|보기로|관람)/ },
+    { kind: "book",    re: /(책|읽었|읽기로|독서)/ },
+    { kind: "lecture", re: /(강의|수업|세미나|특강)/ },
+    { kind: "trip",    re: /(여행|다녀왔|다녀올|출장)/ },
+    /* 시각이 적혀 있으면 앞으로 할 일이라 일정으로 본다. 시각 없이 "만났" 처럼
+       지나간 말이면 만남 기록으로 — "두시에 회의" 와 "어제 김대리 만났어" 는
+       같은 사람 이야기라도 넣을 자리가 다르다. */
+    { kind: "schedule",re: /(\d{1,2}\s*시|한시|두시|세시|네시|다섯시|여섯시|일곱시|여덟시|아홉시|열시|열한시|열두시|예약|일정)/ },
+    { kind: "meeting", re: /(회의|미팅|만나|만났|뵀|약속)/ },
+    { kind: "work",    re: /(해야|할 일|하기로|처리|마무리)/ },
+    { kind: "diary",   re: /./ }          /* 어디에도 안 걸리면 일기로 */
+  ];
+
+  /* 말한 그대로는 제목이 되기 어렵다. "저녁엔 오펜하이머 보기로 했다" 에서
+     앞머리(때를 가리키는 말)와 말꼬리를 덜어 내 "오펜하이머" 만 남긴다.
+     너무 깎으면 뜻이 사라지므로 흔한 것만 덜어 낸다. */
+  /* 갈래 이름이 앞에 붙어 오는 일이 잦다 — "책 총 균 쇠", "영화 오펜하이머".
+     어느 갈래인지는 이미 알고 있으니 제목에 두 번 둘 까닭이 없다.
+     띄어쓰기를 요구해 "책상 정리" 같은 말이 깎이지 않게 한다. */
+  var VOICE_HEAD = {
+    book: /^책\s+/, movie: /^(영화|공연)\s+/, lecture: /^(강의|수업|세미나)\s+/,
+    trip: /^여행\s+/
+  };
+
+  function voiceTrim(text, kind) {
+    var t = String(text).trim();
+    if (kind && VOICE_HEAD[kind]) t = t.replace(VOICE_HEAD[kind], "");
+    t = t.replace(/^(그리고|그다음에|이따가?|아침엔?|점심엔?|저녁엔?|밤엔?|낮에|오전에|오후에)\s+/, "");
+    t = t.replace(/\s*(하기로|보기로|읽기로|가기로|만나기로)\s*(했다|했어|했음|함)$/, "");
+    t = t.replace(/\s*(했다|했어|했음|였다|이다|있다|있어|있음|왔다|갔다|봤다|봤어|읽었다|읽었어|받았다|받았어|끝냈다)$/, "");
+    t = t.replace(/\s*(하고|이고|있고|갔고|왔고|했고|봤고|받았고)$/, "");
+    return t.replace(/\s+/g, " ").trim() || String(text).trim();
+  }
+
+  function voiceKind(chunk) {
+    for (var i = 0; i < VOICE_RULES.length; i++) {
+      if (VOICE_RULES[i].re.test(chunk)) return VOICE_RULES[i].kind;
+    }
+    return "diary";
+  }
+
+  var VOICE_WHERE = {
+    visit: "병원기록", money: "돈", movie: "영화·공연", book: "책",
+    lecture: "강의", trip: "여행", meeting: "만남", schedule: "일정",
+    work: "할 일", diary: "일기"
+  };
+
+  /* 넣지는 않고 무엇을 어디에 넣을지만 헤아린다 */
+  function voicePlan(text, base) {
+    return voiceChunks(text).map(function (c) {
+      var w = takeWhen(" " + c + " ", base);
+      var kind = voiceKind(c);
+      var body = voiceTrim(w.rest.replace(/\s+/g, " ").trim() || c, kind);
+      return { kind: kind, where: VOICE_WHERE[kind], date: w.date, text: body, raw: c };
+    });
+  }
+
+  /* 헤아린 대로 넣는다. 갈래마다 이미 있는 파서를 그대로 쓴다 —
+     새로 적는 길을 또 만들면 두 길이 갈라진다. */
+  function voicePut(one) {
+    var fn = one.kind === "schedule" ? parseSchedule
+           : one.kind === "meeting"  ? parseMeeting
+           : one.kind === "visit"    ? function (tx, bs) { return parseVisit(tx, bs); }
+           : one.kind === "money"    ? parseMoney
+           : one.kind === "trip"     ? parseTrip
+           : one.kind === "work"     ? parseWork
+           : parseNote(one.kind);
+    return fn(" " + one.text + " ", one.date);
+  }
+
+  var voiceSeen = [];      /* 확인을 기다리는 것들 */
+
+  function voicePaint() {
+    var box = document.getElementById("voicePlan");
+    if (!box) return;
+    if (!voiceSeen.length) { box.innerHTML = ""; box.hidden = true; return; }
+    box.hidden = false;
+    box.innerHTML =
+      '<div class="vp-head">이렇게 넣을까요?</div>' +
+      voiceSeen.map(function (o, i) {
+        var dt = parseISO(o.date);
+        return '<label class="vp-row">' +
+          '<input type="checkbox" data-vp="' + i + '"' + (o.off ? "" : " checked") + ">" +
+          '<span class="vp-where">' + esc(o.where) + "</span>" +
+          '<span class="vp-when">' + (dt.getMonth() + 1) + "/" + dt.getDate() + "</span>" +
+          '<span class="vp-text">' + esc(o.text) + "</span></label>";
+      }).join("") +
+      '<div class="vp-foot">' +
+        '<button type="button" class="ghost" id="voiceCancel">그만두기</button>' +
+        '<button type="button" id="voiceOk">고른 것 넣기</button>' +
+      "</div>";
+  }
+
+  function voiceClear() { voiceSeen = []; voicePaint(); }
   /* ============================ 돌아보기 ============================
 
      그 기간에 이미 적어 둔 것을 모아 준다. 돌아보는 자리를 빈 칸으로 두면
@@ -7917,6 +8062,17 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     if (!t.tag && looksLikeCardSms(text)) kind = "card";
     var got, unknown = "", where = selected;
 
+    /* 말한 것은 바로 넣지 않고 먼저 보여준다 */
+    if (kind === "voice") {
+      voiceSeen = voicePlan(t.rest.trim(), selected);
+      voicePaint();
+      msg.className = "quick-msg";
+      msg.textContent = voiceSeen.length
+        ? voiceSeen.length + "가지로 나눴습니다. 맞으면 넣기를 누르세요."
+        : "알아듣지 못했습니다.";
+      return;
+    }
+
     if (kind === "health") {
       /* 건강도 날짜를 앞에 적을 수 있게 한다 — "어제 혈압 120/80", "8/3 체중 62" */
       var wh = takeWhen(t.rest, selected);
@@ -7968,6 +8124,38 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       (dt.getMonth() + 1) + "월 " + dt.getDate() + "일에 넣었습니다." +
       (unknown ? ' <span class="miss">모르는 말: ' + esc(unknown) + "</span>" : "");
   }
+
+  /* 확인 창 — 고른 것만 넣는다 */
+  document.getElementById("voicePlan").addEventListener("change", function (e) {
+    var b = e.target.closest("input[data-vp]");
+    if (!b) return;
+    var one = voiceSeen[+b.getAttribute("data-vp")];
+    if (one) one.off = !b.checked;
+  });
+
+  document.getElementById("voicePlan").addEventListener("click", function (e) {
+    if (e.target.closest("#voiceCancel")) { voiceClear(); return; }
+    if (!e.target.closest("#voiceOk")) return;
+
+    var put = voiceSeen.filter(function (o) { return !o.off; });
+    var done = [];
+    put.forEach(function (o) {
+      var r = voicePut(o);
+      if (r && !r.full) done.push(o.where + " " + o.text);
+    });
+    voiceClear();
+    var msg = document.getElementById("quickMsg");
+    if (!done.length) {
+      msg.className = "quick-msg";
+      msg.innerHTML = '<span class="miss">넣지 못했습니다.</span>';
+      return;
+    }
+    document.getElementById("quickText").value = "";
+    save(); render();
+    msg.className = "quick-msg ok";
+    msg.innerHTML = "<b>" + esc(done.length) + "가지</b>를 넣었습니다 — " +
+      esc(done.join(" · "));
+  });
 
   document.getElementById("quickAdd").addEventListener("click", quickSubmit);
   document.getElementById("quickText").addEventListener("keydown", function (e) {
