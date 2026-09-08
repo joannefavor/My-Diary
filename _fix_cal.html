@@ -2170,6 +2170,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       <div class="viewtoggle" id="lookSpan" role="group" aria-label="주·달">
         <button type="button" data-ls="week" aria-pressed="true">주</button>
         <button type="button" data-ls="month" aria-pressed="false">달</button>
+        <button type="button" data-ls="year" aria-pressed="false">해</button>
       </div>
       <button class="ghost" id="lookToday">이번</button>
     </header>
@@ -2743,7 +2744,8 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     if (!d.gift) d.gift = [];
     /* 돌아보며 적는 말. 그 기간의 첫날 밑에 담는다 — 주는 그 주 첫날,
        달은 그 달 1일. 날짜에 매여 있어야 동기화와 내보내기가 그대로 따라온다. */
-    if (!d.look) d.look = { week: "", month: "" };
+    if (!d.look) d.look = { week: "", month: "", year: "" };
+    if (d.look.year == null) d.look.year = "";
     return d;
   }
 
@@ -6503,7 +6505,9 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
 
   function lookStart() {
     if (lookAt) return lookAt;
-    return lookSpan === "week" ? iso(weekStart) : selected.slice(0, 7) + "-01";
+    if (lookSpan === "week") return iso(weekStart);
+    if (lookSpan === "year") return selected.slice(0, 4) + "-01-01";
+    return selected.slice(0, 7) + "-01";
   }
 
   function lookDates(start, span) {
@@ -6512,14 +6516,21 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       for (var i = 0; i < 7; i++) out.push(iso(addDays(parseISO(start), i)));
       return out;
     }
-    var y = Number(start.slice(0, 4)), m = Number(start.slice(5, 7));
-    var last = new Date(y, m, 0).getDate();
-    for (var d = 1; d <= last; d++) out.push(start.slice(0, 8) + pad(d));
+    var y = Number(start.slice(0, 4));
+    /* 해는 열두 달을 이어 붙인다. 하루씩 더해 가면 윤년을 따로 셈해야 한다 */
+    var months = span === "year"
+      ? [1,2,3,4,5,6,7,8,9,10,11,12]
+      : [Number(start.slice(5, 7))];
+    months.forEach(function (m) {
+      var last = new Date(y, m, 0).getDate();
+      for (var d = 1; d <= last; d++) out.push(y + "-" + pad(m) + "-" + pad(d));
+    });
     return out;
   }
 
   function lookShift(start, span, dir) {
     if (span === "week") return iso(addDays(parseISO(start), dir * 7));
+    if (span === "year") return (Number(start.slice(0, 4)) + dir) + "-01-01";
     var m = parseISO(start);
     m.setMonth(m.getMonth() + dir);
     return iso(m).slice(0, 7) + "-01";
@@ -6527,6 +6538,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
 
   function lookLabel(start, span) {
     var a = parseISO(start);
+    if (span === "year") return a.getFullYear() + "년";
     if (span === "month") return a.getFullYear() + "년 " + (a.getMonth() + 1) + "월";
     var b = addDays(a, 6);
     return (a.getMonth() + 1) + "월 " + a.getDate() + "일 – " +
@@ -6577,7 +6589,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
      달라졌는지 사람이 직접 견줘야 한다 — 그 일을 대신한다. */
   function lookMarks(now, prev, span) {
     var out = [];
-    var unit = span === "week" ? "지난주" : "지난달";
+    var unit = span === "week" ? "지난주" : span === "year" ? "지난해" : "지난달";
 
     if (now.sleep != null && prev.sleep != null) {
       var ds = now.sleep - prev.sleep;
@@ -9291,7 +9303,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     if (d.habitDone && Object.keys(d.habitDone).some(function (k) { return d.habitDone[k]; })) return false;
     if (d.mood != null || d.condition != null || d.overall != null) return false;
     if (d.note || d.workNote) return false;
-    if (d.look && (d.look.week || d.look.month)) return false;
+    if (d.look && (d.look.week || d.look.month || d.look.year)) return false;
     return true;
   }
   /* 빈 칸은 '그 날짜가 없는 것'과 같게 다룬다.

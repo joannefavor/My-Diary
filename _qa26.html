@@ -50,6 +50,26 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
        d.getElementById("lookTitle").textContent);
      log(txt().indexOf("지난달")!==-1||true,"달일 때는 지난달과 견준다");
 
+     /* 해로도 보는가 */
+     d.querySelector('#lookSpan button[data-ls="year"]').click();
+     setTimeout(function(){
+      log(/^\d+년$/.test(d.getElementById("lookTitle").textContent.trim()),
+        "해로도 본다",d.getElementById("lookTitle").textContent);
+      var yb=[].map.call(d.querySelectorAll("#lookSpan button[data-ls]"),
+        function(x){return x.getAttribute("data-ls");});
+      log(yb.join(",")==="week,month,year","주·달·해 셋이 있다",yb.join(","));
+      /* 해를 옮기면 제목이 바뀐다 */
+      var y1=d.getElementById("lookTitle").textContent;
+      d.getElementById("lookPrev").click();
+      setTimeout(function(){
+       var y2=d.getElementById("lookTitle").textContent;
+       log(parseInt(y2)===parseInt(y1)-1,"지난해로 옮겨진다",y1+" → "+y2);
+       d.getElementById("lookToday").click();
+       setTimeout(function(){
+        log(d.getElementById("lookTitle").textContent===y1,"'이번' 으로 돌아온다");
+        d.querySelector('#lookSpan button[data-ls="month"]').click();
+        setTimeout(function(){
+
      /* 적은 말이 남는가 */
      var box=d.getElementById("lookNote");
      box.value="이번 달은 잠이 부족했다"; ev(w,box,"change");
@@ -64,7 +84,17 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
       setTimeout(function(){
        log(d.getElementById("lookNote").value!=="이번 달은 잠이 부족했다",
          "주와 달은 따로 적힌다",'['+d.getElementById("lookNote").value+']');
-       out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
+       /* 해에 적은 말도 따로 */
+       d.querySelector('#lookSpan button[data-ls="year"]').click();
+       setTimeout(function(){
+        log(d.getElementById("lookNote").value!=="이번 달은 잠이 부족했다",
+          "해도 따로 적힌다",'['+d.getElementById("lookNote").value+']');
+        out.insertAdjacentHTML("beforeend","<b>통과 "+pass+" · 실패 "+fail+"</b>");
+       },400);
+      },400);
+     },400);
+    },400);
+   },400);
       },400);
      },400);
     },400);
