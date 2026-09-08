@@ -8953,6 +8953,12 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
      자동으로 내려받지는 않는다. 받아서 폼을 다시 그리면 적던 내용이 날아가기 때문이다
      (renderExceptForm 주석 참고). 내려받기는 연결할 때·페이지를 열 때·직접 누를 때만 한다. */
 
+  /* 이 판 번호는 올리는 덩이에 함께 실린다. 합치는 방식을 고칠 때마다 올릴 것.
+     기기마다 판이 다르면 같은 기록을 서로 다르게 합쳐서 한쪽이 버려질 수 있다.
+     실제로 PC 만 예전 판인 채로 화요일 혈당을 계속 버렸다. 브라우저는 화면을
+     사본으로 갖고 있어서, 고친 줄 모르고 며칠 지날 수 있다. */
+  var APP_BUILD = 20260909;
+
   var SYNC_STORE = "weekly-health-ledger-sync";
   var SYNC_BASE_STORE = "weekly-health-ledger-sync-base";
   var SYNC_SALT = "my-diary-sync-v1";
@@ -8980,7 +8986,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     syncMark();
     /* 이 칸은 '기기 간 동기화' 를 펴야 보인다. 접혀 있으면 못 보므로
        잘못된 소식만은 늘 보이는 아래 저장 표시에도 함께 낸다. */
-    if (tone === "bad" && msg) stamp(msg);
+    if ((tone === "bad" || tone === "warn") && msg) stamp(msg);
     syncEls.status.textContent = msg || "";
     if (tone) syncEls.status.setAttribute("data-tone", tone);
     else syncEls.status.removeAttribute("data-tone");
@@ -9386,6 +9392,13 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
 
   /* 사람이 적은 것이 하루라도 있는가. 화면을 열기만 해도 오늘 자리는 생기므로
      날짜 수를 세면 안 된다. */
+  /* 어느 쪽이 예전 판인가. 판이 없으면 이 표를 넣기 전의 예전 판이다.
+     같으면 빈 문자열 — 아무 말도 하지 않는다. */
+  function buildSide(theirs) {
+    if (theirs === APP_BUILD) return "";
+    return !theirs || theirs < APP_BUILD ? "저쪽" : "이쪽";
+  }
+
   function hasRecords(days) {
     return Object.keys(days || {}).some(function (d) { return !emptyDay(days[d]); });
   }
@@ -9514,6 +9527,8 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       /* 이 코드로 올려둔 것이 아직 없다 = 새 방이다 */
       if (!r.body.blob) return { conflicts: [], got: false, newRoom: true };
       return unseal(sync.key, r.body.blob).then(function (remote) {
+        /* 저쪽이 다른 판이면 알린다. 판 없음 = 이 표를 넣기 전의 예전 판이다. */
+        var oldSide = buildSide(remote && remote.build);
         var before = stable(state.days[selected]);
         var res = mergeInto(remote);
         var shown = stable(state.days[selected]) !== before;
@@ -9523,7 +9538,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
         save();
         sync.merging = false;
         if (shown) render(); else renderExceptForm();
-        return { conflicts: res.conflicts, got: res.changed };
+        return { conflicts: res.conflicts, got: res.changed, oldSide: oldSide };
       }, function () {
         throw new Error("코드가 다릅니다 — 올려둔 기록을 열지 못했습니다.");
       });
@@ -9537,7 +9552,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     Object.keys(state.days).forEach(function (d) {
       if (!emptyDay(state.days[d])) days[d] = state.days[d];
     });
-    var snapshot = { days: days, meds: medList(), habits: habitList() };
+    var snapshot = { days: days, meds: medList(), habits: habitList(), build: APP_BUILD };
     return seal(sync.key, snapshot).then(function (blob) {
       return syncApi("PUT", { blob: blob, rev: sync.rev });
     }).then(function (r) {
@@ -9578,6 +9593,14 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
            넣었을 가능성이 높다. 오타 한 글자면 조용히 딴 방이 만들어지고,
            양쪽 다 "동기화 중"으로 보이면서 영영 만나지 못한다.
            실제로 두 기기가 서로 다른 코드로 며칠을 지냈다. */
+        if (res && res.oldSide) {
+          syncSay(res.oldSide === "저쪽"
+            ? "다른 기기가 예전 판을 쓰고 있습니다 — 그 기기에서 새로고침해 주세요. " +
+              "판이 다르면 합치는 방식이 달라 한쪽 기록이 버려질 수 있습니다."
+            : "이 기기가 예전 판입니다 — 새로고침해 주세요. " +
+              "판이 다르면 합치는 방식이 달라 한쪽 기록이 버려질 수 있습니다.", "warn");
+          return;
+        }
         if (newRoom && hasRecords(state.days)) {
           syncSay("이 코드로 올려둔 기록이 없습니다 — 처음 쓰는 코드입니다. " +
             "다른 기기에서 쓰던 코드가 맞는지 확인하세요. 한 글자만 달라도 서로 만나지 못합니다. " +

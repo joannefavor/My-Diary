@@ -101,6 +101,16 @@ t("화면만 열어 생긴 빈 자리는 세지 않는다",
 t("날짜가 아예 없어도 세지 않는다", M.hasRecords({}), false);
 t("없는 것을 넘겨도 견딘다", M.hasRecords(null), false);
 
+/* ---------- 어느 쪽이 예전 판인가 ----------
+   PC 만 예전 판인 채로 화요일 혈당을 계속 버렸다. 브라우저가 화면을 사본으로
+   갖고 있어서, 고친 줄 모르고 며칠 지날 수 있다. */
+var bs = new Function("APP_BUILD",
+  cut("  function buildSide(theirs) {", "\n  }") + "\nreturn buildSide;")(20260909);
+t("판이 같으면 아무 말도 하지 않는다", bs(20260909), "");
+t("저쪽이 낮으면 저쪽이 예전 판", bs(20260901), "저쪽");
+t("판이 아예 없으면 저쪽이 예전 판 — 표를 넣기 전 판이다", bs(undefined), "저쪽");
+t("저쪽이 높으면 이쪽이 예전 판", bs(20261001), "이쪽");
+
 /* ---------- 올리기 예약 ---------- */
 var qSrc = cut("  function queueSync() {", "syncRun(\"올리는 중…\");\n  }");
 var ran = [], timers = 0;
