@@ -22,7 +22,8 @@ function t(name, got, want) {
 
 /* ---------- 합치기 ---------- */
 var mergeSrc = cut("  function stable(v) {", "return { days: out, conflicts: conflicts, changed: changed };\n  }");
-var M = new Function(mergeSrc + "\nreturn { stable: stable, mergeDays: mergeDays, emptyDay: emptyDay };")();
+var M = new Function(mergeSrc +
+  "\nreturn { stable: stable, mergeDays: mergeDays, emptyDay: emptyDay, realVal: realVal };")();
 
 var d1 = { memo: [{ id: "m1", title: "가", notes: "" }] };
 var d2 = { memo: [{ id: "m2", title: "나", notes: "" }] };
@@ -45,6 +46,49 @@ t("저쪽 것을 받아 넣는다",
 t("이쪽의 빈 칸이 저쪽 기록을 밀어내지 않는다",
   M.mergeDays({ days: {} }, { days: { "2026-09-03": {} } },
               { days: { "2026-09-03": d1 } }).days["2026-09-03"].memo[0].title, "가");
+
+/* ---------- 한 날 안에서 칸끼리 ----------
+   "어제 공복혈당 기록이 핸드폰에는 있는데 PC 에서는 안 보이네" 에서 나온 자리다.
+   예전에는 하루를 통째로 하나로 골라서, 같은 날을 양쪽에서 건드리면
+   한쪽 하루가 통째로 버려졌다. */
+
+/* PC 에서는 할 일을, 휴대폰에서는 혈당을 적었다. 둘 다 남아야 한다. */
+var was = { "2026-09-08": { glucose: null, todos: [{ text: "QT", done: false }] } };
+var pc  = { "2026-09-08": { glucose: null, todos: [{ text: "QT", done: true }] } };
+var ph  = { "2026-09-08": { glucose: 96,   todos: [{ text: "QT", done: false }] } };
+var got = M.mergeDays({ days: was }, { days: pc }, { days: ph });
+
+t("휴대폰에서 적은 혈당이 PC 의 할 일에 밀려나지 않는다",
+  got.days["2026-09-08"].glucose, 96);
+t("PC 에서 한 할 일 표시도 그대로 남는다",
+  got.days["2026-09-08"].todos[0].done, true);
+t("서로 다른 칸이면 부딪힘이 아니다", got.conflicts, []);
+t("저쪽에서 받은 것이 있다고 센다", got.changed, true);
+
+/* 같은 칸을 양쪽이 다르게 적었을 때만 이 기기 것을 남기고 알린다 */
+var c = M.mergeDays({ days: { "2026-09-08": { glucose: 90 } } },
+                    { days: { "2026-09-08": { glucose: 91 } } },
+                    { days: { "2026-09-08": { glucose: 96 } } });
+t("같은 칸이 다르면 이 기기 것을 남긴다", c.days["2026-09-08"].glucose, 91);
+t("그때만 부딪힘으로 알린다", c.conflicts, ["2026-09-08"]);
+
+/* base 를 모르는 기기에서 이쪽 빈 칸이 저쪽 값을 이기면 안 된다 */
+var f = M.mergeDays({ days: {} },
+                    { days: { "2026-09-08": { glucose: null, memo: [] } } },
+                    { days: { "2026-09-08": { glucose: 96, memo: [] } } });
+t("처음 연결한 기기의 빈 칸이 저쪽 값을 밀어내지 않는다",
+  f.days["2026-09-08"].glucose, 96);
+
+/* 지우기는 그대로 전해져야 한다 */
+var del = M.mergeDays({ days: { "2026-09-08": { glucose: 96 } } },
+                      { days: { "2026-09-08": { glucose: null } } },
+                      { days: { "2026-09-08": { glucose: 96 } } });
+t("이쪽에서 지운 것은 저쪽에도 전해진다", del.days["2026-09-08"], undefined);
+
+t("0 은 비운 것이 아니라 적은 값이다", M.realVal(0), 0);
+t("빈 목록은 적지 않은 것", M.realVal([]), undefined);
+t("빈 칸만 든 덩이도 적지 않은 것", M.realVal({ b: "", l: "" }), undefined);
+t("하나라도 적혔으면 적은 것", M.realVal({ b: "", l: "국수" }).l, "국수");
 
 /* ---------- 올리기 예약 ---------- */
 var qSrc = cut("  function queueSync() {", "syncRun(\"올리는 중…\");\n  }");

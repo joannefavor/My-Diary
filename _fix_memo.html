@@ -9339,6 +9339,41 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
      지운 날도 빈 칸이 되므로, 지우기가 저쪽에 전해지는 동작은 그대로다. */
   function realDay(d) { return emptyDay(d) ? undefined : d; }
 
+  /* 비어 있는 칸은 '적지 않은 것'으로 친다.
+     이것이 없으면, base 를 모르는 기기에서 이쪽의 빈 칸이 저쪽 기록과 부딪쳐
+     이 기기 것(= 빈 칸)이 이겨 버린다. 하루를 통째로 볼 때 realDay 가 하던 일을
+     칸 하나하나에 대해서도 해 주는 것이다.
+     0 과 false 는 비운 것이 아니라 적은 값이므로 그대로 둔다. */
+  function realVal(v) {
+    if (v == null || v === "") return undefined;
+    if (Array.isArray(v)) return v.length ? v : undefined;
+    if (typeof v === "object") {
+      var any = Object.keys(v).some(function (k) { return realVal(v[k]) !== undefined; });
+      return any ? v : undefined;
+    }
+    return v;
+  }
+
+  /* 하루 안에서 칸끼리 합친다.
+     예전에는 하루를 통째로 하나로 골랐다. 그래서 **같은 날을 양쪽에서 건드리면
+     한쪽 하루가 통째로 버려졌다** — PC 에서 그날 할 일을 적고 휴대폰에서 공복혈당을
+     적으면, 합칠 때 PC 것이 이기면서 혈당이 사라진다. 혈당과 할 일은 서로 아무
+     상관이 없는데도 그렇다.
+     이제 혈당은 혈당끼리, 할 일은 할 일끼리 견준다. 정말로 같은 칸을 양쪽에서
+     다르게 적었을 때만 부딪힘으로 센다. */
+  function mergeDay(b, l, r) {
+    var out = {}, seen = {}, conflict = false;
+    [b, l, r].forEach(function (x) {
+      Object.keys(x || {}).forEach(function (k) { seen[k] = 1; });
+    });
+    Object.keys(seen).forEach(function (k) {
+      var got = pick3(realVal((b || {})[k]), realVal((l || {})[k]), realVal((r || {})[k]));
+      if (got.v !== undefined) out[k] = got.v;
+      if (got.conflict) conflict = true;
+    });
+    return { day: out, conflict: conflict };
+  }
+
   function mergeDays(base, local, remote) {
     var out = {}, conflicts = [], seen = {}, changed = false;
     [base, local, remote].forEach(function (s) {
@@ -9346,11 +9381,10 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
     });
     Object.keys(seen).sort().forEach(function (d) {
       var mine = realDay(local.days[d]);
-      var got = pick3(realDay(base.days[d]), mine, realDay(remote.days[d]));
-      if (got.v) out[d] = got.v;
-      /* 고른 것이 이 기기 것 그대로가 아니면 저쪽에서 뭔가 들어온 것이다.
-         pick3 는 넘겨준 객체를 그대로 돌려주므로 참조만 견주면 된다. */
-      if (got.v !== mine) changed = true;
+      var got = mergeDay(realDay(base.days[d]), mine, realDay(remote.days[d]));
+      /* 합친 결과가 빈 날이면 없는 날로 둔다 — 지우기가 저쪽에 전해지는 길이다 */
+      if (!emptyDay(got.day)) out[d] = got.day;
+      if (stable(out[d]) !== stable(mine)) changed = true;
       if (got.conflict) conflicts.push(d);
     });
     return { days: out, conflicts: conflicts, changed: changed };
