@@ -22,8 +22,8 @@ function t(name, got, want) {
 
 /* ---------- 합치기 ---------- */
 var mergeSrc = cut("  function stable(v) {", "return { days: out, conflicts: conflicts, changed: changed };\n  }");
-var M = new Function(mergeSrc +
-  "\nreturn { stable: stable, mergeDays: mergeDays, emptyDay: emptyDay, realVal: realVal };")();
+var M = new Function(mergeSrc + "\nreturn { stable: stable, mergeDays: mergeDays, emptyDay: emptyDay," +
+  " realVal: realVal, hasRecords: hasRecords };")();
 
 var d1 = { memo: [{ id: "m1", title: "가", notes: "" }] };
 var d2 = { memo: [{ id: "m2", title: "나", notes: "" }] };
@@ -89,6 +89,17 @@ t("0 은 비운 것이 아니라 적은 값이다", M.realVal(0), 0);
 t("빈 목록은 적지 않은 것", M.realVal([]), undefined);
 t("빈 칸만 든 덩이도 적지 않은 것", M.realVal({ b: "", l: "" }), undefined);
 t("하나라도 적혔으면 적은 것", M.realVal({ b: "", l: "국수" }).l, "국수");
+
+/* ---------- 텅 빈 방에 들어섰는가 ----------
+   "비밀코드가 다르네?" — 두 기기가 서로 다른 코드로 며칠을 지냈다.
+   양쪽 다 '동기화 중' 으로 보이면서 영영 만나지 못한다.
+   적어 둔 것이 있는 기기가 빈 방에 처음 들어서면 코드를 의심해야 한다. */
+t("적은 것이 하나라도 있으면 그렇다고 한다",
+  M.hasRecords({ "2026-09-08": { glucose: 96 } }), true);
+t("화면만 열어 생긴 빈 자리는 세지 않는다",
+  M.hasRecords({ "2026-09-08": {}, "2026-09-09": {} }), false);
+t("날짜가 아예 없어도 세지 않는다", M.hasRecords({}), false);
+t("없는 것을 넘겨도 견딘다", M.hasRecords(null), false);
 
 /* ---------- 올리기 예약 ---------- */
 var qSrc = cut("  function queueSync() {", "syncRun(\"올리는 중…\");\n  }");
