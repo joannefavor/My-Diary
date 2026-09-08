@@ -1803,6 +1803,16 @@
     background: var(--accent); border-color: var(--accent); color: var(--on-accent);
   }
 
+  /* 맞춤 상태를 접힌 칸 안에만 두면 아무도 보지 않는다.
+     끊겨 있는 줄 모른 채 며칠씩 적는 일이 실제로 있었다. */
+  .sync-dot { font-size: 12px; color: var(--muted); }
+  .sync-dot[data-tone="off"]  { color: var(--s2); font-weight: 600; }
+  .sync-dot[data-tone="bad"]  { color: var(--critical); font-weight: 600; }
+  .sync-mine {
+    font-size: 12px; color: var(--muted); margin-top: 6px;
+    font-family: var(--mono); letter-spacing: .02em;
+  }
+  .sync-mine b { color: var(--ink-2); font-weight: 600; }
   .sync-size { font-size: 12px; color: var(--muted); margin-top: 4px; }
   .sync-size b { color: var(--ink-2); font-weight: 600; }
   .sync-size.warn { color: var(--s2); }
@@ -2459,6 +2469,7 @@
       </div>
       <div class="sync-status" id="syncStatus" role="status" aria-live="polite"></div>
       <div class="sync-size" id="syncSize"></div>
+      <div class="sync-mine" id="syncMine"></div>
       <p class="sync-note">
         기록은 이 코드로 <strong>이 기기 안에서 암호로 잠근 뒤</strong> 올라갑니다.
         코드는 전송되지 않으므로 서버도, 저장소 회사도 내용을 열어볼 수 없습니다.
@@ -2472,6 +2483,7 @@
   <footer class="foot">
     <span id="savedAt">기록은 이 브라우저에 저장됩니다.</span>
     <span class="size-warn" id="sizeWarn" hidden></span>
+    <span class="sync-dot" id="syncDot"></span>
     <span class="spacer"></span>
     <!-- 방명록은 Supabase 프로젝트가 사라져 지금은 열어도 글이 안 나온다.
          코드(guestbook.html, api/guestbook.js)는 그대로 두었으니,
@@ -8934,7 +8946,7 @@
   var CODE_ALPHABET = "23456789abcdefghjkmnpqrstuvwxyz";   // 0/O, 1/l/I 처럼 헷갈리는 글자는 뺐다
 
   /* dirty: 아직 안 올린 것이 있다  ·  merging: 받아 합치는 중이라 올리기를 걸지 않는다 */
-  var sync = { code: "", id: "", key: null, rev: 0,
+  var sync = { code: "", id: "", key: null, rev: 0, at: "",
                busy: false, dirty: false, merging: false, timer: null };
 
   var syncEls = {
@@ -8949,6 +8961,7 @@
   };
 
   function syncSay(msg, tone) {
+    syncMark();
     /* 이 칸은 '기기 간 동기화' 를 펴야 보인다. 접혀 있으면 못 보므로
        잘못된 소식만은 늘 보이는 아래 저장 표시에도 함께 낸다. */
     if (tone === "bad" && msg) stamp(msg);
@@ -8962,7 +8975,34 @@
   }
   function normCode(s) { return String(s || "").trim().toLowerCase().replace(/\s+/g, ""); }
 
+  /* 두 기기가 같은 방에 있는지, 저쪽 번호가 같은 데까지 왔는지를 보여준다.
+     코드는 통째로 내보이면 안 되므로 끝 네 자만 낸다 — 같은 방인지 견주기에는
+     그것으로 넉넉하고, 어깨너머로 보여도 코드가 새지 않는다. */
+  function syncMark() {
+    var dot = document.getElementById("syncDot");
+    var mine = document.getElementById("syncMine");
+    if (!dot) return;
+    if (!syncOnline()) {
+      var saved = null;
+      try { saved = JSON.parse(localStorage.getItem(SYNC_STORE) || "null"); } catch (e) { saved = null; }
+      dot.textContent = saved && saved.code ? "동기화 연결 안 됨" : "동기화 꺼짐 — 이 기기에만 있습니다";
+      dot.setAttribute("data-tone", "off");
+      if (mine) mine.textContent = "";
+      return;
+    }
+    dot.textContent = "맞춤 " + (sync.at || "아직") + " · 방 " + sync.code.slice(-4) +
+                      " · 번호 " + sync.rev;
+    dot.removeAttribute("data-tone");
+    if (mine) {
+      mine.innerHTML = "이 기기 — 방 <b>…" + esc(sync.code.slice(-4)) + "</b> · " +
+        "저쪽 번호 <b>" + sync.rev + "</b> · 마지막 맞춤 <b>" + esc(sync.at || "아직 없음") + "</b>" +
+        "<br>두 기기의 <b>방</b>이 다르면 서로 만나지 못합니다. " +
+        "<b>번호</b>가 같아지면 같은 기록을 보고 있는 것입니다.";
+    }
+  }
+
   function syncPaint() {
+    syncMark();
     paintSize();
     var on = syncOnline();
     syncEls.on.hidden = on;
@@ -9506,6 +9546,7 @@
       })
       .then(function (res) {
         var t = new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+        sync.at = t;
         if (res && res.conflicts && res.conflicts.length) {
           syncSay("맞췄습니다 · " + t + " — 다만 " + res.conflicts.length +
             "일치는 두 기기에서 다르게 적혀 있어 이 기기 것을 남겼습니다 (" +
@@ -9601,7 +9642,7 @@
 
   function syncDisconnect() {
     clearTimeout(sync.timer);
-    sync = { code: "", id: "", key: null, rev: 0,
+    sync = { code: "", id: "", key: null, rev: 0, at: "",
              busy: false, dirty: false, merging: false, timer: null };
     try {
       localStorage.removeItem(SYNC_STORE);
