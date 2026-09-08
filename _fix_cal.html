@@ -1829,6 +1829,11 @@
   .sync-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 9px; }
   .sync-row .field { flex: 1 1 240px; }
   .sync-row .field input[type="text"] { font-family: var(--mono); letter-spacing: .06em; }
+  /* 연결 중에는 코드를 못 고친다. 그런데 여느 칸과 똑같이 생겨서,
+     고쳐 써도 안 바뀌는 이유를 알 길이 없었다. */
+  .sync-row .field input[readonly] {
+    background: var(--surface-2); color: var(--muted); cursor: not-allowed;
+  }
   .sync-actions { display: flex; flex-wrap: wrap; gap: 7px; }
   .sync-status {
     font-size: 12.5px; color: var(--ink-2); min-height: 18px; line-height: 1.5;
@@ -2471,6 +2476,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
         <div class="sync-actions">
           <button type="button" id="syncMake">새로 만들기</button>
           <button type="button" id="syncCopy">코드 복사</button>
+          <button type="button" id="syncChange" hidden>코드 바꾸기</button>
           <button type="button" id="syncOn">연결</button>
           <button type="button" id="syncOff" hidden>연결 끊기</button>
           <button type="button" id="syncNow" hidden>지금 맞추기</button>
@@ -8966,6 +8972,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     on: document.getElementById("syncOn"),
     off: document.getElementById("syncOff"),
     now: document.getElementById("syncNow"),
+    change: document.getElementById("syncChange"),
     status: document.getElementById("syncStatus")
   };
 
@@ -9019,6 +9026,8 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     syncEls.off.hidden = !on;
     syncEls.now.hidden = !on;
     syncEls.code.readOnly = on;
+    syncEls.change.hidden = !on;
+    syncEls.code.title = on ? "코드를 바꾸려면 ‘코드 바꾸기’ 를 누르세요" : "";
   }
 
   /* ---------- 화면 잠금 ----------
@@ -9705,6 +9714,23 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       });
     } else { done(); }
   });
+  /* 잠긴 칸을 눌렀을 때 말해 준다. 여기서 막히면 어디로 가야 하는지 알 수 없다 —
+     실제로 "핸드폰 비밀번호가 안 바뀌네" 하고 멈춰 섰다. */
+  syncEls.code.addEventListener("click", function () {
+    if (this.readOnly) syncSay("연결 중에는 코드를 고칠 수 없습니다. ‘코드 바꾸기’ 를 누르세요.", "warn");
+  });
+
+  /* 다른 기기와 코드를 맞추려면 끊고 새로 넣어야 한다. 두 걸음을 한 걸음으로 줄인다.
+     끊을 때 이전 방의 기준점도 함께 지워진다 — 남아 있으면 새 방에서
+     엉뚱한 것을 '지운 것' 으로 오해한다. */
+  syncEls.change.addEventListener("click", function () {
+    syncDisconnect();
+    syncEls.code.value = "";
+    syncEls.code.focus();
+    syncSay("이제 다른 기기의 코드를 붙여넣고 ‘연결’ 을 누르세요. " +
+      "이 기기 기록은 그대로 있고, 연결하면 양쪽 기록이 합쳐집니다.");
+  });
+
   syncEls.on.addEventListener("click", function () { syncConnect(normCode(syncEls.code.value)); });
   syncEls.code.addEventListener("keydown", function (e) {
     if (e.key === "Enter" && !syncOnline()) { e.preventDefault(); syncConnect(normCode(this.value)); }
