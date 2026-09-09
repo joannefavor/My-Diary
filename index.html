@@ -1805,6 +1805,21 @@
 
   /* 맞춤 상태를 접힌 칸 안에만 두면 아무도 보지 않는다.
      끊겨 있는 줄 모른 채 며칠씩 적는 일이 실제로 있었다. */
+  .repeat-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .repeat-foot .repeat-msg { flex: 1 1 220px; margin: 0; font-size: 13px; color: var(--muted); }
+  .repeat-list { margin-top: 10px; display: flex; flex-direction: column; gap: 5px; }
+  .repeat-row {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    padding: 7px 9px; border: 1px solid var(--hair); border-radius: 7px;
+    background: var(--surface);
+  }
+  .repeat-row .rp-text { flex: 1 1 180px; color: var(--ink); }
+  .repeat-row .rp-days { font-family: var(--mono); color: var(--accent-ink); font-weight: 600; }
+  .repeat-row .rp-from {
+    font-size: 12px; color: var(--muted);
+    border: 1px solid var(--hair); border-radius: 5px; padding: 1px 6px;
+  }
+  .repeat-row .rp-have { font-size: 12px; color: var(--sage-ink); }
   .sync-dot { font-size: 12px; color: var(--muted); }
   .sync-dot[data-tone="off"]  { color: var(--s2); font-weight: 600; }
   .sync-dot[data-tone="bad"]  { color: var(--critical); font-weight: 600; }
@@ -2203,6 +2218,20 @@
       <button class="ghost" id="habAdd">+ 습관 추가</button>
     </header>
     <div class="habwrap"><div class="habgrid" id="habGrid"></div></div>
+  </section>
+
+  <section class="panel" data-page="habit">
+    <header>
+      <h2>되풀이되는 것</h2>
+      <span class="hint">적어 둔 기록에서 여러 날 되풀이된 말을 세어 봅니다</span>
+    </header>
+    <div class="repeat">
+      <div class="repeat-foot">
+        <p class="repeat-msg" id="repeatMsg">눌러 보면 그동안 무엇을 되풀이해 적으셨는지 세어 드립니다.</p>
+        <button id="repeatFind">찾아보기</button>
+      </div>
+      <div class="repeat-list" id="repeatList"></div>
+    </div>
   </section>
 
   <!-- 아직 내용을 정하지 않은 페이지들. 무엇을 적을지 정하면 이 자리를 채운다. -->
@@ -2943,6 +2972,17 @@
 
 
   /* ============================ 유틸 ============================ */
+
+  /* 앞말의 받침에 따라 조사를 고른다 — "이번 달를", "약 먹기 을(를)" 을 막는다.
+     한글 낱자에서 받침 자리는 (코드 - 0xAC00) % 28 로 안다. 한글이 아니면
+     (숫자·영문) 받침이 없는 것으로 본다 — "QT 를", "5잔 을" 처럼 말하지 않는다.
+     같은 셈이 두 곳에서 필요해져 여기로 모았다. */
+  function josa(word, withJong, without) {
+    var w = String(word == null ? "" : word);
+    var last = w.charCodeAt(w.length - 1);
+    var jong = last >= 0xAC00 && last <= 0xD7A3 ? (last - 0xAC00) % 28 : 0;
+    return jong ? withJong : without;
+  }
 
   function esc(s) {
     return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
@@ -6654,11 +6694,8 @@
     var what = span === "week" ? (here ? "이번 주" : "그 주")
              : span === "month" ? (here ? "이번 달" : "그 달")
              : (here ? "올해" : "그 해");
-    /* 받침이 있으면 '을', 없으면 '를'. "이번 달를" 이라고 나오던 것을 고친다.
-       한글 낱자에서 받침 자리는 (코드 - 0xAC00) % 28 로 안다. */
-    var last = what.charCodeAt(what.length - 1);
-    var jong = last >= 0xAC00 && last <= 0xD7A3 ? (last - 0xAC00) % 28 : 0;
-    return what + (jong ? "을" : "를") + " 돌아보며 — 좋았던 것, 아쉬운 것, 다음에 할 것";
+    return what + josa(what, "을", "를") +
+      " 돌아보며 — 좋았던 것, 아쉬운 것, 다음에 할 것";
   }
 
   function renderLook() {
@@ -6811,6 +6848,125 @@
     for (var i = 1; i <= last; i++) out.push(ym + "-" + pad(i));
     return out;
   }
+
+  /* ====================== 되풀이 찾기 ======================
+
+     "어떤게 반복되는지 생각해볼게" — 짐작으로 정하는 것보다 실제로 무엇을
+     되풀이해 적었는지가 정확하다. 적어 둔 기록을 그대로 세어 본다.
+
+     세는 단위는 '몇 번' 이 아니라 '며칠' 이다. 하루에 같은 말을 두 번 적어도
+     그 날은 하루다. 되풀이란 날을 건너뛰며 다시 오는 것을 뜻한다. */
+
+  var REPEAT_MIN = 3;    /* 사흘은 되어야 되풀이라 부를 만하다 */
+  var REPEAT_MAX = 15;
+
+  /* 어느 칸에서 나온 말인지 짧은 이름으로 보여준다 */
+  var REPEAT_FROM = {
+    history: "발자취", knowledge: "배움", faith: "마음", prayer: "기도",
+    worklog: "업무일지", memo: "메모", movie: "영화", lecture: "강의", book: "책"
+  };
+
+  /* 띄어쓰기와 대소문자만 고른다. 그 이상 손대면 다른 말이 한 덩이가 된다. */
+  function repeatKey(t) { return String(t).replace(/\s+/g, " ").trim().toLowerCase(); }
+
+  function repeatScan() {
+    var bag = {};
+    function note(text, from, date) {
+      var t = String(text == null ? "" : text).replace(/\s+/g, " ").trim();
+      if (t.length < 2) return;               /* 한 글자는 세지 않는다 */
+      var k = from + "\u0000" + repeatKey(t);
+      var it = bag[k] || (bag[k] = { text: t, from: from, days: {} });
+      it.days[date] = 1;
+    }
+
+    Object.keys(state.days).forEach(function (date) {
+      var d = peek(date);
+      if (!d) return;
+
+      (d.todos || []).forEach(function (t) { if (t) note(t.text, "할 일", date); });
+      (d.schedule || []).forEach(function (x) { if (x) note(x.title, "일정", date); });
+      (d.meetings || []).forEach(function (x) { if (x) note(x.title, "만남", date); });
+      (d.visits || []).forEach(function (x) { if (x) note(x.place, "병원", date); });
+      Object.keys(REPEAT_FROM).forEach(function (k) {
+        (d[k] || []).forEach(function (n) { if (n) note(n.title, REPEAT_FROM[k], date); });
+      });
+
+      ["b", "l", "d", "s"].forEach(function (m) {
+        if (d.menu) note(d.menu[m], "끼니", date);
+      });
+
+      /* 숫자는 말로 바꿔 센다 — "물 5잔" 은 그대로 습관 이름이 될 수 있다 */
+      if (d.exercise && (d.exercise.kind || d.exercise.min != null)) {
+        note((d.exercise.kind || "운동") +
+             (d.exercise.min != null ? " " + d.exercise.min + "분" : ""), "운동", date);
+      }
+      if (d.water != null) note("물 " + d.water + "잔", "몸", date);
+      /* 수면은 시각을 적었을 때만 본다. 숫자 하나(시간)로 적은 날은 시각이 없다. */
+      if (d.sleep && typeof d.sleep === "object") {
+        if (d.sleep.from) note("취침 " + d.sleep.from, "몸", date);
+        if (d.sleep.to) note("기상 " + d.sleep.to, "몸", date);
+      }
+    });
+
+    return Object.keys(bag).map(function (k) {
+      var it = bag[k];
+      return { text: it.text, from: it.from, days: Object.keys(it.days).length };
+    }).filter(function (r) { return r.days >= REPEAT_MIN; })
+      .sort(function (a, b) { return b.days - a.days || a.text.localeCompare(b.text, "ko"); })
+      .slice(0, REPEAT_MAX);
+  }
+
+  /* 이미 습관으로 만들어 둔 말인가 */
+  function repeatHave(text) {
+    var k = repeatKey(text);
+    return habitList().some(function (h) { return repeatKey(h.name) === k; });
+  }
+
+  function renderRepeat(rows) {
+    var host = document.getElementById("repeatList");
+    var msg = document.getElementById("repeatMsg");
+    if (!host) return;
+    if (!rows) { host.innerHTML = ""; return; }
+
+    if (!rows.length) {
+      host.innerHTML = "";
+      msg.textContent = "사흘 이상 되풀이된 말이 아직 없습니다. " +
+        "기록이 더 쌓이면 다시 눌러 보세요.";
+      return;
+    }
+    msg.textContent = "여러 날 되풀이해 적으신 말입니다. " +
+      "‘습관으로’ 를 누르면 오늘 화면에서 한 번 눌러 표시할 수 있게 됩니다.";
+    host.innerHTML = rows.map(function (r) {
+      var have = repeatHave(r.text);
+      return '<div class="repeat-row">' +
+        '<span class="rp-from">' + esc(r.from) + "</span>" +
+        '<span class="rp-text">' + esc(r.text) + "</span>" +
+        '<span class="rp-days">' + r.days + "일</span>" +
+        (have
+          ? '<span class="rp-have">이미 습관</span>'
+          : '<button type="button" class="ghost" data-rp="' + esc(r.text) + '">습관으로</button>') +
+        "</div>";
+    }).join("");
+  }
+
+  document.getElementById("repeatFind").addEventListener("click", function () {
+    renderRepeat(repeatScan());
+  });
+
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-rp]");
+    if (!b) return;
+    var name = b.getAttribute("data-rp");
+    if (repeatHave(name)) return;
+    habitList().push({ id: uid(), name: name });
+    save();
+    renderHabits();
+    renderHabitNow();
+    renderRepeat(repeatScan());
+    document.getElementById("repeatMsg").textContent =
+      "‘" + name + "’" + josa(name, "을", "를") +
+      " 습관으로 만들었습니다. 오늘 화면에서 눌러 표시하세요.";
+  });
 
   function renderHabits() {
     var host = document.getElementById("habGrid");

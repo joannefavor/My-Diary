@@ -81,6 +81,21 @@ SEED
 python3 _mkdbg.py _fix_rx.html <<'SEED'
 localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],habits:[]}));
 SEED
+python3 _mkdbg.py _fix_rep.html <<'SEED'
+/* 되풀이 찾기 — 날마다 같은 것, 가끔 같은 것, 날마다 다른 것을 섞어 둔다 */
+var st={days:{},meds:[],habits:[{id:"h1",name:"운동"}]};
+function isoOf(y,m,d){return y+"-"+String(m).padStart(2,"0")+"-"+String(d).padStart(2,"0");}
+for(var i=1;i<=20;i++){
+  var k=isoOf(2026,8,i), o={};
+  o.todos=[{text:"QT",done:true},{text:"약 먹기",done:i%2===0},{text:"장보기"+(i>18?"":i),done:false}];
+  o.water=5; o.sleep={from:"23:00",to:"06:00"};
+  o.menu={b:"현미밥",l:"국수",d:"현미밥",s:""};
+  if(i%3===0) o.exercise={min:30,kind:"걷기"};
+  if(i<=4) o.memo=[{id:"m"+i,title:"성경 읽기",notes:""}];
+  st.days[k]=o;
+}
+localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
+SEED
 python3 _mkdbg.py _fix_hide.html <<'SEED'
 var st={days:{},meds:[],habits:[]};
 for(var i=1;i<=12;i++){var k="2026-07-"+String(i).padStart(2,"0");
@@ -186,7 +201,7 @@ done
 
 echo
 echo "— 화면 시험"
-for f in _qa.html _qa3.html _qa4.html _qa5.html _qa6.html _qa7.html _qa8.html _qa9.html _qa10.html _qa11.html _qa12.html _qa13.html _qa14.html _qa15.html _qa16.html _qa17.html _qa18.html _qa19.html _qa20.html _qa21.html _qa22.html _qa23.html _qa24.html _qa25.html _qa26.html _qa27.html; do
+for f in _qa.html _qa3.html _qa4.html _qa5.html _qa6.html _qa7.html _qa8.html _qa9.html _qa10.html _qa11.html _qa12.html _qa13.html _qa14.html _qa15.html _qa16.html _qa17.html _qa18.html _qa19.html _qa20.html _qa21.html _qa22.html _qa23.html _qa24.html _qa25.html _qa26.html _qa27.html _qa28.html; do
   printf "%-12s " "$f"
   out=$("$CHROME" --headless --disable-gpu --window-size=1240,900 \
         --virtual-time-budget=20000 --dump-dom "http://localhost:$PORT/$f" 2>/dev/null \

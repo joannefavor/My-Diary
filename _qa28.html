@@ -1,0 +1,62 @@
+<!doctype html><meta charset="utf-8"><title>되풀이 찾기 시험</title>
+<div id="out" style="font:13px ui-monospace;white-space:pre">…</div>
+<iframe id="f" src="/_fix_rep.html#/habit" style="width:1240px;height:1200px;border:0"></iframe>
+<script>
+var pass=0,fail=0,L=[];
+function log(ok,name,got){ if(ok){pass++;L.push("통과  "+name);}
+  else{fail++;L.push("X 실패  "+name+"   실제="+got);} }
+window.onerror=function(m){L.push("X 실패  시험 창이 터짐: "+m);fail++;};
+document.getElementById("f").onload=function(){setTimeout(function(){
+ var d=this.contentDocument;
+ this.contentWindow.onerror=function(m){L.push("X 실패  앱이 터짐: "+m);fail++;};
+ try{
+  var rows=function(){return Array.prototype.map.call(d.querySelectorAll(".repeat-row"),function(r){
+    return {from:r.querySelector(".rp-from").textContent,
+            text:r.querySelector(".rp-text").textContent,
+            days:parseInt(r.querySelector(".rp-days").textContent,10),
+            have:!!r.querySelector(".rp-have")};});};
+  var find=function(t){return rows().filter(function(r){return r.text===t;})[0];};
+
+  log(rows().length===0,"누르기 전에는 아무것도 세지 않는다",rows().length);
+  d.getElementById("repeatFind").click();
+  log(rows().length>0,"누르면 되풀이된 말이 나온다",rows().length);
+
+  /* 며칠인지 — '몇 번' 이 아니라 '며칠' 이다 */
+  log(find("약 먹기") && find("약 먹기").days===20,"20일 적은 할 일을 20일로 센다",
+      find("약 먹기")&&find("약 먹기").days);
+  log(find("현미밥") && find("현미밥").days===20,
+      "하루에 두 번 적은 끼니도 그 날은 하루로 센다",find("현미밥")&&find("현미밥").days);
+
+  /* 어디서 나온 말인지 */
+  log(find("약 먹기").from==="할 일","어느 칸에서 나왔는지 함께 보여준다",find("약 먹기").from);
+  log(find("물 5잔").from==="몸","숫자도 말로 바꿔 센다",find("물 5잔").from);
+  log(find("걷기 30분") && find("걷기 30분").days===6,"운동은 종류와 분을 붙여 센다",
+      find("걷기 30분")&&find("걷기 30분").days);
+  log(!!find("기상 06:00"),"수면은 시각을 적었을 때만 센다",String(!!find("기상 06:00")));
+
+  /* 문턱 */
+  log(!find("장보기"),"이틀만 적은 말은 되풀이로 보지 않는다","나옴");
+  log(!find("장보기1"),"날마다 다른 말은 저마다 하루라 나오지 않는다","나옴");
+
+  /* 이미 습관인 것 */
+  var b=d.querySelector('button[data-rp="약 먹기"]');
+  log(!!b,"습관이 아닌 것에는 '습관으로' 단추가 있다",String(!!b));
+  b.click();
+  log(!d.querySelector('button[data-rp="약 먹기"]'),
+      "습관으로 만들면 단추가 사라진다","아직 있음");
+  log(find("약 먹기").have,"'이미 습관' 으로 바뀐다",String(find("약 먹기").have));
+  log(/‘약 먹기’를 습관으로/.test(d.getElementById("repeatMsg").textContent),
+      "받침 없는 말에는 '를' 이 붙는다",d.getElementById("repeatMsg").textContent);
+  var nowHas=Array.prototype.some.call(d.querySelectorAll("#habNow button[data-habnow]"),
+    function(x){return x.textContent.indexOf("약 먹기")>=0;});
+  log(nowHas,"오늘 화면에 눌러 표시할 자리가 생긴다",String(nowHas));
+
+  /* 두 번 눌러도 겹치지 않는다 */
+  d.getElementById("repeatFind").click();
+  var dup=rows().filter(function(r){return r.text==="약 먹기";}).length;
+  log(dup===1,"다시 세어도 같은 말이 두 줄이 되지 않는다",dup);
+ }catch(e){fail++;L.push("X 실패  "+e.message);}
+ document.getElementById("out").textContent=L.join("\n")+
+   "\n"+(fail?"X ":"")+"통과 "+pass+" · 실패 "+fail;
+}.bind(this),1600);};
+</script>
