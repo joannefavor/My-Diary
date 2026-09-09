@@ -9012,18 +9012,23 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
     if (!syncOnline()) {
       var saved = null;
       try { saved = JSON.parse(localStorage.getItem(SYNC_STORE) || "null"); } catch (e) { saved = null; }
-      dot.textContent = saved && saved.code ? "동기화 연결 안 됨" : "동기화 꺼짐 — 이 기기에만 있습니다";
+      dot.textContent = (saved && saved.code ? "동기화 연결 안 됨" : "동기화 꺼짐 — 이 기기에만 있습니다") +
+                        " · 판 " + APP_BUILD;
       dot.setAttribute("data-tone", "off");
       if (mine) mine.textContent = "";
       return;
     }
+    /* 판 번호까지 낸다. 두 기기가 다른 판이면 합치는 방식이 달라 한쪽이 버려진다.
+       화면이 사본으로 남아 예전 판을 쓰고 있는지, 이 줄만 보면 알 수 있다. */
     dot.textContent = "맞춤 " + (sync.at || "아직") + " · 방 " + sync.code.slice(-4) +
-                      " · 번호 " + sync.rev;
+                      " · 번호 " + sync.rev + " · 판 " + APP_BUILD;
     dot.removeAttribute("data-tone");
     if (mine) {
       mine.innerHTML = "이 기기 — 방 <b>…" + esc(sync.code.slice(-4)) + "</b> · " +
         "저쪽 번호 <b>" + sync.rev + "</b> · 마지막 맞춤 <b>" + esc(sync.at || "아직 없음") + "</b>" +
+        " · 이 기기 판 <b>" + APP_BUILD + "</b>" +
         "<br>두 기기의 <b>방</b>이 다르면 서로 만나지 못합니다. " +
+        "<b>판</b>이 다르면 새로고침해야 합니다. " +
         "<b>번호</b>가 같아지면 같은 기록을 보고 있는 것입니다.";
     }
   }
