@@ -50,7 +50,9 @@ document.getElementById("f").onload=function(){setTimeout(function(){
       order.lastIndexOf("sym-one")<order.indexOf("sym-in"),
     "갈래 칸들이 복약과 상태메모 사이에 있다",order.join(">"));
 
-  var one=d.querySelector(".sym-one");
+  /* D·M 이 늘 앞에 놓이므로 자리 번호로 찾으면 안 된다. 갈래 id 로 집는다. */
+  function cell(id){return d.querySelector('select[data-lvid="'+id+'"]').closest(".sym-one");}
+  var one=cell("s1");
   log(one.querySelector(".sc-name").textContent==="속림",
     "긴 이름은 양끝만 두 글자로 보인다",one.querySelector(".sc-name").textContent);
   log(one.querySelector("select").title==="속쓰림",
@@ -75,23 +77,26 @@ document.getElementById("f").onload=function(){setTimeout(function(){
     textX(head.children[1])+" vs "+textX(row.children[1]));
   log(textX(head.children[2])===textX(row.children[2]),
     "'복약' 도 맞는다",textX(head.children[2])+" vs "+textX(row.children[2]));
-  log(textX(head.children[5])===textX(row.children[5]),
-    "'증상 상태메모' 도 맞는다",textX(head.children[5])+" vs "+textX(row.children[5]));
-  log(head.children[3].textContent==="속림" && head.children[5].textContent==="증상 상태메모",
-    "갈래 이름이 그대로 칸 이름이 된다",
-    head.children[3].textContent+" / "+head.children[5].textContent);
+  var last=head.children.length-1;
+  log(textX(head.children[last])===textX(row.children[last]),
+    "'메모' 도 맞는다",textX(head.children[last])+" vs "+textX(row.children[last]));
+  var names=Array.prototype.map.call(head.children,function(c){return c.textContent;});
+  log(names.join("|")==="|식단|복약|D|M|속림|두통|메모",
+    "D·M 이 앞에 서고 갈래 이름이 그대로 칸 이름이 된다",names.join("|"));
 
   function pick(meal,id,v){var e=d.querySelector('select[data-lvmeal="'+meal+'"][data-lvid="'+id+'"]');
     e.value=v;e.dispatchEvent(new w.Event("change",{bubbles:true}));}
   pick("b","s1","5");
   log(today().symLv.b.s1===5,"고른 정도가 그 끼니에 담긴다",JSON.stringify(today().symLv));
-  log(/\bon\b/.test(d.querySelector('.sym-one').className),
-    "매긴 칸은 눈에 띄게 칠해진다",d.querySelector(".sym-one").className);
+  log(/\bon\b/.test(cell("s1").className),
+    "매긴 칸은 눈에 띄게 칠해진다",cell("s1").className);
 
   pick("d","s2","0");
   log(today().symLv.d.s2===0,"0 도 담긴다 — 없었다는 기록이다",JSON.stringify(today().symLv));
   var zero=d.querySelector('select[data-lvmeal="d"][data-lvid="s2"]').closest(".sym-one");
   log(/zero/.test(zero.className),"0 은 아픈 것과 다른 색이다",zero.className);
+  log(!!d.querySelector('select[data-lvid="symD"]') && !!d.querySelector('select[data-lvid="symM"]'),
+    "D·M 칸이 늘 함께 있다","없음");
 
   pick("b","s1","");
   log(today().symLv.b.s1===undefined,"· 를 고르면 안 매긴 것으로 돌아간다",JSON.stringify(today().symLv));

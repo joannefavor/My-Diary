@@ -12,6 +12,13 @@ var i = src.indexOf("  function asState("), j = src.indexOf("\n  }", i) + 4;
 if (i < 0) { console.error("asState 를 찾지 못했습니다."); process.exit(1); }
 var asState = new Function(src.slice(i, j) + "\nreturn asState;")();
 
+function cut(from, until) {
+  var a = src.indexOf(from), b = src.indexOf(until, a);
+  if (a < 0 || b < 0) { console.error("찾지 못함: " + from); process.exit(1); }
+  return src.slice(a, b + until.length);
+}
+var M = new Function(cut("  function stable(v) {", "\n  }") + "\nreturn { stable: stable };")();
+
 var pass = 0, fail = 0;
 function t(name, got, want) {
   var ok = JSON.stringify(got) === JSON.stringify(want);
@@ -63,6 +70,35 @@ t("이름은 D 와 M", DS.map(function (x) { return x.name; }), ["D", "M"]);
 t("id 가 못 박혀 있다", DS.map(function (x) { return x.id; }), ["symD", "symM"]);
 t("id 에 uid() 가 섞이지 않았다",
   DS.every(function (x) { return /^sym[A-Z]$/.test(x.id); }), true);
+
+/* ---------- 이름 없는 갈래가 D·M 을 막던 일 ----------
+   "D 그 다음에 M 이 안 보이네" — 예전 '갈래 추가' 로 만들었다가 이름을 안 붙인
+   것이 남아 있으면 목록이 비어 있지 않아 D·M 이 들어가지 못했다. */
+var seedSrc = cut("  function seedSymptoms() {", "\n  }");
+function seedWith(symptoms, days) {
+  var state = { days: days || {}, symptoms: symptoms };
+  new Function("state", "DEFAULT_SYMPTOMS", "stable", "symptomList",
+    seedSrc + "\nseedSymptoms();")(
+      state, DS, M.stable, function () { return state.symptoms || (state.symptoms = []); });
+  return state;
+}
+
+t("하나도 없으면 D·M 을 놓는다",
+  seedWith([]).symptoms.map(function (x) { return x.name; }), ["D", "M"]);
+t("이름 없는 갈래는 걷어내고 D·M 을 놓는다",
+  seedWith([{ id: "a1", name: "" }, { id: "a2", name: "  " }]).symptoms
+    .map(function (x) { return x.id; }), ["symD", "symM"]);
+t("이름 있는 갈래는 지킨다",
+  seedWith([{ id: "a9", name: "속쓰림" }]).symptoms.map(function (x) { return x.name; }),
+  ["D", "M", "속쓰림"]);
+t("이미 있으면 두 번 놓지 않는다",
+  seedWith([{ id: "symD", name: "D" }, { id: "symM", name: "M" }]).symptoms.length, 2);
+
+/* 걷어낸 갈래의 수치가 남으면 그 날이 '적은 것이 있는 날' 로 세어진다 */
+var cleaned = seedWith([{ id: "a9", name: "속쓰림" }],
+  { "2026-09-01": { symLv: { b: { a1: 4, a9: 2 } } } });
+t("걷어낸 갈래의 수치도 함께 지운다",
+  cleaned.days["2026-09-01"].symLv.b, { a9: 2 });
 
 console.log("\n통과 " + pass + " · 실패 " + fail);
 process.exit(fail ? 1 : 0);
