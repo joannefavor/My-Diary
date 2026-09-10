@@ -101,6 +101,17 @@ t("화면만 열어 생긴 빈 자리는 세지 않는다",
 t("날짜가 아예 없어도 세지 않는다", M.hasRecords({}), false);
 t("없는 것을 넘겨도 견딘다", M.hasRecords(null), false);
 
+/* ---------- 설정 목록도 합쳐진다 ----------
+   증상 갈래는 날짜 밑에 있지 않아 mergeDays 가 못 다룬다. 따로 합쳐야 한다. */
+/* mergeNamedList 는 pick3·stable 을 쓰므로 합치기 뭉치와 함께 세운다 */
+var nlSrc = cut("  function mergeNamedList(", "return out;\n  }");
+var mergeNamedList = new Function(mergeSrc + "\n" + nlSrc + "\nreturn mergeNamedList;")();
+var B = { symptoms: [] }, Lc = { symptoms: [{ id: "s1", name: "속쓰림" }] },
+    R = { symptoms: [{ id: "s2", name: "두통" }] };
+var got2 = mergeNamedList(B, Lc, R, "symptoms").map(function (x) { return x.name; });
+t("양쪽에서 만든 증상 갈래가 둘 다 남는다", got2, ["속쓰림", "두통"]);
+t("이 기기 순서가 앞선다", got2[0], "속쓰림");
+
 /* ---------- 어느 쪽이 예전 판인가 ----------
    PC 만 예전 판인 채로 화요일 혈당을 계속 버렸다. 브라우저가 화면을 사본으로
    갖고 있어서, 고친 줄 모르고 며칠 지날 수 있다. */

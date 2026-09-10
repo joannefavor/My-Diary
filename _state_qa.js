@@ -23,27 +23,33 @@ function t(name, got, want) {
 /* 저장본에 있던 것은 하나도 잃지 않아야 한다 */
 var saved = { days: { "2026-08-27": { note: "ㅁ" } },
               meds: [{ id: "m1", name: "혈압약" }],
-              habits: [{ id: "h1", name: "운동" }] };
-t("저장본의 세 가지가 다 살아난다", asState(saved), saved);
+              habits: [{ id: "h1", name: "운동" }],
+              symptoms: [{ id: "s1", name: "속쓰림" }] };
+t("저장본의 네 가지가 다 살아난다", asState(saved), saved);
 
-/* 예전 저장본에는 habits 가 없다 — 빈 배열로 서야지 undefined 면 안 된다 */
+/* 예전 저장본에는 habits·symptoms 가 없다 — 빈 배열로 서야지 undefined 면 안 된다 */
 t("예전 저장본도 읽힌다",
-  asState({ days: {}, meds: [] }), { days: {}, meds: [], habits: [] });
-t("아무것도 없어도 선다", asState(null), { days: {}, meds: [], habits: [] });
+  asState({ days: {}, meds: [] }), { days: {}, meds: [], habits: [], symptoms: [] });
+t("아무것도 없어도 선다", asState(null),
+  { days: {}, meds: [], habits: [], symptoms: [] });
 
 /* 망가진 값이 와도 배열로 세운다 */
-t("meds 가 배열이 아니면 비운다",
-  asState({ days: {}, meds: "이상함", habits: null }),
-  { days: {}, meds: [], habits: [] });
+t("배열이 아니면 비운다",
+  asState({ days: {}, meds: "이상함", habits: null, symptoms: 7 }),
+  { days: {}, meds: [], habits: [], symptoms: [] });
 
 /* 동기화는 합친 결과를 직접 건넨다 */
 t("합친 결과를 직접 넣을 수 있다",
-  asState(null, { d: 1 }, [{ id: "m" }], [{ id: "h" }]),
-  { days: { d: 1 }, meds: [{ id: "m" }], habits: [{ id: "h" }] });
+  asState(null, { d: 1 }, [{ id: "m" }], [{ id: "h" }], [{ id: "s" }]),
+  { days: { d: 1 }, meds: [{ id: "m" }], habits: [{ id: "h" }], symptoms: [{ id: "s" }] });
 
-/* 설정 목록이 늘어나면 여기가 알려준다 */
+/* 설정 목록이 늘어나면 여기가 알려준다.
+   2026-09-10 에 symptoms 를 더하며 이 줄이 울렸고, 그 덕에
+   load·가져오기·mergeInto·syncPush·loadBase 를 함께 고칠 수 있었다.
+   다음에 또 늘리는 사람도 여기서 걸릴 것. */
 var keys = Object.keys(asState(null)).sort();
-t("state 는 days·meds·habits 로 이루어진다", keys, ["days", "habits", "meds"]);
+t("state 는 days·meds·habits·symptoms 로 이루어진다", keys,
+  ["days", "habits", "meds", "symptoms"]);
 
 console.log("\n통과 " + pass + " · 실패 " + fail);
 process.exit(fail ? 1 : 0);

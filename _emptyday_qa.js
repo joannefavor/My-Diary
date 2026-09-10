@@ -42,6 +42,13 @@ t("습관 하나만 해내도 빈 날이 아니다", { habitDone: { h1: true } }
 t("약 하나만 먹어도 빈 날이 아니다", { medTaken: { m1: true } }, false);
 t("체크가 다 꺼져 있으면 빈 날", { habitDone: { h1: false }, medTaken: {} }, true);
 
+/* 증상 0~10. 0 은 '오늘은 없었다' 는 기록이라 빈 날이 아니다 —
+   여기서 빠뜨리면 증상만 매긴 날이 동기화에 통째로 지워진다 */
+t("증상 수치가 있으면 빈 날이 아니다", { symLv: { b: { s1: 5 } } }, false);
+t("증상 0 도 사람이 남긴 기록이다", { symLv: { d: { s2: 0 } } }, false);
+t("눌린 적 없는 증상 자리는 빈 날", { symLv: {} }, true);
+t("끼니 칸만 생기고 비어 있으면 빈 날", { symLv: { b: {}, l: {} } }, true);
+
 t("빈 할 일만 있으면 빈 날", { todos: [{ text: "", done: false }] }, true);
 t("빈 목록만 있으면 빈 날", { faith: [], prayer: [], seen: [] }, true);
 t("메모", { note: "ㅁ" }, false);
