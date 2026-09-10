@@ -1702,6 +1702,7 @@
     font-size: 12.5px; color: var(--ink-2);
     flex: none; width: 30px;
   }
+  .timerow .tilde { padding: 0 3px; font-size: 14px; }
   .timerow .tunit {
     font-size: 12px; color: var(--muted);
     font-family: var(--mono); flex: none;
@@ -1735,48 +1736,50 @@
   }
   .meal-rows { display: flex; flex-direction: column; gap: 6px; }
   /* 끼니 버튼 · 먹은 것 · 먹은 약 */
-  .meal-row {
+  /* 끼니 · 식단 · 복약 · 증상 · 메모.
+     증상 칸은 갈래 수에 따라 늘어나므로 내용에 맞춘다(auto). */
+  .meal-row, .meal-head {
     display: grid;
-    grid-template-columns: 64px minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: 64px minmax(0, 1.6fr) minmax(0, 1fr) auto minmax(0, 1fr);
     gap: 7px; align-items: center;
+  }
+  /* 갈래를 하나도 정하지 않았으면 증상 칸이 아예 없다 */
+  .meal-row:not(.has-sym), .meal-head:not(.has-sym) {
+    grid-template-columns: 64px minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr);
   }
   /* 어느 칸이 무엇인지 위에 한 번만 적는다. 칸마다 안내 글씨를 넣으면 좁아진다 */
   .meal-head {
-    display: grid;
-    grid-template-columns: 64px minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr);
-    gap: 7px; font-size: 10.5px; color: var(--muted); padding: 0 2px 3px;
+    font-size: 10.5px; color: var(--muted); padding: 0 2px 3px;
   }
   @media (max-width: 900px) {
-    /* 좁으면 약·증상을 아랫줄로 내려 네 칸이 찌그러지지 않게 */
+    /* 좁으면 약·증상·메모를 아랫줄로 내려 다섯 칸이 찌그러지지 않게 */
     .meal-head { display: none; }
-    .meal-row { grid-template-columns: 64px minmax(0, 1fr); }
-    .meal-row .pill-in, .meal-row .sym-in { grid-column: 2; }
+    .meal-row, .meal-row:not(.has-sym) { grid-template-columns: 64px minmax(0, 1fr); }
+    .meal-row .pill-in, .meal-row .sym-in, .meal-row .sym-cell { grid-column: 2; }
     .meal-rows { gap: 12px; }
   }
-  /* 끼니 밑에 붙는 0~10 눈금. 이름 + 열한 칸이 한 줄이다.
-     좁은 화면에서도 열한 칸이 다 눌리도록 칸을 잘게 두고 넘치면 접는다. */
-  .sym-scale {
-    display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
-    padding: 0 0 0 4px; margin-top: -1px;
+  /* 복약과 증상 글 사이. 갈래마다 [두 글자][고르개] 한 벌이 나란히 선다. */
+  .sym-cell { display: flex; gap: 6px; align-items: center; }
+  .sym-one {
+    display: flex; align-items: center; gap: 3px;
+    border: 1px solid var(--hair); border-radius: 7px; padding: 2px 4px 2px 6px;
+    background: var(--surface);
   }
-  .sym-scale .sc-name {
-    flex: 0 0 58px; font-size: 11.5px; color: var(--muted);
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  .sym-one .sc-name {
+    font-size: 11.5px; color: var(--muted);
+    white-space: nowrap; cursor: help;
   }
-  .sym-scale .sc-nums { display: flex; gap: 3px; flex-wrap: wrap; }
-  .sym-scale .sc-nums button {
-    min-width: 23px; padding: 3px 0; font-size: 11px;
-    font-family: var(--mono); background: var(--surface);
+  .sym-one select {
+    font: inherit; font-size: 13px; font-variant-numeric: tabular-nums;
+    background: transparent; color: var(--ink);
+    border: 0; border-radius: 5px; padding: 4px 2px; min-width: 0;
   }
-  .sym-scale .sc-nums button[aria-pressed="true"] {
-    background: var(--accent); border-color: var(--accent); color: var(--on-accent);
-    font-weight: 700;
-  }
-  /* 0 은 '없었다' 는 기록이라 눌린 표시가 달라야 한다 — 아픈 정도와 같은 색이면
-     오늘 괜찮았다는 것이 아픈 것처럼 보인다 */
-  .sym-scale .sc-nums button[data-lv="0"][aria-pressed="true"] {
-    background: var(--sage); border-color: var(--sage); color: var(--on-sage);
-  }
+  /* 매긴 것은 눈에 띄어야 한다. 0(없었다)은 아픈 정도와 다른 색으로 —
+     같은 색이면 오늘 괜찮았다는 것이 아픈 것처럼 보인다. */
+  .sym-one.on { border-color: var(--accent); background: var(--accent-soft); }
+  .sym-one.on .sc-name { color: var(--accent-ink); font-weight: 600; }
+  .sym-one.zero { border-color: var(--sage); }
+  .sym-one.zero .sc-name { color: var(--sage-ink); }
   .symp-edit { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 7px; }
   .symp-edit input { flex: 0 1 120px; font-size: 12px; padding: 4px 7px; }
   .meal-row button {
@@ -2861,25 +2864,37 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
 
   var SYM_MAX = 10;
 
-  /* 끼니 줄 밑에 갈래마다 한 줄. 정해 둔 갈래가 없으면 아무것도 그리지 않는다 —
-     쓰지 않는 사람의 화면을 어지럽히지 않는다. */
+  /* 이름은 두 글자만 보인다 — 끼니 줄 안이라 자리가 좁다.
+     그냥 자르면 '속쓰림' 이 '속쓰' 가 되어 말이 잘린 것처럼 읽힌다.
+     세 글자가 넘으면 첫 글자와 끝 글자를 남긴다 — '속림' 처럼 양끝이 남으면
+     무엇이었는지 알아보기 쉽다. 전체 이름은 title 과 aria-label 에 그대로 있다. */
+  function symShort(name) {
+    var t = String(name || "").trim();
+    if (!t) return "··";
+    if (t.length <= 2) return t;
+    return t.charAt(0) + t.charAt(t.length - 1);
+  }
+
+  /* 복약과 증상 글 사이에 들어가는 칸. 갈래마다 [이름][0~10 고르개] 한 벌.
+     버튼 열한 개를 늘어놓으면 끼니 줄이 감당하지 못한다. 수면 시각처럼
+     한 칸을 차지하고 골라서 바꾼다. */
   function symScales(d, meal, mealName) {
     var list = symptomList();
     if (!list.length) return "";
-    return list.map(function (sy) {
+    return '<div class="sym-cell">' + list.map(function (sy) {
       var cur = symLvOf(d, meal, sy.id);
-      var nums = "";
+      var full = mealName + " " + (sy.name || "증상");
+      var opt = '<option value=""' + (cur == null ? " selected" : "") + ">·</option>";
       for (var i = 0; i <= SYM_MAX; i++) {
-        nums += '<button type="button" data-symlv="' + i + '" data-lvmeal="' + meal +
-          '" data-lvid="' + esc(sy.id) + '" data-lv="' + i +
-          '" aria-pressed="' + (cur === i) + '" aria-label="' +
-          esc(mealName + " " + (sy.name || "증상") + " " + i + "점") + '">' + i + "</button>";
+        opt += '<option value="' + i + '"' + (cur === i ? " selected" : "") + ">" + i + "</option>";
       }
-      return '<div class="sym-scale">' +
-        '<span class="sc-name">' + esc(sy.name || "이름 없음") + "</span>" +
-        '<span class="sc-nums">' + nums + "</span>" +
-        "</div>";
-    }).join("");
+      return '<span class="sym-one' + (cur ? " on" : cur === 0 ? " zero" : "") + '">' +
+        '<span class="sc-name" title="' + esc(sy.name || "이름 없음") + '">' +
+          esc(symShort(sy.name)) + "</span>" +
+        '<select data-lvmeal="' + meal + '" data-lvid="' + esc(sy.id) +
+          '" aria-label="' + esc(full) + ' 정도 0~10">' + opt + "</select>" +
+        "</span>";
+    }).join("") + "</div>";
   }
 
   /* 갈래 이름은 사람이 정한다. 약·습관과 같은 방식이다. */
@@ -4221,25 +4236,21 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
      내부 저장은 "HH:MM" 24시간 형식 그대로라 계산 로직은 손대지 않는다. */
   var SLEEP_STEP = 5;
 
-  function timeRow(label, id, value) {
+  /* 24시간제 시각 고르개 한 벌(시·분). 오전/오후 칸이 없어진 만큼 짧아져
+     취침과 기상이 한 줄에 들어간다.
+     예전에는 오전/오후·시·분 셋을 두 줄로 골랐다. 새벽 1시에 잔 날 '오전 1시' 를
+     고르는 것이 늘 한 번씩 헷갈렸고, 무엇보다 여섯 번을 골라야 했다. */
+  function timeCell(label, id, value) {
     var m = /^(\d{1,2}):(\d{2})$/.exec(value || "");
     var h24 = m ? +m[1] : null;
     var min = m ? +m[2] : null;
-    var isPm = h24 != null && h24 >= 12;
-    var h12 = h24 == null ? null : (h24 % 12 === 0 ? 12 : h24 % 12);
-    // 5분 단위가 아닌 기존 값은 가장 가까운 눈금으로 맞춰 보여준다
+    /* 5분 단위가 아닌 예전 값은 가장 가까운 눈금으로 맞춰 보여준다 */
     var minSnap = min == null ? null : Math.min(55, Math.round(min / SLEEP_STEP) * SLEEP_STEP);
 
-    var ap = '<select id="' + id + 'Ap" aria-label="' + esc(label) + ' 오전/오후">' +
-      '<option value=""' + (h24 == null ? " selected" : "") + ">--</option>" +
-      '<option value="am"' + (h24 != null && !isPm ? " selected" : "") + ">오전</option>" +
-      '<option value="pm"' + (isPm ? " selected" : "") + ">오후</option>" +
-      "</select>";
-
     var hh = '<select id="' + id + 'H" aria-label="' + esc(label) + ' 시">' +
-      '<option value=""' + (h12 == null ? " selected" : "") + ">--</option>";
-    for (var i = 1; i <= 12; i++) {
-      hh += '<option value="' + i + '"' + (h12 === i ? " selected" : "") + ">" + i + "</option>";
+      '<option value=""' + (h24 == null ? " selected" : "") + ">--</option>";
+    for (var i = 0; i <= 23; i++) {
+      hh += '<option value="' + i + '"' + (h24 === i ? " selected" : "") + ">" + pad(i) + "</option>";
     }
     hh += "</select>";
 
@@ -4250,9 +4261,15 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     }
     mm += "</select>";
 
+    return hh + '<span class="tunit">:</span>' + mm;
+  }
+
+  /* 취침 ~ 기상을 한 줄에 */
+  function sleepRow(from, to) {
     return '<div class="timerow">' +
-      '<span class="tlabel">' + esc(label) + "</span>" +
-      ap + hh + '<span class="tunit">시</span>' + mm + '<span class="tunit">분</span>' +
+      timeCell("취침", "sleepFrom", from) +
+      '<span class="tunit tilde">~</span>' +
+      timeCell("기상", "sleepTo", to) +
       "</div>";
   }
 
@@ -4266,15 +4283,13 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       : "그날 아침 일어난 잠을 적습니다";
   }
 
+  /* 24시간제라 환산할 것이 없다 — 고른 숫자가 곧 시각이다 */
   function readTimeRow(host, id) {
-    var ap = host.querySelector("#" + id + "Ap");
     var hh = host.querySelector("#" + id + "H");
     var mm = host.querySelector("#" + id + "M");
-    if (!ap || !hh || !mm) return "";
-    if (!ap.value || !hh.value || mm.value === "") return "";
-    var h = +hh.value % 12;                 // 12시는 0시로 환산
-    if (ap.value === "pm") h += 12;         // 오후는 12시간을 더한다
-    return pad(h) + ":" + pad(+mm.value);
+    if (!hh || !mm) return "";
+    if (hh.value === "" || mm.value === "") return "";
+    return pad(+hh.value) + ":" + pad(+mm.value);
   }
 
   function rateBtns(cur) {
@@ -4296,9 +4311,8 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
 
     host.innerHTML =
       '<div class="field span-2">' +
-        '<span class="flabel">수면 · 취침 ~ 기상</span>' +
-        timeRow("취침", "sleepFrom", sf) +
-        timeRow("기상", "sleepTo", st) +
+        '<span class="flabel">수면 · 몇 시부터 몇 시까지</span>' +
+        sleepRow(sf, st) +
         '<span class="note" id="sleepNote">' + sleepNoteHtml(sh) + "</span>" +
       "</div>" +
 
@@ -4338,12 +4352,14 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
 
       '<div class="field meals-field">' +
         '<span class="flabel">식사 · 식단 · 복약 · 증상</span>' +
-        '<div class="meal-head">' +
-          "<span></span><span>식단</span><span>복약</span><span>증상</span>" +
+        '<div class="meal-head' + (symptomList().length ? " has-sym" : "") + '">' +
+          "<span></span><span>식단</span><span>복약</span>" +
+          (symptomList().length ? "<span>증상</span>" : "") +
+          "<span>메모</span>" +
         "</div>" +
         '<div class="meal-rows" id="mealRows">' +
           MEALS.map(function (m) {
-            return '<div class="meal-row">' +
+            return '<div class="meal-row' + (symptomList().length ? " has-sym" : "") + '">' +
               '<button type="button" data-m="' + m[0] + '" aria-pressed="' + mealOn(d, m[0]) + '">' +
                 m[1] + "</button>" +
               '<input type="text" data-menu="' + m[0] + '" placeholder="' + m[1] +
@@ -4351,9 +4367,10 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
                 '" aria-label="' + m[1] + ' 식단">' +
               '<input type="text" class="pill-in" data-pill="' + m[0] + '" placeholder="먹은 약" value="' +
                 esc(pillOf(d, m[0])) + '" aria-label="' + m[1] + ' 복약">' +
-              '<input type="text" class="sym-in" data-sym="' + m[0] + '" placeholder="속쓰림, 두통…" value="' +
-                esc(symOf(d, m[0])) + '" aria-label="' + m[1] + ' 증상">' +
-            "</div>" + symScales(d, m[0], m[1]);
+              symScales(d, m[0], m[1]) +
+              '<input type="text" class="sym-in" data-sym="' + m[0] + '" placeholder="그 밖에 있었던 일" value="' +
+                esc(symOf(d, m[0])) + '" aria-label="' + m[1] + ' 증상 메모">' +
+            "</div>";
           }).join("") +
         "</div>" +
         symptomEditor() +
@@ -4401,7 +4418,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       renderExceptForm();
     }
     ["sleepFrom", "sleepTo"].forEach(function (id) {
-      ["Ap", "H", "M"].forEach(function (part) {
+      ["H", "M"].forEach(function (part) {
         var el = host.querySelector("#" + id + part);
         if (el) el.addEventListener("change", commitSleep);
       });
@@ -4436,18 +4453,6 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     var mealRows = host.querySelector("#mealRows");
 
     mealRows.addEventListener("click", function (e) {
-      /* 0~10 눈금. 누른 것을 다시 누르면 지워진다 — 잘못 누르고 되돌릴 길이 있어야 한다 */
-      var lv = e.target.closest("button[data-symlv]");
-      if (lv) {
-        var meal = lv.getAttribute("data-lvmeal");
-        var sid = lv.getAttribute("data-lvid");
-        var val = Number(lv.getAttribute("data-symlv"));
-        var dd = day(selected);
-        if (!dd.symLv[meal]) dd.symLv[meal] = {};
-        if (dd.symLv[meal][sid] === val) delete dd.symLv[meal][sid];
-        else dd.symLv[meal][sid] = val;
-        return persist();
-      }
       var b = e.target.closest("button[data-m]");
       if (!b) return;
       var k = b.getAttribute("data-m");
@@ -4494,6 +4499,17 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
         var d0 = day(selected);
         d0.menu[k] = menuEl.value.trim();
         if (d0.menu[k]) d0.meals[k] = true;
+        return persist();
+      }
+      /* 증상 정도. '·' 를 고르면 안 매긴 것으로 되돌린다 */
+      var lvEl = e.target.closest("select[data-lvmeal]");
+      if (lvEl) {
+        var lmeal = lvEl.getAttribute("data-lvmeal");
+        var lsid = lvEl.getAttribute("data-lvid");
+        var dd = day(selected);
+        if (!dd.symLv[lmeal]) dd.symLv[lmeal] = {};
+        if (lvEl.value === "") delete dd.symLv[lmeal][lsid];
+        else dd.symLv[lmeal][lsid] = Number(lvEl.value);
         return persist();
       }
       var pillEl = e.target.closest("input[data-pill]");

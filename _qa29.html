@@ -1,0 +1,80 @@
+<!doctype html><meta charset="utf-8"><title>수면 24시간제 · 증상 칸 시험</title>
+<div id="out" style="font:13px ui-monospace;white-space:pre">…</div>
+<iframe id="f" src="/_fix_sym.html#/health" style="width:1240px;height:1700px;border:0"></iframe>
+<script>
+var pass=0,fail=0,L=[];
+function log(ok,name,got){ if(ok){pass++;L.push("통과  "+name);}
+  else{fail++;L.push("X 실패  "+name+"   실제="+got);} }
+window.onerror=function(m){L.push("X 실패  시험 창이 터짐: "+m);fail++;};
+document.getElementById("f").onload=function(){setTimeout(function(){
+ var d=this.contentDocument,w=this.contentWindow;
+ w.onerror=function(m){L.push("X 실패  앱이 터짐: "+m);fail++;};
+ w.alert=function(){};w.confirm=function(){return true;};
+ try{
+  function saved(){return JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3"));}
+  function today(){var s=saved();return s.days[Object.keys(s.days).pop()];}
+  function set(id,v){var e=d.getElementById(id);e.value=v;e.dispatchEvent(new w.Event("change",{bubbles:true}));}
+
+  /* ── 수면: 24시간제 한 줄 ── */
+  log(d.querySelectorAll(".timerow").length===1,
+    "취침과 기상이 한 줄에 있다",d.querySelectorAll(".timerow").length);
+  log(!d.getElementById("sleepFromAp") && !d.getElementById("sleepToAp"),
+    "오전·오후 고르개가 없다","남아 있음");
+  var fh=d.getElementById("sleepFromH");
+  log(fh.options.length===25,"시는 00~23 스물넷에 빈 칸 하나",fh.options.length);
+  log(fh.options[1].textContent==="00" && fh.options[24].textContent==="23",
+    "0시부터 23시까지 두 자리로 보인다",fh.options[1].textContent+"~"+fh.options[24].textContent);
+
+  set("sleepFromH","23"); set("sleepFromM","0");
+  set("sleepToH","6");   set("sleepToM","30");
+  log(today().sleep.from==="23:00" && today().sleep.to==="06:30",
+    "고른 그대로 담긴다 — 환산이 없다",JSON.stringify(today().sleep));
+  log(/7시간 30분/.test(d.getElementById("sleepNote").textContent),
+    "자정을 넘겨도 잔 시간을 센다",d.getElementById("sleepNote").textContent.trim());
+
+  /* 새벽 1시 취침 — 예전엔 '오전 1시' 를 골라야 해서 헷갈리던 자리 */
+  set("sleepFromH","1"); set("sleepFromM","0");
+  set("sleepToH","7");  set("sleepToM","0");
+  log(today().sleep.from==="01:00","새벽 1시를 그냥 01 로 고른다",today().sleep.from);
+  log(/6시간/.test(d.getElementById("sleepNote").textContent),
+    "새벽에 자도 잔 시간이 맞다",d.getElementById("sleepNote").textContent.trim());
+
+  /* 한 칸만 고르면 아직 시각이 아니다 */
+  set("sleepFromH",""); 
+  log(today().sleep.from==="","시를 비우면 취침이 지워진다",JSON.stringify(today().sleep));
+
+  /* ── 증상 칸 ── */
+  var row=d.querySelector(".meal-row");
+  var order=Array.prototype.map.call(row.children,function(c){return c.className.split(" ")[0]||"btn";});
+  log(order.indexOf("pill-in")<order.indexOf("sym-cell") &&
+      order.indexOf("sym-cell")<order.indexOf("sym-in"),
+    "증상은 복약과 메모 사이에 있다",order.join(">"));
+
+  var one=d.querySelector(".sym-one");
+  log(one.querySelector(".sc-name").textContent==="속림",
+    "긴 이름은 양끝만 두 글자로 보인다",one.querySelector(".sc-name").textContent);
+  log(one.querySelector(".sc-name").title==="속쓰림",
+    "전체 이름은 title 에 남는다",one.querySelector(".sc-name").title);
+  log(one.querySelector("select").options.length===12,
+    "· 와 0~10 열두 칸을 고른다",one.querySelector("select").options.length);
+
+  function pick(meal,id,v){var e=d.querySelector('select[data-lvmeal="'+meal+'"][data-lvid="'+id+'"]');
+    e.value=v;e.dispatchEvent(new w.Event("change",{bubbles:true}));}
+  pick("b","s1","5");
+  log(today().symLv.b.s1===5,"고른 정도가 그 끼니에 담긴다",JSON.stringify(today().symLv));
+  log(/\bon\b/.test(d.querySelector('.sym-one').className),
+    "매긴 칸은 눈에 띄게 칠해진다",d.querySelector(".sym-one").className);
+
+  pick("d","s2","0");
+  log(today().symLv.d.s2===0,"0 도 담긴다 — 없었다는 기록이다",JSON.stringify(today().symLv));
+  var zero=d.querySelector('select[data-lvmeal="d"][data-lvid="s2"]').closest(".sym-one");
+  log(/zero/.test(zero.className),"0 은 아픈 것과 다른 색이다",zero.className);
+
+  pick("b","s1","");
+  log(today().symLv.b.s1===undefined,"· 를 고르면 안 매긴 것으로 돌아간다",JSON.stringify(today().symLv));
+  log(today().symLv.d.s2===0,"되돌려도 다른 끼니는 그대로다",JSON.stringify(today().symLv));
+ }catch(e){fail++;L.push("X 실패  "+e.message);}
+ document.getElementById("out").textContent=L.join("\n")+
+   "\n"+(fail?"X ":"")+"통과 "+pass+" · 실패 "+fail;
+}.bind(this),1600);};
+</script>

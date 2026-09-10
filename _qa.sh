@@ -206,7 +206,7 @@ done
 
 echo
 echo "— 화면 시험"
-for f in _qa.html _qa3.html _qa4.html _qa5.html _qa6.html _qa7.html _qa8.html _qa9.html _qa10.html _qa11.html _qa12.html _qa13.html _qa14.html _qa15.html _qa16.html _qa17.html _qa18.html _qa19.html _qa20.html _qa21.html _qa22.html _qa23.html _qa24.html _qa25.html _qa26.html _qa27.html _qa28.html; do
+for f in _qa.html _qa3.html _qa4.html _qa5.html _qa6.html _qa7.html _qa8.html _qa9.html _qa10.html _qa11.html _qa12.html _qa13.html _qa14.html _qa15.html _qa16.html _qa17.html _qa18.html _qa19.html _qa20.html _qa21.html _qa22.html _qa23.html _qa24.html _qa25.html _qa26.html _qa27.html _qa28.html _qa29.html; do
   printf "%-12s " "$f"
   out=$("$CHROME" --headless --disable-gpu --window-size=1240,900 \
         --virtual-time-budget=20000 --dump-dom "http://localhost:$PORT/$f" 2>/dev/null \
