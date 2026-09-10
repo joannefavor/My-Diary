@@ -1,6 +1,6 @@
 <!doctype html><meta charset="utf-8"><title>수면 24시간제 · 증상 칸 시험</title>
 <div id="out" style="font:13px ui-monospace;white-space:pre">…</div>
-<iframe id="f" src="/_fix_sym.html#/health" style="width:1240px;height:1700px;border:0"></iframe>
+<iframe id="f" src="/_fix_symq.html#/health" style="width:1240px;height:1700px;border:0"></iframe>
 <script>
 var pass=0,fail=0,L=[];
 function log(ok,name,got){ if(ok){pass++;L.push("통과  "+name);}
@@ -44,19 +44,42 @@ document.getElementById("f").onload=function(){setTimeout(function(){
   log(today().sleep.from==="","시를 비우면 취침이 지워진다",JSON.stringify(today().sleep));
 
   /* ── 증상 칸 ── */
-  var row=d.querySelector(".meal-row");
-  var order=Array.prototype.map.call(row.children,function(c){return c.className.split(" ")[0]||"btn";});
-  log(order.indexOf("pill-in")<order.indexOf("sym-cell") &&
-      order.indexOf("sym-cell")<order.indexOf("sym-in"),
-    "증상은 복약과 메모 사이에 있다",order.join(">"));
+  var row0=d.querySelector(".meal-row");
+  var order=Array.prototype.map.call(row0.children,function(c){return c.className.split(" ")[0]||"(무명)";});
+  log(order.indexOf("pill-in")<order.indexOf("sym-one") &&
+      order.lastIndexOf("sym-one")<order.indexOf("sym-in"),
+    "갈래 칸들이 복약과 상태메모 사이에 있다",order.join(">"));
 
   var one=d.querySelector(".sym-one");
   log(one.querySelector(".sc-name").textContent==="속림",
     "긴 이름은 양끝만 두 글자로 보인다",one.querySelector(".sc-name").textContent);
-  log(one.querySelector(".sc-name").title==="속쓰림",
-    "전체 이름은 title 에 남는다",one.querySelector(".sc-name").title);
+  log(one.querySelector("select").title==="속쓰림",
+    "전체 이름은 title 에 남는다",one.querySelector("select").title);
   log(one.querySelector("select").options.length===12,
     "· 와 0~10 열두 칸을 고른다",one.querySelector("select").options.length);
+
+  /* ── 머리글과 적는 칸이 어긋나지 않는가 ──
+     em 은 그 줄의 글씨 크기를 따라서, 머리글(작은 글씨)과 줄이 서로 다른
+     너비가 된 적이 있다. 눈으로는 몇 px 차이라 잘 안 보이지만 줄이 어긋난다. */
+  var head=d.querySelector(".meal-head"), row=d.querySelector(".meal-row");
+  log(head.children.length===row.children.length,
+    "머리글과 줄의 칸 수가 같다",head.children.length+" vs "+row.children.length);
+  var hc=w.getComputedStyle(head).gridTemplateColumns;
+  var rc=w.getComputedStyle(row).gridTemplateColumns;
+  log(hc===rc,"머리글과 줄의 칸 너비가 같다",hc+" vs "+rc);
+  log(/^40px$/.test(hc.split(" ")[3]),"갈래 칸은 한 글자 크기(40px)",hc.split(" ")[3]);
+  function textX(el){var cs=w.getComputedStyle(el);
+    return Math.round(el.getBoundingClientRect().left+parseFloat(cs.paddingLeft)+parseFloat(cs.borderLeftWidth));}
+  log(textX(head.children[1])===textX(row.children[1]),
+    "'식단' 글자가 적는 칸 글자와 같은 자리에서 시작한다",
+    textX(head.children[1])+" vs "+textX(row.children[1]));
+  log(textX(head.children[2])===textX(row.children[2]),
+    "'복약' 도 맞는다",textX(head.children[2])+" vs "+textX(row.children[2]));
+  log(textX(head.children[5])===textX(row.children[5]),
+    "'증상 상태메모' 도 맞는다",textX(head.children[5])+" vs "+textX(row.children[5]));
+  log(head.children[3].textContent==="속림" && head.children[5].textContent==="증상 상태메모",
+    "갈래 이름이 그대로 칸 이름이 된다",
+    head.children[3].textContent+" / "+head.children[5].textContent);
 
   function pick(meal,id,v){var e=d.querySelector('select[data-lvmeal="'+meal+'"][data-lvid="'+id+'"]');
     e.value=v;e.dispatchEvent(new w.Event("change",{bubbles:true}));}

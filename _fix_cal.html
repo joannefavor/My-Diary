@@ -1736,50 +1736,51 @@
   }
   .meal-rows { display: flex; flex-direction: column; gap: 6px; }
   /* 끼니 버튼 · 먹은 것 · 먹은 약 */
-  /* 끼니 · 식단 · 복약 · 증상 · 메모.
-     증상 칸은 갈래 수에 따라 늘어나므로 내용에 맞춘다(auto). */
-  .meal-row, .meal-head {
-    display: grid;
-    grid-template-columns: 64px minmax(0, 1.6fr) minmax(0, 1fr) auto minmax(0, 1fr);
-    gap: 7px; align-items: center;
-  }
-  /* 갈래를 하나도 정하지 않았으면 증상 칸이 아예 없다 */
-  .meal-row:not(.has-sym), .meal-head:not(.has-sym) {
-    grid-template-columns: 64px minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr);
-  }
+  /* 끼니 · 식단 · 복약 · 갈래들 · 증상 상태메모.
+     칸 너비는 갈래 수에 따라 달라지므로 mealCols() 가 style 로 넣어 준다. */
+  .meal-row, .meal-head { display: grid; gap: 7px; align-items: center; }
   /* 어느 칸이 무엇인지 위에 한 번만 적는다. 칸마다 안내 글씨를 넣으면 좁아진다 */
-  .meal-head {
-    font-size: 10.5px; color: var(--muted); padding: 0 2px 3px;
+  .meal-head { font-size: 10.5px; color: var(--muted); padding: 0 0 3px; }
+  /* 머리글 글자를 아래 적는 칸의 글자와 같은 자리에서 시작하게 한다 —
+     테두리 1px + 안여백 9px 만큼 들여 쓴다. 어긋나면 어느 칸의 이름인지
+     한 번 더 눈으로 맞춰 봐야 한다. */
+  .meal-head span { padding-left: 10px; }
+  .meal-head span:first-child { padding-left: 0; }
+  .meal-head .hd-sym {
+    padding-left: 0; text-align: center;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   @media (max-width: 900px) {
-    /* 좁으면 약·증상·메모를 아랫줄로 내려 다섯 칸이 찌그러지지 않게 */
+    /* 좁으면 약·갈래·메모를 아랫줄로 내려 찌그러지지 않게 */
     .meal-head { display: none; }
-    .meal-row, .meal-row:not(.has-sym) { grid-template-columns: 64px minmax(0, 1fr); }
-    .meal-row .pill-in, .meal-row .sym-in, .meal-row .sym-cell { grid-column: 2; }
+    .meal-row { grid-template-columns: 64px minmax(0, 1fr) !important; }
+    .meal-row .pill-in, .meal-row .sym-in { grid-column: 2; }
+    .meal-row .sym-one { grid-column: 2; width: max-content; }
     .meal-rows { gap: 12px; }
   }
-  /* 복약과 증상 글 사이. 갈래마다 [두 글자][고르개] 한 벌이 나란히 선다. */
-  .sym-cell { display: flex; gap: 6px; align-items: center; }
-  .sym-one {
-    display: flex; align-items: center; gap: 3px;
-    border: 1px solid var(--hair); border-radius: 7px; padding: 2px 4px 2px 6px;
-    background: var(--surface);
-  }
-  .sym-one .sc-name {
-    font-size: 11.5px; color: var(--muted);
-    white-space: nowrap; cursor: help;
-  }
+  /* 갈래 칸 — 한 글자 크기. 화살표를 지워야 이만큼 좁아진다. */
+  .sym-one { display: block; }
   .sym-one select {
     font: inherit; font-size: 13px; font-variant-numeric: tabular-nums;
-    background: transparent; color: var(--ink);
-    border: 0; border-radius: 5px; padding: 4px 2px; min-width: 0;
+    background: var(--surface); color: var(--ink);
+    border: 1px solid var(--hair); border-radius: 7px;
+    padding: 7px 0; width: 100%; text-align: center;
+    -webkit-appearance: none; appearance: none;
   }
   /* 매긴 것은 눈에 띄어야 한다. 0(없었다)은 아픈 정도와 다른 색으로 —
      같은 색이면 오늘 괜찮았다는 것이 아픈 것처럼 보인다. */
-  .sym-one.on { border-color: var(--accent); background: var(--accent-soft); }
-  .sym-one.on .sc-name { color: var(--accent-ink); font-weight: 600; }
-  .sym-one.zero { border-color: var(--sage); }
-  .sym-one.zero .sc-name { color: var(--sage-ink); }
+  .sym-one.on select {
+    border-color: var(--accent); background: var(--accent-soft);
+    color: var(--accent-ink); font-weight: 700;
+  }
+  .sym-one.zero select { border-color: var(--sage); color: var(--sage-ink); }
+  /* 이름은 머리글에 있다. 머리글이 숨는 좁은 화면에서만 칸 옆에 나온다. */
+  .sym-one .sc-name { display: none; }
+  @media (max-width: 900px) {
+    .sym-one { display: flex; align-items: center; gap: 5px; }
+    .sym-one .sc-name { display: inline; font-size: 11.5px; color: var(--muted); }
+    .sym-one select { width: 4em; }
+  }
   .symp-edit { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 7px; }
   .symp-edit input { flex: 0 1 120px; font-size: 12px; padding: 4px 7px; }
   .meal-row button {
@@ -2875,13 +2876,21 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     return t.charAt(0) + t.charAt(t.length - 1);
   }
 
-  /* 복약과 증상 글 사이에 들어가는 칸. 갈래마다 [이름][0~10 고르개] 한 벌.
-     버튼 열한 개를 늘어놓으면 끼니 줄이 감당하지 못한다. 수면 시각처럼
-     한 칸을 차지하고 골라서 바꾼다. */
+  /* 격자 칸 너비. 갈래 수가 사람마다 다르므로 여기서 만들어 머리글과 줄에 함께 준다.
+     갈래 칸은 한 글자 크기로 좁히고, 나머지는 남은 자리를 나눠 갖는다. */
+  function mealCols() {
+    var n = symptomList().length;
+    return "64px minmax(0, 1.6fr) minmax(0, 1fr)" +
+      /* em 은 그 줄의 글씨 크기를 따른다. 머리글은 글씨가 작아서 같은 2.9em 이
+         더 좁아지고, 그만큼 머리글과 적는 칸이 어긋났다. 고정 너비로 못 박는다. */
+      (n ? " repeat(" + n + ", 40px)" : "") +
+      " minmax(0, 1fr)";
+  }
+
+  /* 갈래마다 고르개 하나. 이름은 머리글에 있으므로 칸 안에는 두지 않는다 —
+     좁은 화면에서는 머리글이 숨으므로 그때만 이름이 나온다(.sc-name). */
   function symScales(d, meal, mealName) {
-    var list = symptomList();
-    if (!list.length) return "";
-    return '<div class="sym-cell">' + list.map(function (sy) {
+    return symptomList().map(function (sy) {
       var cur = symLvOf(d, meal, sy.id);
       var full = mealName + " " + (sy.name || "증상");
       var opt = '<option value=""' + (cur == null ? " selected" : "") + ">·</option>";
@@ -2889,12 +2898,12 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
         opt += '<option value="' + i + '"' + (cur === i ? " selected" : "") + ">" + i + "</option>";
       }
       return '<span class="sym-one' + (cur ? " on" : cur === 0 ? " zero" : "") + '">' +
-        '<span class="sc-name" title="' + esc(sy.name || "이름 없음") + '">' +
-          esc(symShort(sy.name)) + "</span>" +
+        '<span class="sc-name">' + esc(symShort(sy.name)) + "</span>" +
         '<select data-lvmeal="' + meal + '" data-lvid="' + esc(sy.id) +
+          '" title="' + esc(sy.name || "이름 없음") +
           '" aria-label="' + esc(full) + ' 정도 0~10">' + opt + "</select>" +
         "</span>";
-    }).join("") + "</div>";
+    }).join("");
   }
 
   /* 갈래 이름은 사람이 정한다. 약·습관과 같은 방식이다. */
@@ -4352,14 +4361,17 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
 
       '<div class="field meals-field">' +
         '<span class="flabel">식사 · 식단 · 복약 · 증상</span>' +
-        '<div class="meal-head' + (symptomList().length ? " has-sym" : "") + '">' +
+        '<div class="meal-head" style="grid-template-columns:' + mealCols() + '">' +
           "<span></span><span>식단</span><span>복약</span>" +
-          (symptomList().length ? "<span>증상</span>" : "") +
-          "<span>메모</span>" +
+          symptomList().map(function (sy) {
+            return '<span class="hd-sym" title="' + esc(sy.name || "이름 없음") + '">' +
+              esc(symShort(sy.name)) + "</span>";
+          }).join("") +
+          "<span>증상 상태메모</span>" +
         "</div>" +
         '<div class="meal-rows" id="mealRows">' +
           MEALS.map(function (m) {
-            return '<div class="meal-row' + (symptomList().length ? " has-sym" : "") + '">' +
+            return '<div class="meal-row" style="grid-template-columns:' + mealCols() + '">' +
               '<button type="button" data-m="' + m[0] + '" aria-pressed="' + mealOn(d, m[0]) + '">' +
                 m[1] + "</button>" +
               '<input type="text" data-menu="' + m[0] + '" placeholder="' + m[1] +

@@ -101,6 +101,11 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({
  days:{}, meds:[], habits:[],
  symptoms:[{id:"s1",name:"속쓰림"},{id:"s2",name:"두통"}]}));
 SEED
+python3 _mkdbg.py _fix_symq.html <<'SEED'
+localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({
+ days:{}, meds:[], habits:[],
+ symptoms:[{id:"s1",name:"속쓰림"},{id:"s2",name:"두통"}]}));
+SEED
 python3 _mkdbg.py _fix_hide.html <<'SEED'
 var st={days:{},meds:[],habits:[]};
 for(var i=1;i<=12;i++){var k="2026-07-"+String(i).padStart(2,"0");
