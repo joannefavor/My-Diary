@@ -2860,6 +2860,21 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
 
   /* 끼니 하나에 매긴 증상 수치. 누른 적 없으면 null 이다 —
      0(없었다)과 '아직 안 눌렀다'는 다른 말이라 구분해서 담는다. */
+  /* 하루치 증상 값. 끼니마다 매기므로 하루에 넷까지 나온다.
+     **가장 심했던 것을 그날 값으로 삼는다.** 평균을 내면 0,0,7,0 이 1.75 가 되어
+     '한 번 몹시 아팠던 날' 이 '조금 아팠던 날' 처럼 보인다.
+     아무 끼니에도 매기지 않았으면 값이 없는 것이다(0 과 다르다). */
+  function symDay(d, id) {
+    if (!d || !d.symLv) return null;
+    var best = null;
+    Object.keys(d.symLv).forEach(function (m) {
+      var v = d.symLv[m] && d.symLv[m][id];
+      if (v == null) return;
+      if (best == null || v > best) best = v;
+    });
+    return best;
+  }
+
   function symLvOf(d, meal, id) {
     var o = d && d.symLv && d.symLv[meal];
     return o && o[id] != null ? o[id] : null;
@@ -3260,6 +3275,14 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       sys:     C(function (x) { return x && x.bp ? x.bp.s : null; }),
       dia:     C(function (x) { return x && x.bp ? x.bp.d : null; }),
       glucose: C(function (x) { return x ? x.glucose : null; }),
+      /* 갈래마다 한 줄. id 를 키로 담아 카드에서 그대로 꺼내 쓴다 */
+      sym: (function () {
+        var out = {};
+        symptomList().forEach(function (sy) {
+          out[sy.id] = C(function (x) { return symDay(x, sy.id); });
+        });
+        return out;
+      })(),
       weight:  C(function (x) { return x ? x.weight : null; }),
       ex:      C(function (x) { return x && x.exercise ? (x.exercise.min || 0) : null; }),
       water:   C(function (x) { return x ? x.water : null; }),
@@ -4112,7 +4135,32 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
                   { color: S3, name: "컨디션", text: s.condition[i] == null ? "—" : s.condition[i] + " / 5" },
                   { color: S2, name: "전체평가", text: s.overall[i] == null ? "—" : s.overall[i] + " / 5" }];
         } }
-    ];
+    ].concat(symptomList().map(function (sy) {
+      var vals = s.sym[sy.id] || [];
+      var nm = sy.name || "증상";
+      return {
+        id: "sym-" + sy.id, title: nm + " 정도", scale: "0~10",
+        aria: "요일별 " + nm + " 정도", kind: "line", area: true,
+        series: [{ name: nm, color: S2, values: vals }],
+        /* 0~10 로 못 박는다. 값에 맞춰 늘였다 줄였다 하면 어제보다 나아졌는지
+           눈으로 견줄 수가 없다 — 같은 자에 대고 재야 한다. */
+        domain: [0, 10], ticks: [0, 5, 10],
+        valueFmt: one,
+        weekFmt: function () {
+          var got = vals.filter(function (v) { return v != null; });
+          if (!got.length) return "";
+          var worst = Math.max.apply(null, got);
+          var bad = got.filter(function (v) { return v > 0; }).length;
+          return wk(bad + "일 있었음 · 가장 심할 때 " + worst,
+            bad === 0 ? { key: "good", label: "없던 기간" } : null);
+        },
+        tipFmt: function (i) {
+          if (vals[i] == null) return null;
+          return [{ color: S2, name: nm, text: vals[i] + " / 10" },
+                  { plain: vals[i] === 0 ? "없었음" : "그날 가장 심할 때" }];
+        }
+      };
+    }));
 
     var labs = s.points.map(function (pt) { return pt.label; });
     chartDefs.forEach(function (c) { c.labels = labs; });
@@ -4242,6 +4290,13 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
         return vals.some(function (v) { return v; }) ? row(m[1] + " 식단", vals) : "";
       }).join("") +
       row("복약", medVals) +
+      /* 갈래마다 한 줄. 아무 날도 매기지 않았으면 빈 줄을 만들지 않는다 —
+         쓰지 않는 갈래가 표를 길게 만들 이유가 없다. */
+      symptomList().map(function (sy) {
+        var vals = s.sym[sy.id] || [];
+        return vals.some(function (v) { return v != null; })
+          ? row((sy.name || "증상") + " (0~10)", vals) : "";
+      }).join("") +
       row("기분 (/5)", s.mood) +
       row("컨디션 (/5)", s.condition) +
       row("전체평가 (/5)", s.overall) +

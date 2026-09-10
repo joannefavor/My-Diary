@@ -1,0 +1,65 @@
+<!doctype html><meta charset="utf-8"><title>증상 추이 시험</title>
+<div id="out" style="font:13px ui-monospace;white-space:pre">…</div>
+<iframe id="f" src="/_fix_symt.html#/health" style="width:1240px;height:2600px;border:0"></iframe>
+<script>
+var pass=0,fail=0,L=[];
+function log(ok,name,got){ if(ok){pass++;L.push("통과  "+name);}
+  else{fail++;L.push("X 실패  "+name+"   실제="+got);} }
+window.onerror=function(m){L.push("X 실패  시험 창이 터짐: "+m);fail++;};
+document.getElementById("f").onload=function(){var fr=this;
+ fr.contentWindow.onerror=function(m,s,l){L.push("X 실패  앱이 터짐: "+m+" @"+l);fail++;};
+ setTimeout(function(){
+ var d=fr.contentDocument,w=fr.contentWindow;
+ try{
+  function chart(id){return d.querySelector('.plot[data-chart="'+id+'"]');}
+  function card(id){var p=chart(id);return p?(p.closest(".chart-card")||p.parentElement):null;}
+  function txt(id){return card(id).textContent.replace(/\s+/g," ");}
+
+  log(!!chart("sym-symD") && !!chart("sym-symM"),
+    "갈래마다 선이 하나씩 생긴다","없음");
+  var ids=Array.prototype.map.call(d.querySelectorAll(".plot[data-chart]"),
+    function(p){return p.getAttribute("data-chart");});
+  log(ids.indexOf("mood")<ids.indexOf("sym-symD"),
+    "증상 선은 기존 차트 뒤에 붙는다",ids.join(","));
+
+  /* 하루에 여러 번 매긴 날은 가장 심했던 것이 그날 값 */
+  var dr=Array.prototype.filter.call(d.querySelectorAll("#tableHost tbody tr"),function(tr){
+    return tr.querySelector("th").textContent.indexOf("D (0~10)")===0;})[0];
+  var vals=Array.prototype.map.call(dr.querySelectorAll("td"),function(td){return td.textContent;});
+  log(vals[1]==="7","2·7·1 을 매긴 날은 7 로 센다 — 평균이 아니다",vals.join(" "));
+  log(vals[0]==="0","0 만 매긴 날은 0 이다 — 값이 없는 것과 다르다",vals.join(" "));
+  log(vals[3]==="—","아무 끼니에도 안 매긴 날은 빈칸이다",vals.join(" "));
+
+  /* 한 줄 요약 */
+  log(/2일 있었음/.test(txt("sym-symD")),
+    "며칠 있었는지 센다 — 0 인 날은 세지 않는다",txt("sym-symD").slice(0,80));
+  log(/가장 심할 때 7/.test(txt("sym-symD")),
+    "그 기간 가장 심했던 값을 알려준다",txt("sym-symD").slice(0,80));
+
+  /* 눈금이 0~10 으로 못 박혀 있어야 견줄 수 있다.
+     눈금은 글자가 아니라 선으로 그려지므로, 그린 자리로 잰다.
+     D 의 가장 큰 값은 7, M 은 6 이다. 눈금이 값에 맞춰 늘어난다면 둘 다 맨
+     위에 붙어 같은 높이가 된다. 고정이라면 7 이 6 보다 높아야 한다. */
+  function topY(id){
+    var p=chart(id).querySelector("path");
+    var ys=(p.getAttribute("d")||"").match(/[-\d.]+(?=\s*(?:[A-Za-z]|$))/g)||[];
+    var all=(p.getAttribute("d")||"").split(/[^-\d.]+/).filter(function(x){return x!=="";}).map(Number);
+    var odd=all.filter(function(_,k){return k%2===1;});
+    return Math.min.apply(null,odd);
+  }
+  var yD=topY("sym-symD"), yM=topY("sym-symM");
+  log(yD<yM-1,"눈금이 0~10 으로 고정된다 — 7 이 6 보다 높이 그려진다",
+    "D 꼭대기 "+Math.round(yD)+" · M 꼭대기 "+Math.round(yM));
+
+  /* 표 */
+  var rows=Array.prototype.map.call(d.querySelectorAll("#tableHost tbody tr"),
+    function(tr){return tr.querySelector("th").textContent;});
+  log(rows.filter(function(r){return /\(0~10\)/.test(r);}).length===2,
+    "표에도 갈래마다 한 줄",rows.filter(function(r){return /0~10/.test(r);}).join("/"));
+
+  document.getElementById("out").textContent=L.join("\n")+
+    "\n"+(fail?"X ":"")+"통과 "+pass+" · 실패 "+fail;
+ }catch(e){fail++;L.push("X 실패  "+e.message);
+   document.getElementById("out").textContent=L.join("\n")+"\nX 통과 "+pass+" · 실패 "+fail;}
+},1800);};
+</script>
