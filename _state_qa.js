@@ -51,5 +51,18 @@ var keys = Object.keys(asState(null)).sort();
 t("state 는 days·meds·habits·symptoms 로 이루어진다", keys,
   ["days", "habits", "meds", "symptoms"]);
 
+/* ---------- 처음부터 놓아 두는 증상 갈래 ----------
+   uid() 로 만들면 휴대폰과 PC 가 각자 만들어 서로 다른 id 를 갖고,
+   합칠 때 겹치지 않아 D 가 둘·M 이 둘이 된다. id 가 고정이어야 한다. */
+var dsLine = /var DEFAULT_SYMPTOMS = (\[[^\]]*\]);/.exec(src);
+if (!dsLine) { console.error("DEFAULT_SYMPTOMS 를 찾지 못했습니다."); process.exit(1); }
+var DS = new Function("return " + dsLine[1] + ";")();
+
+t("갈래 둘을 놓는다", DS.length, 2);
+t("이름은 D 와 M", DS.map(function (x) { return x.name; }), ["D", "M"]);
+t("id 가 못 박혀 있다", DS.map(function (x) { return x.id; }), ["symD", "symM"]);
+t("id 에 uid() 가 섞이지 않았다",
+  DS.every(function (x) { return /^sym[A-Z]$/.test(x.id); }), true);
+
 console.log("\n통과 " + pass + " · 실패 " + fail);
 process.exit(fail ? 1 : 0);

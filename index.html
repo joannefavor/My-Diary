@@ -1781,8 +1781,6 @@
     .sym-one .sc-name { display: inline; font-size: 11.5px; color: var(--muted); }
     .sym-one select { width: 4em; }
   }
-  .symp-edit { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 7px; }
-  .symp-edit input { flex: 0 1 120px; font-size: 12px; padding: 4px 7px; }
   .meal-row button {
     padding: 7px 0; font-size: 12.5px; background: var(--surface);
   }
@@ -2845,6 +2843,10 @@
   function menuOf(d, k) { return (d && d.menu && d.menu[k]) || ""; }
   /* 끼니별로 적어둔 약. 나중에 생긴 항목이라 예전 기록에는 없다 */
   function pillOf(d, k) { return (d && d.pill && d.pill[k]) || ""; }
+  function pillMeals(x) {
+    return MEALS.filter(function (m) { return pillOf(x, m[0]); });
+  }
+
   /* 끼니별 증상. 나중에 생긴 항목이라 예전 기록에는 없다 */
   function symOf(d, k) { return (d && d.sym && d.sym[k]) || ""; }
 
@@ -2898,25 +2900,6 @@
     }).join("");
   }
 
-  /* 갈래 이름은 사람이 정한다. 약·습관과 같은 방식이다. */
-  function symptomEditor() {
-    var list = symptomList();
-    return '<div class="symp-edit">' +
-      '<span class="note" style="flex:0 0 auto">증상 갈래</span>' +
-      list.map(function (sy) {
-        return '<input type="text" data-symname="' + esc(sy.id) + '" value="' + esc(sy.name) +
-          '" placeholder="이름" aria-label="증상 갈래 이름">' +
-          '<button type="button" class="ghost" data-symdel="' + esc(sy.id) +
-          '" title="이 갈래 지우기" aria-label="' + esc((sy.name || "이름 없음") + " 갈래 지우기") + '">✕</button>';
-      }).join("") +
-      '<button type="button" class="ghost" id="symAdd">+ 갈래 추가</button>' +
-      (list.length ? "" : '<span class="note">갈래를 더하면 끼니마다 0~10 으로 누를 수 있습니다</span>') +
-      "</div>";
-  }
-  function pillMeals(x) {
-    return MEALS.filter(function (m) { return pillOf(x, m[0]); });
-  }
-
   /* ---------- 복약 ----------
      약 목록을 만들기 전에는 하루 한 번 눌러 두는 방식이었다.
      목록이 생긴 뒤에도 그때 '복용함'으로 적어둔 날은 복용한 날로 남긴다. */
@@ -2937,7 +2920,18 @@
   /* 일정은 id로 식별한다. 예전 기록에는 id가 없으므로 읽을 때 채워 넣는다. */
   var uidSeq = 0;
   function uid() { return "e" + Date.now().toString(36) + (uidSeq++).toString(36); }
+  /* 증상 갈래 둘을 처음부터 놓아 둔다. 손으로 만들게 하지 않는다.
+
+     **id 를 고정한 것이 핵심이다.** uid() 로 만들면 휴대폰과 PC 가 각자
+     만들면서 서로 다른 id 를 갖게 되고, 합칠 때 겹치지 않아 D 가 둘·M 이 둘이
+     된다. 같은 id 면 mergeNamedList 가 하나로 본다. */
+  var DEFAULT_SYMPTOMS = [{ id: "symD", name: "D" }, { id: "symM", name: "M" }];
+
   function normalize() {
+    /* 하나도 없을 때만 놓는다 — 이미 정해 둔 것이 있으면 건드리지 않는다 */
+    if (!symptomList().length) {
+      state.symptoms = DEFAULT_SYMPTOMS.map(function (x) { return { id: x.id, name: x.name }; });
+    }
     /* 일 메모는 처음엔 하루에 한 칸(workNote)이었다. 날짜별로 여러 개 적고
        찾을 수 있게 목록으로 바꾸면서, 적어 둔 것을 옮겨 담는다.
 
@@ -4377,7 +4371,7 @@
             "</div>";
           }).join("") +
         "</div>" +
-        symptomEditor() +
+
         '<span class="note">끼니를 누르면 먹은 것으로 기록됩니다. 식단을 적으면 자동으로 체크됩니다. ' +
         '증상 칸에는 그 끼니 뒤에 있었던 것을 적습니다 — 나중에 무엇을 먹고 그랬는지 찾을 단서가 됩니다</span>' +
       "</div>" +
@@ -4464,35 +4458,6 @@
       persist();
     });
 
-    /* 갈래 더하기·지우기·이름 고치기. 지울 때는 지난 기록도 함께 지워지므로 묻는다. */
-    var mealsField = mealRows.closest(".meals-field") || host;
-    mealsField.addEventListener("click", function (e) {
-      if (e.target.closest("#symAdd")) {
-        symptomList().push({ id: uid(), name: "" });
-        return persist();
-      }
-      var del = e.target.closest("button[data-symdel]");
-      if (!del) return;
-      var id = del.getAttribute("data-symdel");
-      var got = symptomList().filter(function (x) { return x.id === id; })[0];
-      if (!window.confirm("‘" + ((got && got.name) || "이름 없음") +
-          "’ 갈래를 지웁니다. 지금까지 이 갈래에 매긴 수치도 함께 지워집니다. 계속할까요?")) return;
-      state.symptoms = symptomList().filter(function (x) { return x.id !== id; });
-      Object.keys(state.days).forEach(function (dt) {
-        var lv = state.days[dt] && state.days[dt].symLv;
-        if (lv) Object.keys(lv).forEach(function (m) { if (lv[m]) delete lv[m][id]; });
-      });
-      persist();
-    });
-    mealsField.addEventListener("change", function (e) {
-      var nm = e.target.closest("input[data-symname]");
-      if (!nm) return;
-      var nid = nm.getAttribute("data-symname");
-      symptomList().forEach(function (x) { if (x.id === nid) x.name = nm.value.trim(); });
-      /* 이름만 바꾼 것이라 폼을 다시 그리지 않는다 — 그리면 커서가 튄다 */
-      save();
-      renderExceptForm();
-    });
 
     /* 무엇을 먹었는지 적었다면 그 끼니는 먹은 것이다.
        약은 끼니를 걸러도 먹을 수 있으므로 식사 체크를 건드리지 않는다. */
