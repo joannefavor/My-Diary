@@ -61,6 +61,29 @@ document.getElementById("f").onload=function(){var fr=this;
   log(wxAt("2026-09-11").kind==="snow","돌아오면 앞서 적은 것이 그대로다",
     JSON.stringify(wxAt("2026-09-11")));
 
+  /* 달력 월 보기에도 날짜마다 붙는다 */
+  w.location.hash="#/schedule";
+  var mv=d.querySelector('button[data-view="month"]');
+  if(mv) mv.click();
+  var cell=Array.prototype.filter.call(d.querySelectorAll(".mon-cell"),function(c){
+    return c.getAttribute("data-monday")==="2026-09-11";})[0];
+  log(!!cell,"월 보기에 그 날짜 칸이 있다","없음");
+  if(cell){
+    var top=cell.querySelector(".mon-top");
+    log(!!top && top.children.length===2,
+      "날짜와 날씨가 한 줄에 있다",top?top.children.length:"칸 없음");
+    log(!!cell.querySelector(".mon-wx svg"),"날씨 그림이 붙는다","없음");
+    /* 18.5 는 JS 에서 19 로 올라간다(Math.round). 22.4 는 22 */
+    log(/22\/19/.test(cell.querySelector(".mon-wx").textContent),
+      "최고/최저가 함께 나온다",cell.querySelector(".mon-wx").textContent);
+  }
+  var empty=Array.prototype.filter.call(d.querySelectorAll(".mon-cell"),function(c){
+    return c.getAttribute("data-monday")==="2026-09-20";})[0];
+  log(empty && !empty.querySelector(".mon-wx"),
+    "적어 둔 것이 없는 날에는 빈 자리를 만들지 않는다",
+    empty?"자리 있음":"칸 없음");
+  w.location.hash="#/main";
+
   /* 빈 날 판정 — 날씨만 남은 날이 동기화에 지워지면 안 된다 */
   var only=saved();
   log(!!(only.days["2026-09-12"]===undefined),"손대지 않은 날은 만들지 않는다","만들어짐");

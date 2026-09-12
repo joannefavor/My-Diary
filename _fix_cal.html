@@ -1310,6 +1310,18 @@
     cursor: cell;
   }
   .mon-cell.is-out { background: var(--surface-2); }
+  /* 날짜와 날씨를 한 줄에. 날씨는 오른쪽 끝으로 밀어 둔다 —
+     날짜는 왼쪽에서 찾고 날씨는 오른쪽에서 훑게 되므로 서로 방해하지 않는다. */
+  .mon-top { display: flex; align-items: center; gap: 4px; min-width: 0; }
+  .mon-wx { margin-left: auto; display: flex; align-items: center; gap: 2px; }
+  .mon-wx i {
+    font-family: var(--mono); font-size: 9px; font-style: normal;
+    color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  /* 좁으면 기온을 접는다. 그림만 남아도 그날이 맑았는지 비였는지는 알 수 있다 */
+  @media (max-width: 760px) {
+    .mon-wx i { display: none; }
+  }
   .mon-cell.is-today .mon-num {
     background: var(--accent); color: var(--on-accent);
   }
@@ -1846,30 +1858,33 @@
     background: var(--accent); border-color: var(--accent); color: var(--on-accent);
   }
 
-  /* 오늘 날씨 — 저절로 채우고, 눌러서 고칠 수 있다 */
-  .wxbar {
-    display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
-    padding: 8px 2px 2px; border-bottom: 1px dashed var(--hair); margin-bottom: 10px;
+  /* 오늘 날씨 — 머리글의 날짜 바로 옆에 앉는다.
+     한 줄을 따로 차지하면 정작 보려던 일정과 할 일이 그만큼 아래로 밀린다.
+     날짜 칸과 비슷한 크기로 맞춘다. */
+  .wxbar { display: inline-flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+  .wxbar .wx-now {
+    display: inline-flex; align-items: center; gap: 5px;
+    border: 1px solid var(--hair); border-radius: 7px;
+    background: var(--surface); padding: 3px 8px 3px 6px;
   }
-  .wxbar .wx-now { display: flex; align-items: baseline; gap: 7px; }
   .wxbar .wx-ico { display: inline-flex; line-height: 1; }
   .wx-svg { display: block; }
-  .wxbar .wx-word { font-size: 14px; color: var(--ink); font-weight: 600; }
+  .wxbar .wx-word { font-size: 12.5px; color: var(--ink); font-weight: 600; }
   .wxbar .wx-temp {
-    font-family: var(--mono); font-size: 13px; color: var(--muted);
+    font-family: var(--mono); font-size: 11.5px; color: var(--muted);
     font-variant-numeric: tabular-nums;
   }
   .wxbar .wx-temp b { color: var(--ink-2); font-weight: 600; }
-  .wxbar .wx-pick { display: flex; gap: 4px; margin-left: auto; }
+  .wxbar .wx-pick { display: inline-flex; gap: 3px; }
   .wxbar .wx-pick button {
     display: inline-flex; align-items: center; justify-content: center;
-    padding: 4px 6px; line-height: 1;
-    background: var(--surface); border: 1px solid var(--hair); border-radius: 7px;
+    padding: 3px 4px; line-height: 1;
+    background: var(--surface); border: 1px solid var(--hair); border-radius: 6px;
   }
   .wxbar .wx-pick button[aria-pressed="true"] {
     background: var(--accent-soft); border-color: var(--accent);
   }
-  .wxbar .wx-hint { font-size: 11.5px; color: var(--muted); }
+  .wxbar .wx-hint { font-size: 11px; color: var(--muted); }
 
   /* 맞춤 상태를 접힌 칸 안에만 두면 아무도 보지 않는다.
      끊겨 있는 줄 모른 채 며칠씩 적는 일이 실제로 있었다. */
@@ -2046,9 +2061,9 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       <div class="datepick">
         <input type="date" id="todayDateIn" aria-label="어느 날을 볼지">
         <span class="hint" id="todayHint"></span>
+        <span class="wxbar" id="todayWx"></span>
       </div>
     </header>
-    <div class="wxbar" id="todayWx"></div>
     <div class="today" id="todayBody"></div>
     <div class="habnow" id="habNow"></div>
   </section>
@@ -3771,7 +3786,10 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       return '<div class="mon-cell' + (dd.getMonth() === mon ? "" : " is-out") +
         (date === TODAY ? " is-today" : "") + (hol ? " is-holiday" : "") +
         '" data-monday="' + date + '">' +
-        '<span class="mon-num">' + dd.getDate() + "</span>" +
+        '<div class="mon-top">' +
+          '<span class="mon-num">' + dd.getDate() + "</span>" +
+          wxCell(date) +
+        "</div>" +
         (hol ? '<span class="mon-hol">' + esc(hol) + "</span>" : "") +
         shown + more + todoLine + "</div>";
     }).join("");
@@ -8370,6 +8388,22 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       " (" + wet.length + "일 / " + dry.length + "일)</span>";
   }
 
+  /* 달력 한 칸에 들어가는 날씨. 적어 둔 것이 없으면 아무것도 그리지 않는다 —
+     빈 자리를 두면 칸마다 높이가 들쭉날쭉해진다. */
+  function wxCell(date) {
+    var w = wxOf(date);
+    if (!w) return "";
+    var k = wxKind(w.kind);
+    var t = w.hi != null && w.lo != null
+      ? Math.round(w.hi) + "/" + Math.round(w.lo) : "";
+    if (!k && !t) return "";
+    var tip = (k ? k.label : "") +
+      (w.hi != null ? " 최고 " + Math.round(w.hi) + "°" : "") +
+      (w.lo != null ? " 최저 " + Math.round(w.lo) + "°" : "");
+    return '<span class="mon-wx" title="' + esc(tip.trim()) + '">' +
+      (k ? wxIcon(k.key, 15) : "") + (t ? "<i>" + t + "</i>" : "") + "</span>";
+  }
+
   function renderWeather() {
     var host = document.getElementById("todayWx");
     if (!host) return;
@@ -8382,7 +8416,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
 
     host.innerHTML =
       '<span class="wx-now">' +
-        '<span class="wx-ico">' + wxIcon(k ? k.key : null, 26) + "</span>" +
+        '<span class="wx-ico">' + wxIcon(k ? k.key : null, 18) + "</span>" +
         '<span class="wx-word">' + (k ? esc(k.label) : "날씨 —") + "</span>" +
         (now || hilo
           ? '<span class="wx-temp">' + esc(now) + (now && hilo ? " · " : "") + hilo + "</span>"
@@ -8394,7 +8428,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
           return '<button type="button" data-wx="' + x.key +
             '" aria-pressed="' + (w && w.kind === x.key) +
             '" title="' + esc(x.label) + '" aria-label="' + esc(x.label) + '">' +
-            wxIcon(x.key, 22) + "</button>";
+            wxIcon(x.key, 17) + "</button>";
         }).join("") +
       "</span>";
   }
