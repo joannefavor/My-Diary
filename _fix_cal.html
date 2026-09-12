@@ -56,10 +56,12 @@
     --sage-ink:     #4f6a3a;
     /* 날씨 그림 색. 평평한 한 색씩이라 그림이 작아도 무엇인지 알아본다 */
     --wx-sun:   #f7c13d;
-    --wx-cloud: #b9c2cc;
-    --wx-cloud2:#98a4b0;
+    --wx-cloud: #ffffff;
+    --wx-cloud2:#e6ebf0;   /* 흐림의 뒷구름. 흰 구름과 갈리도록 한 겹 낮춘다 */
+    /* 흰 구름은 크림색 바탕에서 사라진다. 테두리로 형태를 잡아 준다 */
+    --wx-edge:  #aab6c2;
     --wx-rain:  #4a90e2;
-    --wx-snow:  #dbe9fa;
+    --wx-snow:  #ffffff;
     --s1:           #2a78d6;
     --s2:           #eb6834;
     --s3:           #1baf7a;
@@ -124,10 +126,11 @@
       --accent-soft: #3d2b20;
       /* 어두운 배경에서는 구름을 밝혀야 형태가 보인다 */
       --wx-sun:   #f8ca57;
-      --wx-cloud: #8e9aa6;
-      --wx-cloud2:#6f7b87;
+      --wx-cloud: #f2f5f8;
+      --wx-cloud2:#c3ccd6;
+      --wx-edge:  #7c8894;
       --wx-rain:  #6aa8f0;
-      --wx-snow:  #cfe2f7;
+      --wx-snow:  #f2f5f8;
       --sage:        #b7c8a1;
       --on-sage:     #22291b;
       --sage-ink:    #b7c8a1;
@@ -8269,10 +8272,15 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
         '" viewBox="0 0 32 32" aria-hidden="true" focusable="false">' + inner + "</svg>";
     }
     /* 구름 한 덩이 — 동그라미 셋과 바닥 하나. 어느 그림에서나 같은 모양을 쓴다 */
-    function cloud(cx, cy, sc, col) {
+    function blob(cx, cy, sc, col) {
       return '<g transform="translate(' + cx + ' ' + cy + ') scale(' + sc + ')" fill="' + col + '">' +
         '<circle cx="-5" cy="0" r="5.2"/><circle cx="2.5" cy="-2.2" r="6.8"/>' +
         '<circle cx="8" cy="1" r="5"/><rect x="-10" y="0" width="23" height="6" rx="3"/></g>';
+    }
+    /* 겹친 동그라미에 테두리를 그대로 두르면 **안쪽 경계선까지 그려진다.**
+       그래서 조금 크게 한 번 깔고 그 위에 덮는다 — 겉선만 남는다. */
+    function cloud(cx, cy, sc, col) {
+      return blob(cx, cy, sc * 1.13, "var(--wx-edge)") + blob(cx, cy, sc, col);
     }
     var SUN = "var(--wx-sun)", C1 = "var(--wx-cloud)", C2 = "var(--wx-cloud2)";
 
@@ -8300,7 +8308,9 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
          비 그림과 구별이 안 된다 — 밝은 배경에서 눈이 사라졌다.
          모양으로 갈린다: 비는 빗줄기, 눈은 동그라미. */
       return svg(cloud(15, 12, 1.05, C1) +
-        '<g fill="var(--wx-snow)" stroke="' + C2 + '" stroke-width="1.1">' +
+        /* 구름이 흰색이 되면서 눈송이 테두리를 뒷구름 색(연함)으로 두었더니
+           함께 흐려졌다. 겉선 색으로 바꿔 또렷하게 둔다. */
+        '<g fill="var(--wx-snow)" stroke="var(--wx-edge)" stroke-width="1.2">' +
         '<circle cx="9" cy="25" r="2.3"/><circle cx="16" cy="27.5" r="2.3"/>' +
         '<circle cx="23" cy="25" r="2.3"/></g>');
     }
