@@ -54,6 +54,12 @@
     --sage:         #b7c8a1;
     --on-sage:      #2c3524;
     --sage-ink:     #4f6a3a;
+    /* 날씨 그림 색. 평평한 한 색씩이라 그림이 작아도 무엇인지 알아본다 */
+    --wx-sun:   #f7c13d;
+    --wx-cloud: #b9c2cc;
+    --wx-cloud2:#98a4b0;
+    --wx-rain:  #4a90e2;
+    --wx-snow:  #dbe9fa;
     --s1:           #2a78d6;
     --s2:           #eb6834;
     --s3:           #1baf7a;
@@ -116,6 +122,12 @@
       --on-accent:   #2a1d16;
       --accent-ink:  #f5c2a1;
       --accent-soft: #3d2b20;
+      /* 어두운 배경에서는 구름을 밝혀야 형태가 보인다 */
+      --wx-sun:   #f8ca57;
+      --wx-cloud: #8e9aa6;
+      --wx-cloud2:#6f7b87;
+      --wx-rain:  #6aa8f0;
+      --wx-snow:  #cfe2f7;
       --sage:        #b7c8a1;
       --on-sage:     #22291b;
       --sage-ink:    #b7c8a1;
@@ -1837,7 +1849,8 @@
     padding: 8px 2px 2px; border-bottom: 1px dashed var(--hair); margin-bottom: 10px;
   }
   .wxbar .wx-now { display: flex; align-items: baseline; gap: 7px; }
-  .wxbar .wx-ico { font-size: 20px; line-height: 1; }
+  .wxbar .wx-ico { display: inline-flex; line-height: 1; }
+  .wx-svg { display: block; }
   .wxbar .wx-word { font-size: 14px; color: var(--ink); font-weight: 600; }
   .wxbar .wx-temp {
     font-family: var(--mono); font-size: 13px; color: var(--muted);
@@ -1846,7 +1859,8 @@
   .wxbar .wx-temp b { color: var(--ink-2); font-weight: 600; }
   .wxbar .wx-pick { display: flex; gap: 4px; margin-left: auto; }
   .wxbar .wx-pick button {
-    padding: 4px 7px; font-size: 15px; line-height: 1.1;
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 4px 6px; line-height: 1;
     background: var(--surface); border: 1px solid var(--hair); border-radius: 7px;
   }
   .wxbar .wx-pick button[aria-pressed="true"] {
@@ -4183,7 +4197,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
           var rows = [{ color: S2, name: nm, text: vals[i] + " / 10" },
                       { plain: vals[i] === 0 ? "없었음" : "그날 가장 심할 때" }];
           var w = wxOf(s.dates[i]), k = w && wxKind(w.kind);
-          if (k) rows.push({ plain: k.icon + " " + k.label });
+          if (k) rows.push({ plain: k.label });
           return rows;
         }
       };
@@ -8236,12 +8250,64 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
   /* 눌러서 고를 수 있는 갈래. 다섯이면 넉넉하다 —
      더 잘게 나누면 고르는 데 망설이게 되고, 그러면 안 고른다. */
   var WX_KINDS = [
-    { key: "clear",    icon: "☀", label: "맑음" },
-    { key: "cloud",    icon: "⛅", label: "구름" },
-    { key: "overcast", icon: "☁", label: "흐림" },
-    { key: "rain",     icon: "🌧", label: "비" },
-    { key: "snow",     icon: "❄", label: "눈" }
+    { key: "clear",    label: "맑음" },
+    { key: "cloud",    label: "구름" },
+    { key: "overcast", label: "흐림" },
+    { key: "rain",     label: "비" },
+    { key: "snow",     label: "눈" }
   ];
+  /* 날씨 그림을 직접 그린다.
+     그림 파일을 가져다 쓰면 (1) 바깥 주소가 하나 더 늘고 (2) 오프라인에서 깨지고
+     (3) 남의 그림이 된다. SVG 로 그리면 이 셋이 다 없고, 커져도 뭉개지지 않는다.
+
+     결은 평평하게 — 한 덩이에 한 색이다. 작게 줄여도 해와 구름과 비가 갈린다.
+     그늘과 테두리를 넣으면 20px 에서는 얼룩으로만 보인다. */
+  function wxIcon(kind, px) {
+    var n = px || 22;
+    function svg(inner) {
+      return '<svg class="wx-svg" width="' + n + '" height="' + n +
+        '" viewBox="0 0 32 32" aria-hidden="true" focusable="false">' + inner + "</svg>";
+    }
+    /* 구름 한 덩이 — 동그라미 셋과 바닥 하나. 어느 그림에서나 같은 모양을 쓴다 */
+    function cloud(cx, cy, sc, col) {
+      return '<g transform="translate(' + cx + ' ' + cy + ') scale(' + sc + ')" fill="' + col + '">' +
+        '<circle cx="-5" cy="0" r="5.2"/><circle cx="2.5" cy="-2.2" r="6.8"/>' +
+        '<circle cx="8" cy="1" r="5"/><rect x="-10" y="0" width="23" height="6" rx="3"/></g>';
+    }
+    var SUN = "var(--wx-sun)", C1 = "var(--wx-cloud)", C2 = "var(--wx-cloud2)";
+
+    if (kind === "clear") {
+      /* 해만. 빛살을 두지 않는다 — 작게 줄이면 빛살이 먼저 뭉개져 얼룩이 된다 */
+      return svg('<circle cx="16" cy="16" r="9" fill="' + SUN + '"/>');
+    }
+    if (kind === "cloud") {
+      /* 해가 구름 뒤에서 반쯤 나온 모양 */
+      return svg('<circle cx="12" cy="12" r="7" fill="' + SUN + '"/>' +
+        cloud(19, 19, 1, C1));
+    }
+    if (kind === "overcast") {
+      return svg(cloud(15, 15, 1.15, C1) + cloud(19, 19, 0.8, C2));
+    }
+    if (kind === "rain") {
+      return svg(cloud(15, 12, 1.05, C1) +
+        '<g stroke="var(--wx-rain)" stroke-width="2.4" stroke-linecap="round">' +
+        '<line x1="9" y1="23" x2="7" y2="28"/>' +
+        '<line x1="16" y1="23" x2="14" y2="29"/>' +
+        '<line x1="23" y1="23" x2="21" y2="28"/></g>');
+    }
+    if (kind === "snow") {
+      /* 눈송이는 테두리를 둘러야 한다. 흰 점만 두면 크림색 바탕에 묻혀
+         비 그림과 구별이 안 된다 — 밝은 배경에서 눈이 사라졌다.
+         모양으로 갈린다: 비는 빗줄기, 눈은 동그라미. */
+      return svg(cloud(15, 12, 1.05, C1) +
+        '<g fill="var(--wx-snow)" stroke="' + C2 + '" stroke-width="1.1">' +
+        '<circle cx="9" cy="25" r="2.3"/><circle cx="16" cy="27.5" r="2.3"/>' +
+        '<circle cx="23" cy="25" r="2.3"/></g>');
+    }
+    return svg('<circle cx="16" cy="16" r="8" fill="none" stroke="' + C2 +
+      '" stroke-width="2" stroke-dasharray="3 3"/>');
+  }
+
   function wxKind(key) {
     return WX_KINDS.filter(function (k) { return k.key === key; })[0] || null;
   }
@@ -8298,7 +8364,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
 
     host.innerHTML =
       '<span class="wx-now">' +
-        '<span class="wx-ico" aria-hidden="true">' + (k ? k.icon : "·") + "</span>" +
+        '<span class="wx-ico">' + wxIcon(k ? k.key : null, 26) + "</span>" +
         '<span class="wx-word">' + (k ? esc(k.label) : "날씨 —") + "</span>" +
         (now || hilo
           ? '<span class="wx-temp">' + esc(now) + (now && hilo ? " · " : "") + hilo + "</span>"
@@ -8310,7 +8376,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
           return '<button type="button" data-wx="' + x.key +
             '" aria-pressed="' + (w && w.kind === x.key) +
             '" title="' + esc(x.label) + '" aria-label="' + esc(x.label) + '">' +
-            x.icon + "</button>";
+            wxIcon(x.key, 22) + "</button>";
         }).join("") +
       "</span>";
   }
