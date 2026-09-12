@@ -61,7 +61,7 @@
     /* 흰 구름은 크림색 바탕에서 사라진다. 테두리로 형태를 잡아 준다 */
     --wx-edge:  #aab6c2;
     --wx-rain:  #4a90e2;
-    --wx-snow:  #ffffff;
+    --wx-snow:  #7fb0dc;   /* 눈 결정. 흰 구름 아래라 얼음빛 파랑으로 둔다 */
     --s1:           #2a78d6;
     --s2:           #eb6834;
     --s3:           #1baf7a;
@@ -130,7 +130,7 @@
       --wx-cloud2:#c3ccd6;
       --wx-edge:  #7c8894;
       --wx-rain:  #6aa8f0;
-      --wx-snow:  #f2f5f8;
+      --wx-snow:  #a8cdf0;
       --sage:        #b7c8a1;
       --on-sage:     #22291b;
       --sage-ink:    #b7c8a1;
@@ -8296,15 +8296,23 @@
         '<line x1="23" y1="23" x2="21" y2="28"/></g>');
     }
     if (kind === "snow") {
-      /* 눈송이는 테두리를 둘러야 한다. 흰 점만 두면 크림색 바탕에 묻혀
-         비 그림과 구별이 안 된다 — 밝은 배경에서 눈이 사라졌다.
-         모양으로 갈린다: 비는 빗줄기, 눈은 동그라미. */
+      /* 눈 결정 — 가운데를 지나는 살 여섯. 동그라미로 두었을 때는 흰 구름 아래에서
+         묻히거나 비의 빗방울처럼 읽혔다. 결정은 **모양 자체가 눈**이라 색이
+         옅어져도 무엇인지 알아본다.
+         비는 빗줄기(사선), 눈은 결정(별) — 모양으로 갈린다. */
+      function flake(cx, cy, r) {
+        var out = "";
+        for (var i = 0; i < 3; i++) {
+          var a = (i * 60) * Math.PI / 180;
+          var dx = Math.cos(a) * r, dy = Math.sin(a) * r;
+          out += '<line x1="' + (cx - dx).toFixed(2) + '" y1="' + (cy - dy).toFixed(2) +
+                 '" x2="' + (cx + dx).toFixed(2) + '" y2="' + (cy + dy).toFixed(2) + '"/>';
+        }
+        return out;
+      }
       return svg(cloud(15, 12, 1.05, C1) +
-        /* 구름이 흰색이 되면서 눈송이 테두리를 뒷구름 색(연함)으로 두었더니
-           함께 흐려졌다. 겉선 색으로 바꿔 또렷하게 둔다. */
-        '<g fill="var(--wx-snow)" stroke="var(--wx-edge)" stroke-width="1.2">' +
-        '<circle cx="9" cy="25" r="2.3"/><circle cx="16" cy="27.5" r="2.3"/>' +
-        '<circle cx="23" cy="25" r="2.3"/></g>');
+        '<g stroke="var(--wx-snow)" stroke-width="1.9" stroke-linecap="round">' +
+        flake(10.5, 25.5, 4.2) + flake(21.5, 26, 3.2) + "</g>");
     }
     return svg('<circle cx="16" cy="16" r="8" fill="none" stroke="' + C2 +
       '" stroke-width="2" stroke-dasharray="3 3"/>');
