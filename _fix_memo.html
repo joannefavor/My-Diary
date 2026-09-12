@@ -1831,6 +1831,29 @@
     background: var(--accent); border-color: var(--accent); color: var(--on-accent);
   }
 
+  /* 오늘 날씨 — 저절로 채우고, 눌러서 고칠 수 있다 */
+  .wxbar {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+    padding: 8px 2px 2px; border-bottom: 1px dashed var(--hair); margin-bottom: 10px;
+  }
+  .wxbar .wx-now { display: flex; align-items: baseline; gap: 7px; }
+  .wxbar .wx-ico { font-size: 20px; line-height: 1; }
+  .wxbar .wx-word { font-size: 14px; color: var(--ink); font-weight: 600; }
+  .wxbar .wx-temp {
+    font-family: var(--mono); font-size: 13px; color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .wxbar .wx-temp b { color: var(--ink-2); font-weight: 600; }
+  .wxbar .wx-pick { display: flex; gap: 4px; margin-left: auto; }
+  .wxbar .wx-pick button {
+    padding: 4px 7px; font-size: 15px; line-height: 1.1;
+    background: var(--surface); border: 1px solid var(--hair); border-radius: 7px;
+  }
+  .wxbar .wx-pick button[aria-pressed="true"] {
+    background: var(--accent-soft); border-color: var(--accent);
+  }
+  .wxbar .wx-hint { font-size: 11.5px; color: var(--muted); }
+
   /* 맞춤 상태를 접힌 칸 안에만 두면 아무도 보지 않는다.
      끊겨 있는 줄 모른 채 며칠씩 적는 일이 실제로 있었다. */
   .repeat-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
@@ -2013,6 +2036,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
         <span class="hint" id="todayHint"></span>
       </div>
     </header>
+    <div class="wxbar" id="todayWx"></div>
     <div class="today" id="todayBody"></div>
     <div class="habnow" id="habNow"></div>
   </section>
@@ -4157,12 +4181,15 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
           var worst = Math.max.apply(null, got);
           var bad = got.filter(function (v) { return v > 0; }).length;
           return wk(bad + "일 있었음 · 가장 심할 때 " + worst,
-            bad === 0 ? { key: "good", label: "없던 기간" } : null);
+            bad === 0 ? { key: "good", label: "없던 기간" } : null) + wxSplit(vals, s.dates);
         },
         tipFmt: function (i) {
           if (vals[i] == null) return null;
-          return [{ color: S2, name: nm, text: vals[i] + " / 10" },
-                  { plain: vals[i] === 0 ? "없었음" : "그날 가장 심할 때" }];
+          var rows = [{ color: S2, name: nm, text: vals[i] + " / 10" },
+                      { plain: vals[i] === 0 ? "없었음" : "그날 가장 심할 때" }];
+          var w = wxOf(s.dates[i]), k = w && wxKind(w.kind);
+          if (k) rows.push({ plain: k.icon + " " + k.label });
+          return rows;
         }
       };
     }));
@@ -4294,6 +4321,15 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
         /* 아무도 적지 않은 끼니는 빈 줄을 만들지 않는다 */
         return vals.some(function (v) { return v; }) ? row(m[1] + " 식단", vals) : "";
       }).join("") +
+      row("날씨", s.dates.map(function (d) {
+        var w = wxOf(d);
+        if (!w) return null;
+        var k = wxKind(w.kind);
+        var t = w.hi != null && w.lo != null
+          ? Math.round(w.hi) + "/" + Math.round(w.lo) : "";
+        if (!k && !t) return null;
+        return ((k ? k.label : "") + " " + t).trim();
+      })) +
       row("복약", medVals) +
       /* 갈래마다 한 줄. 아무 날도 매기지 않았으면 빈 줄을 만들지 않는다 —
          쓰지 않는 갈래가 표를 길게 만들 이유가 없다. */
@@ -8194,7 +8230,162 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
   /* ---------- 오늘 (메인화면) ----------
      보고 있는 날의 일정과 할 일을 한 자리에 모은다.
      일정·업무 페이지와 같은 자료를 보여주므로 어느 쪽에서 체크해도 함께 바뀐다. */
+  /* ====================== 날씨 ======================
+
+     바깥으로 나가는 것은 좌표 하나뿐이다. 적어 둔 기록은 나가지 않는다.
+     동기화 말고는 아무 요청도 안 보내던 앱에 주소가 하나 생기므로, 여기 한 곳에만
+     둔다. 못 받아 와도 앱은 그대로 돌아가고 손으로 고를 수 있다. */
+
+  var WX_PLACE = { name: "서울", lat: 37.5665, lon: 126.978 };
+
+  /* 눌러서 고를 수 있는 갈래. 다섯이면 넉넉하다 —
+     더 잘게 나누면 고르는 데 망설이게 되고, 그러면 안 고른다. */
+  var WX_KINDS = [
+    { key: "clear",    icon: "☀", label: "맑음" },
+    { key: "cloud",    icon: "⛅", label: "구름" },
+    { key: "overcast", icon: "☁", label: "흐림" },
+    { key: "rain",     icon: "🌧", label: "비" },
+    { key: "snow",     icon: "❄", label: "눈" }
+  ];
+  function wxKind(key) {
+    return WX_KINDS.filter(function (k) { return k.key === key; })[0] || null;
+  }
+
+  /* WMO 코드를 다섯 갈래로 줄인다. 이슬비도 비고, 소나기도 비다 —
+     나중에 '비 온 날' 을 세려면 한 갈래여야 한다. */
+  function wxFromCode(c) {
+    if (c == null) return null;
+    if (c === 0 || c === 1) return "clear";
+    if (c === 2) return "cloud";
+    if (c === 3 || c === 45 || c === 48) return "overcast";
+    if (c >= 71 && c <= 77) return "snow";
+    if (c === 85 || c === 86) return "snow";
+    return "rain";      /* 51~67 · 80~82 · 95~99 */
+  }
+
+  function wxOf(date) {
+    var d = peek(date);
+    return (d && d.weather) || null;
+  }
+
+  /* 비 온 날과 안 온 날을 갈라 견준다.
+     **사람은 이것을 기억으로 못 짚는다.** 아픈 날은 기억에 남고 안 아픈 날은 안
+     남으므로, 비 오면 아프다는 느낌은 늘 실제보다 세다. 세어 보면 다르다.
+
+     양쪽에 사흘씩은 있어야 낸다. 하루 대 하루를 견주어 '비 오면 두 배' 라고
+     말하면 없는 것을 본 것이 된다. */
+  function wxSplit(vals, dates) {
+    var wet = [], dry = [];
+    dates.forEach(function (dt, i) {
+      if (vals[i] == null) return;
+      var w = wxOf(dt);
+      if (!w || !w.kind) return;
+      (w.kind === "rain" || w.kind === "snow" ? wet : dry).push(vals[i]);
+    });
+    if (wet.length < 3 || dry.length < 3) return "";
+    function avg(a) {
+      return Math.round(a.reduce(function (p, c) { return p + c; }, 0) / a.length * 10) / 10;
+    }
+    return '<span class="sub">비·눈 온 날 ' + avg(wet).toFixed(1) +
+      " · 안 온 날 " + avg(dry).toFixed(1) +
+      " (" + wet.length + "일 / " + dry.length + "일)</span>";
+  }
+
+  function renderWeather() {
+    var host = document.getElementById("todayWx");
+    if (!host) return;
+    var w = wxOf(selected);
+    var k = w && wxKind(w.kind);
+
+    var now = w && w.now != null ? Math.round(w.now) + "°" : "";
+    var hilo = w && w.hi != null && w.lo != null
+      ? "<b>" + Math.round(w.hi) + "°</b> / " + Math.round(w.lo) + "°" : "";
+
+    host.innerHTML =
+      '<span class="wx-now">' +
+        '<span class="wx-ico" aria-hidden="true">' + (k ? k.icon : "·") + "</span>" +
+        '<span class="wx-word">' + (k ? esc(k.label) : "날씨 —") + "</span>" +
+        (now || hilo
+          ? '<span class="wx-temp">' + esc(now) + (now && hilo ? " · " : "") + hilo + "</span>"
+          : "") +
+        (k ? "" : '<span class="wx-hint">눌러서 고르세요</span>') +
+      "</span>" +
+      '<span class="wx-pick" role="group" aria-label="날씨 고르기">' +
+        WX_KINDS.map(function (x) {
+          return '<button type="button" data-wx="' + x.key +
+            '" aria-pressed="' + (w && w.kind === x.key) +
+            '" title="' + esc(x.label) + '" aria-label="' + esc(x.label) + '">' +
+            x.icon + "</button>";
+        }).join("") +
+      "</span>";
+  }
+
+  /* 오늘 것만, 한 번만 받는다.
+     **이미 남아 있으면 다시 받지 않는다** — 지난 날씨는 역사다. 나중에 덮어쓰면
+     그날 적어 둔 것이 바뀐다. */
+  var wxTried = false;
+  function wxFetch() {
+    if (wxTried) return;
+    wxTried = true;
+    var t = iso(new Date());
+    if (wxOf(t)) return;                               /* 이미 있다 (기온만 남은 것도 있다) */
+    if (navigator.onLine === false) return;            /* 끊겨 있으면 손으로 */
+    var url = "https://api.open-meteo.com/v1/forecast?latitude=" + WX_PLACE.lat +
+      "&longitude=" + WX_PLACE.lon +
+      "&current=temperature_2m,weather_code" +
+      "&daily=weather_code,temperature_2m_max,temperature_2m_min" +
+      "&timezone=Asia%2FSeoul&forecast_days=1";
+    fetch(url, { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        if (!j || !j.daily || !j.daily.weather_code) return;
+        /* 받아온 사이에 사람이 손으로 골랐을 수 있다. 그때는 손으로 고른 것을 둔다 */
+        if (wxOf(t)) return;
+        var kind = wxFromCode(j.daily.weather_code[0]);
+        if (!kind) return;
+        day(t).weather = {
+          kind: kind,
+          hi: j.daily.temperature_2m_max ? j.daily.temperature_2m_max[0] : null,
+          lo: j.daily.temperature_2m_min ? j.daily.temperature_2m_min[0] : null,
+          now: j.current ? j.current.temperature_2m : null,
+          place: WX_PLACE.name, auto: true
+        };
+        save();
+        renderWeather();
+      })
+      .catch(function () { /* 못 받아도 손으로 고를 수 있다 */ });
+  }
+
+  document.getElementById("todayWx").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-wx]");
+    if (!b) return;
+    var key = b.getAttribute("data-wx");
+    var d0 = day(selected);
+    var had = d0.weather || {};
+    if (had.kind === key) {
+      /* 같은 것을 다시 누르면 갈래를 지운다. 잘못 누르고 되돌릴 길이 있어야 한다.
+         **다만 받아 온 기온은 남긴다** — 갈래 하나 잘못 눌렀다고 그날 기온까지
+         잃으면, 되돌린 것이 아니라 지운 것이 된다. */
+      if (had.hi != null || had.lo != null || had.now != null) {
+        d0.weather = { kind: null, hi: had.hi, lo: had.lo, now: had.now,
+                       place: had.place || WX_PLACE.name, auto: had.auto };
+      } else {
+        delete d0.weather;
+      }
+    } else {
+      /* 손으로 고칠 때 기온은 그대로 둔다 — 갈래만 틀렸을 수 있다 */
+      d0.weather = { kind: key, hi: had.hi == null ? null : had.hi,
+                     lo: had.lo == null ? null : had.lo,
+                     now: had.now == null ? null : had.now,
+                     place: had.place || WX_PLACE.name, auto: false };
+    }
+    save();
+    renderWeather();
+    renderExceptForm();
+  });
+
   function renderToday() {
+    renderWeather();
     var host = document.getElementById("todayBody");
     if (!host) return;
 
@@ -9320,7 +9511,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
      기기마다 판이 다르면 같은 기록을 서로 다르게 합쳐서 한쪽이 버려질 수 있다.
      실제로 PC 만 예전 판인 채로 화요일 혈당을 계속 버렸다. 브라우저는 화면을
      사본으로 갖고 있어서, 고친 줄 모르고 며칠 지날 수 있다. */
-  var APP_BUILD = 20260910;
+  var APP_BUILD = 20260913;
 
   var SYNC_STORE = "weekly-health-ledger-sync";
   var SYNC_BASE_STORE = "weekly-health-ledger-sync-base";
@@ -9765,6 +9956,10 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
     if (d.mood != null || d.condition != null || d.overall != null) return false;
     if (d.note || d.workNote) return false;
     if (d.look && (d.look.week || d.look.month || d.look.year)) return false;
+    /* 날씨만 남은 날도 있다 — 앱을 열어만 두고 아무것도 안 적은 날.
+       여기 빠뜨리면 그 날이 통째로 지워진다. */
+    if (d.weather && (d.weather.kind ||
+        d.weather.hi != null || d.weather.lo != null || d.weather.now != null)) return false;
     return true;
   }
   /* 빈 칸은 '그 날짜가 없는 것'과 같게 다룬다.
@@ -10271,6 +10466,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify(st));
   applyRoute();
   syncPaint();
   syncBoot();
+  wxFetch();      /* 오늘 날씨를 한 번 받아 온다. 못 받아도 손으로 고를 수 있다 */
 })();
 </script>
 

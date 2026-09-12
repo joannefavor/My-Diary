@@ -56,5 +56,13 @@ t("일 메모만 있어도 빈 날이 아니다", { workNote: "이어서 할 것
 t("빈 일 메모는 빈 날", { workNote: "" }, true);
 t("혈압", { bp: "120/80" }, false);
 
+/* 날씨만 남은 날도 있다 — 앱을 열어만 두고 아무것도 안 적은 날.
+   여기 빠뜨리면 그 날이 동기화에 통째로 지워진다. */
+t("날씨 갈래만 있어도 빈 날이 아니다", { weather: { kind: "rain" } }, false);
+t("기온만 남아도 빈 날이 아니다", { weather: { kind: null, hi: 22.4, lo: 18.5 } }, false);
+t("지금 기온만 있어도 빈 날이 아니다", { weather: { now: 19.5 } }, false);
+t("날씨 자리가 텅 비면 빈 날", { weather: {} }, true);
+t("갈래도 기온도 없으면 빈 날", { weather: { kind: null, hi: null, lo: null, now: null } }, true);
+
 console.log("\n통과 " + pass + " · 실패 " + fail);
 process.exit(fail ? 1 : 0);

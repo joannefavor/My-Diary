@@ -1,0 +1,70 @@
+<!doctype html><meta charset="utf-8"><title>날씨 시험</title>
+<div id="out" style="font:13px ui-monospace;white-space:pre">…</div>
+<iframe id="f" src="/_fix_wxq.html" style="width:1240px;height:1500px;border:0"></iframe>
+<script>
+var pass=0,fail=0,L=[];
+function log(ok,name,got){ if(ok){pass++;L.push("통과  "+name);}
+  else{fail++;L.push("X 실패  "+name+"   실제="+got);} }
+window.onerror=function(m){L.push("X 실패  시험 창이 터짐: "+m);fail++;};
+document.getElementById("f").onload=function(){var fr=this;
+ fr.contentWindow.onerror=function(m,s,l){L.push("X 실패  앱이 터짐: "+m+" @"+l);fail++;};
+ setTimeout(function(){
+ var d=fr.contentDocument,w=fr.contentWindow;
+ function done(){document.getElementById("out").textContent=
+   L.join("\n")+"\n"+(fail?"X ":"")+"통과 "+pass+" · 실패 "+fail;}
+ try{
+  function saved(){return JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3"));}
+  function wxAt(k){var s=saved().days[k];return s && s.weather;}
+  function pick(k){d.querySelector('#todayWx button[data-wx="'+k+'"]').click();}
+  function bar(){return d.getElementById("todayWx").textContent.replace(/\s+/g," ");}
+  function goto(dt){var e=d.getElementById("todayDateIn");
+    e.value=dt;e.dispatchEvent(new w.Event("change",{bubbles:true}));}
+
+  /* 비가 22.4/18.5 로 적혀 있는 지난 날짜. 지난 날짜는 받아오지 않는다 */
+  goto("2026-09-11");
+  log(d.querySelectorAll("#todayWx button[data-wx]").length===5,
+    "고르는 단추가 다섯 — 맑음·구름·흐림·비·눈",
+    d.querySelectorAll("#todayWx button[data-wx]").length);
+  log(/비/.test(bar()) && /22/.test(bar()) && /19/.test(bar()),
+    "적어 둔 갈래와 기온이 함께 나온다",bar());
+  log(d.querySelector('#todayWx button[data-wx="rain"]').getAttribute("aria-pressed")==="true",
+    "그 갈래 단추가 눌린 표시가 된다","아님");
+
+  /* 갈래만 고쳐도 기온은 남아야 한다 — 갈래 하나 잘못 눌렀다고 기온을 잃으면 안 된다 */
+  pick("overcast");
+  log(wxAt("2026-09-11").kind==="overcast","눌러서 갈래를 고친다",
+    JSON.stringify(wxAt("2026-09-11")));
+  log(wxAt("2026-09-11").hi===22.4 && wxAt("2026-09-11").lo===18.5,
+    "갈래를 고쳐도 받아 온 기온은 그대로다",JSON.stringify(wxAt("2026-09-11")));
+  log(wxAt("2026-09-11").auto===false,"손으로 고친 것은 auto 가 아니다",
+    JSON.stringify(wxAt("2026-09-11")));
+
+  /* 같은 것을 다시 누르면 갈래만 지워지고 기온은 남는다 */
+  pick("overcast");
+  log(wxAt("2026-09-11").kind===null,"같은 것을 다시 누르면 갈래가 지워진다",
+    JSON.stringify(wxAt("2026-09-11")));
+  log(wxAt("2026-09-11").hi===22.4,"지워도 기온은 남는다 — 되돌린 것이지 지운 것이 아니다",
+    JSON.stringify(wxAt("2026-09-11")));
+  log(/22/.test(bar()) && /눌러서 고르세요/.test(bar()),
+    "갈래가 없어도 기온은 보이고, 고르라고 알린다",bar());
+  pick("snow");
+  log(wxAt("2026-09-11").kind==="snow","다시 고르면 다시 남는다",
+    JSON.stringify(wxAt("2026-09-11")));
+
+  /* 하루에 매인 기록이다 — 날짜를 옮기면 그 날짜 것을 보여준다 */
+  goto("2026-09-10");
+  log(/눌러서 고르세요/.test(bar()) && !/22/.test(bar()),
+    "다른 날로 옮기면 그 날짜 날씨를 보여준다",bar());
+  log(!wxAt("2026-09-10"),"옮긴 날에는 저절로 적히지 않는다",
+    JSON.stringify(wxAt("2026-09-10")));
+  goto("2026-09-11");
+  log(wxAt("2026-09-11").kind==="snow","돌아오면 앞서 적은 것이 그대로다",
+    JSON.stringify(wxAt("2026-09-11")));
+
+  /* 빈 날 판정 — 날씨만 남은 날이 동기화에 지워지면 안 된다 */
+  var only=saved();
+  log(!!(only.days["2026-09-12"]===undefined),"손대지 않은 날은 만들지 않는다","만들어짐");
+ }catch(e){fail++;L.push("X 실패  "+e.message);}
+ done();
+},1800);};
+</script>
