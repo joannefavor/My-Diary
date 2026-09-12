@@ -1,0 +1,121 @@
+<!doctype html><meta charset="utf-8"><title>구글 캘린더(.ics) 가져오기 시험</title>
+<div id="out" style="font:13px ui-monospace;white-space:pre">…</div>
+<iframe id="f" src="/_fix_ics.html#/schedule" style="width:1180px;height:700px;border:0"></iframe>
+<script>
+var pass=0,fail=0,L=[];
+function log(ok,name,got){ if(ok){pass++;L.push("통과  "+name);}
+  else{fail++;L.push("X 실패  "+name+"   실제="+got);} }
+window.onerror=function(m){L.push("X 실패  시험 창이 터짐: "+m);fail++;};
+
+/* 오늘을 기준으로 만든다 — 해가 바뀌어도 앞뒤 한 해 안에 있다 */
+function ymd(off){var d=new Date();d.setDate(d.getDate()+off);
+  return d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0");}
+function dash(s){return s.slice(0,4)+"-"+s.slice(4,6)+"-"+s.slice(6,8);}
+/* 다음 목요일 */
+function nextThu(){var d=new Date();d.setDate(d.getDate()+((4-d.getDay()+7)%7||7));
+  return d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0");}
+
+var THU=nextThu(), D1=ymd(1), D2=ymd(2), D3=ymd(3), D5=ymd(5), D6=ymd(6), D7=ymd(7);
+var ICS=[
+ "BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Google Inc//Google Calendar//EN",
+ "BEGIN:VEVENT","UID:a@g","DTSTART;VALUE=DATE:"+D1,"SUMMARY:종일 일정","END:VEVENT",
+ "BEGIN:VEVENT","UID:b@g","DTSTART;TZID=Asia/Seoul:"+D2+"T140000",
+   "DTEND;TZID=Asia/Seoul:"+D2+"T153000","SUMMARY:오후 두시 회의","END:VEVENT",
+ "BEGIN:VEVENT","UID:c@g","DTSTART:"+D3+"T010000Z","DTEND:"+D3+"T020000Z",
+   "SUMMARY:세계시로 적힌 것","END:VEVENT",
+ "BEGIN:VEVENT","UID:d@g","DTSTART;TZID=Asia/Seoul:"+THU+"T063000",
+   "RRULE:FREQ=WEEKLY;BYDAY=TH;COUNT=3","SUMMARY:목요일 독서모임","END:VEVENT",
+ "BEGIN:VEVENT","UID:e@g","DTSTART;TZID=Asia/Seoul:"+D5+"T090000",
+   "RRULE:FREQ=DAILY;COUNT=3","EXDATE;TZID=Asia/Seoul:"+D6+"T090000",
+   "SUMMARY:사흘 중 하루 빼기","END:VEVENT",
+ "BEGIN:VEVENT","UID:f@g","DTSTART;TZID=Asia/Seoul:"+D7+"T100000",
+   "SUMMARY:일흔다섯 자를 넘겨 접어 둔 제목입니다 이어 붙여 읽",
+   " 어야 합니다 그렇지 않으면 잘립니다","END:VEVENT",
+ "BEGIN:VEVENT","UID:g@g","DTSTART;VALUE=DATE:19900101","SUMMARY:아주 옛날 것","END:VEVENT",
+ "BEGIN:VEVENT","UID:h@g","DTSTART;TZID=Asia/Seoul:"+D1+"T090000",
+   "RRULE:FREQ=WEEKLY;BYSETPOS=2;BYDAY=MO","SUMMARY:못 읽는 규칙","END:VEVENT",
+ "END:VCALENDAR"].join("\r\n");
+
+document.getElementById("f").onload=function(){var fr=this;
+ fr.contentWindow.onerror=function(m,s,l){L.push("X 실패  앱이 터짐: "+m+" @"+l);fail++;};
+ setTimeout(function(){
+ var d=fr.contentDocument,w=fr.contentWindow;
+ function done(){document.getElementById("out").textContent=
+   L.join("\n")+"\n"+(fail?"X ":"")+"통과 "+pass+" · 실패 "+fail;}
+ function saved(){return JSON.parse(w.localStorage.getItem("weekly-health-ledger-v3"));}
+ function on(dt){var x=saved().days[dt];return (x&&x.schedule)||[];}
+ function all(){var s=saved().days,n=0;
+   Object.keys(s).forEach(function(k){n+=((s[k].schedule)||[]).length;});return n;}
+ /* 자리 번호로 집으면 같은 날에 여러 일정이 있을 때 엉뚱한 것을 잡는다 —
+    되풀이 일정이 겹쳐 있어서 실제로 한 번 걸렸다. 제목으로 찾는다. */
+ function find(title){
+   var s=saved().days,hit=[];
+   Object.keys(s).sort().forEach(function(k){
+     ((s[k].schedule)||[]).forEach(function(x){ if(x.title===title) hit.push({date:k,it:x}); });});
+   return hit;
+ }
+ function feed(txt,then){
+   var inp=d.getElementById("icsFile");
+   var dt=new w.DataTransfer(); dt.items.add(new w.File([txt],"c.ics",{type:"text/calendar"}));
+   inp.files=dt.files;
+   inp.dispatchEvent(new w.Event("change",{bubbles:true}));
+   setTimeout(then,700);
+ }
+ try{
+  feed(ICS, function(){
+   try{
+    var msg=d.getElementById("icsMsg").textContent;
+    L.push("안내: "+msg); 
+
+    log(/일정 8건을 읽어/.test(msg),"읽은 건수를 알려준다",msg);
+    /* 종일 1 · 회의 1 · 세계시 1 · 목요일 3 · 사흘에서 하루 뺀 2 · 긴 제목 1 = 9 */
+    log(all()===9,"펴서 넣은 개수가 9개",all());
+
+    /* 종일과 시간 */
+    log(on(dash(D1)).some(function(x){return x.title==="종일 일정" && x.time==="";}),
+      "종일 일정은 시각 없이 들어간다",JSON.stringify(on(dash(D1))));
+    var mt=on(dash(D2))[0];
+    log(mt && mt.time==="14:00" && mt.end==="15:30",
+      "시작과 끝 시각이 함께 들어간다",JSON.stringify(mt));
+
+    /* 세계시 → 이 기기 시간 */
+    var z=on(dash(D3))[0];
+    log(z && z.time==="10:00","01:00Z 를 한국 시간 10:00 으로 옮긴다",z&&z.time);
+
+    /* 되풀이 */
+    log(find("목요일 독서모임").length===3,"COUNT=3 인 주간 되풀이는 세 번만",
+      find("목요일 독서모임").length);
+    log(find("사흘 중 하루 빼기").length===2,"사흘에서 EXDATE 하루를 빼면 둘",
+      find("사흘 중 하루 빼기").length);
+    log(!on(dash(D6)).some(function(x){return x.title==="사흘 중 하루 빼기";}),
+      "빼라고 한 날에는 넣지 않는다","들어감");
+
+    /* 접힌 줄 */
+    var longs=find("일흔다섯 자를 넘겨 접어 둔 제목입니다 이어 붙여 읽어야 합니다 그렇지 않으면 잘립니다");
+    log(longs.length===1,"접힌 제목을 이어 붙여 읽는다",
+      longs.length ? "찾음" : on(dash(D7)).map(function(x){return x.title;}).join(" / "));
+
+    /* 창 밖 · 못 읽는 규칙 */
+    log(/1개는 앞뒤 한 해 밖/.test(msg),"앞뒤 한 해 밖은 넣지 않고 알려준다",msg);
+    log(/1건은 되풀이 규칙이 복잡해 읽지 못했습니다/.test(msg),
+      "모르는 규칙은 읽지 않고 알려준다 — 조용히 틀린 날짜를 만들지 않는다",msg);
+    log(find("못 읽는 규칙").length===0,"못 읽는 규칙은 하나도 넣지 않는다",
+      find("못 읽는 규칙").length);
+
+    log(find("종일 일정")[0].it.color===20,"가져온 일정은 한 색으로 모인다",
+      find("종일 일정")[0].it.color);
+
+    /* 두 번 골라도 겹치지 않는다 */
+    feed(ICS, function(){
+     try{
+      var m2=d.getElementById("icsMsg").textContent;
+      log(all()===9,"같은 파일을 두 번 골라도 개수가 그대로다",all());
+      log(/9개는 이미 있어/.test(m2),"이미 있는 것은 그대로 두었다고 알린다",m2);
+     }catch(e){fail++;L.push("X 실패  "+e.message);}
+     done();
+    });
+   }catch(e){fail++;L.push("X 실패  "+e.message);done();}
+  });
+ }catch(e){fail++;L.push("X 실패  "+e.message);done();}
+},1500);};
+</script>
