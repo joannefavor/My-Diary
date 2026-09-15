@@ -2560,14 +2560,20 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       <button class="ghost" id="meetAdd">+ 새로 적기</button>
     </header>
       <div class="daybar">
-        <input type="search" data-find="meeting" placeholder="단어로 찾기"
+        <input type="search" data-find="meeting" placeholder="누구·내용으로 찾기"
           aria-label="만남 기록 찾기">
+        <span class="findrange">
+          <select data-findyear="meeting" aria-label="찾을 연도"><option value="">연도 전체</option></select>
+          <select data-findmonth="meeting" aria-label="찾을 달">
+            <option value="">달 전체</option><option value="01">1월</option><option value="02">2월</option><option value="03">3월</option><option value="04">4월</option><option value="05">5월</option><option value="06">6월</option><option value="07">7월</option><option value="08">8월</option><option value="09">9월</option><option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
+          </select>
+        </span>
         <span class="visit-count" data-count="meeting"></span>
       </div>
 
     <div class="withcal">
       <div class="panelcal" data-cal="meeting"></div>
-      <div class="meetlist" id="meetList"></div>
+      <div class="notelist" id="meetList"></div>
     </div>
   </section>
 
@@ -6110,12 +6116,17 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
 
   /* 그 갈래에 기록이 있는 날들. 연도 고르개를 적어 둔 해로만 채우는 데 쓴다 —
      없는 해를 늘어놓아 봐야 고를 일이 없다. */
+  /* 갈래 이름과 날짜 밑의 자리 이름이 다른 것들.
+     meeting 은 d.meetings, visit 은 d.visits 에 담긴다. 이름이 같은 줄 알고
+     d[kind] 로 찾으면 늘 비어 있어, 연도 고르개가 채워지지 않는다. */
+  var KIND_FIELD = { meeting: "meetings", visit: "visits" };
+
   function kindDates(kind) {
-    var out = [];
+    var out = [], fld = KIND_FIELD[kind] || kind;
     for (var date in state.days) {
       var d = state.days[date];
       if (!d) continue;
-      var has = (d[kind] || []).length;
+      var has = (d[fld] || []).length;
       if (!has && NOTE_KINDS[kind] && NOTE_KINDS[kind].todos) {
         has = (d.todos || []).filter(function (t, i) { return i > 0 && t && t.text; }).length;
       }
@@ -8235,91 +8246,126 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     return null;
   }
 
+  /* 만남을 모아 최근 것부터. 선물과 같은 방식이다 —
+     줄로 죽 보이고, 누른 하나만 펼쳐진다. */
+  function allMeets() {
+    var out = [];
+    for (var date in state.days) {
+      var d = state.days[date];
+      if (!d || !d.meetings) continue;
+      d.meetings.forEach(function (m) { out.push({ date: date, v: m }); });
+    }
+    return out.sort(function (a, b) {
+      if (a.date !== b.date) return b.date.localeCompare(a.date);
+      return String(a.v.time).localeCompare(String(b.v.time));
+    });
+  }
+
+  function meetMatches(r) {
+    if (!inFindRange("meeting", r.date)) return false;
+    return hitWord("meeting",
+      [r.v.title, r.v.people, r.v.notes,
+       (r.v.todos || []).map(function (t) { return t.text; }).join(" ")]
+      .filter(Boolean).join(" "));
+  }
+
+  /* 줄 하나에 보이는 말 — 누구를 만나 무엇을 했나 */
+  function meetSum(m) {
+    var bits = [];
+    if ((m.notes || "").trim()) bits.push(m.notes.trim().split("\n")[0]);
+    var td = (m.todos || []).filter(function (t) { return t && t.text; });
+    if (td.length) bits.push("할 일 " + td.length);
+    return bits.join(" · ");
+  }
+
+  var meetOpen = null;
+
+  function meetRow(date, m) {
+    var at = date + "|" + m.id;
+    var dt = parseISO(date);
+    var open = meetOpen === at;
+    var html = '<button type="button" class="vrow" data-mrow="' + at + '"' +
+      ' aria-expanded="' + open + '">' +
+      '<span class="vd">' + (dt.getMonth() + 1) + "." + pad(dt.getDate()) +
+        "<small> " + dt.getFullYear() + "</small></span>" +
+      '<span class="vp">' + esc((m.title || "").trim() ||
+        (m.people || "").trim() || "이름 없음") + "</span>" +
+      '<span class="vs">' + esc(meetSum(m)) + "</span>" +
+      "</button>";
+    html = rowLine(html, "mtdel", at, (m.title || m.people || "이름 없음"));
+    if (open) html += '<div class="vopen">' + meetCard(date, m) + "</div>";
+    return html;
+  }
+
+  function meetCard(date, m) {
+    var at = date + "|" + m.id;
+    return '<div class="mt">' +
+      '<div class="mt-top">' +
+        '<input class="mt-title" data-mt="title" data-at="' + at +
+          '" value="' + esc(m.title) + '" placeholder="무슨 만남" aria-label="만남 이름">' +
+        '<button class="ghost mt-del" data-mtdel="' + at + '">지우기</button>' +
+      "</div>" +
+
+      /* 패널 머리에 이미 달력이 있다. 여기 또 두면 같은 자리를 두 번 말하는
+         셈이고, 칸이 좁아져 날짜가 잘린다. 날짜 칸 하나면 된다. */
+      '<div class="mt-row"><span class="mt-key">날짜</span>' +
+        '<input type="date" data-mtdate="' + at + '" value="' + date +
+        '" aria-label="만난 날"></div>' +
+      '<div class="mt-row"><span class="mt-key">참석</span>' +
+        '<input data-mt="people" data-at="' + at + '" value="' + esc(m.people) +
+        '" placeholder="김팀장, 박차장" aria-label="참석자"></div>' +
+
+      '<div class="mt-row"><span class="mt-key">내용</span>' +
+        '<textarea data-mt="notes" data-at="' + at +
+        '" placeholder="무엇을 이야기했나" aria-label="내용">' + esc(m.notes) + "</textarea></div>" +
+
+      '<div class="mt-todos">' +
+        (m.todos || []).map(function (t, ti) {
+          return '<label class="mt-td' + (t.done ? " done" : "") + '">' +
+            '<input type="checkbox" data-mttd="' + at + "|" + ti + '"' +
+              (t.done ? " checked" : "") + ">" +
+            "<span>" + esc(t.text) + "</span>" +
+            '<button class="ghost" data-mttddel="' + at + "|" + ti + '">지우기</button></label>';
+        }).join("") +
+        '<div class="mt-add">' +
+          '<input data-mtnew="' + at + '" placeholder="여기서 나온 할 일" aria-label="할 일 추가">' +
+        "</div>" +
+      "</div>" +
+    "</div>";
+  }
+
   function renderMeetings() {
     var host = document.getElementById("meetList");
     if (!host) return;
-    var today = iso(new Date()), any = false;
+    var all = allMeets();
+    var rows = all.filter(meetMatches);
+    dayBarPaint("meeting", rows.length, all.length);
 
-    var findingM = !!(findWord.meeting || "").trim();
-    var mDates = [];
-    if (findingM) {
-      for (var dk in state.days) {
-        if (state.days[dk] && state.days[dk].meetings && state.days[dk].meetings.length) mDates.push(dk);
-      }
-      mDates.sort().reverse();
-    } else {
-      mDates = [selected];
+    if (!all.length) {
+      host.innerHTML = '<div class="wk-empty">아직 적어 둔 만남이 없습니다. ' +
+        "<b>+ 새로 적기</b>로 시작하세요.</div>";
+      return;
     }
-    var mTotal = 0, mShown = 0;
-    for (var dk2 in state.days) {
-      var mm = (state.days[dk2] && state.days[dk2].meetings) || [];
-      mTotal += mm.length;
+    if (!rows.length) {
+      host.innerHTML = '<div class="wk-empty">찾는 만남이 없습니다.</div>';
+      return;
     }
-    mDates.forEach(function (d0) {
-      ((peek(d0) && peek(d0).meetings) || []).forEach(function (m) {
-        if (hitWord("meeting", m.title + " " + m.people + " " + m.notes)) mShown++;
-      });
-    });
-    dayBarPaint("meeting", mShown, mTotal);
 
-    host.innerHTML = mDates.map(function (date) {
-      var i = dowIndex(parseISO(date));
-      var list = ((peek(date) && peek(date).meetings) || []).filter(function (m) {
-        return hitWord("meeting", m.title + " " + m.people + " " + m.notes);
-      });
-      if (!list.length) return "";
-      any = true;
-      var dt = parseISO(date);
-      var when = (dt.getMonth() + 1) + "/" + dt.getDate() + " " + DOW[i];
-
-      return list.slice().sort(function (a, b) {
-        return String(a.time).localeCompare(String(b.time));
-      }).map(function (m) {
-        var at = date + "|" + m.id;
-        return '<div class="mt">' +
-          '<div class="mt-top">' +
-            '<span class="mt-when' + (date === today ? " today" : "") + '">' +
-              when + (m.time ? " " + m.time : "") + "</span>" +
-            '<input class="mt-title" data-mt="title" data-at="' + at +
-              '" value="' + esc(m.title) + '" placeholder="미팅 이름" aria-label="미팅 이름">' +
-            '<button class="ghost mt-del" data-mtdel="' + at + '">지우기</button>' +
-          "</div>" +
-
-          /* 패널 머리에 이미 달력이 있다. 여기 또 두면 같은 자리를 두 번 말하는
-             셈이고, 칸이 좁아져 날짜가 잘린다. 날짜 칸 하나면 된다. */
-          '<div class="mt-row"><span class="mt-key">날짜</span>' +
-            '<input type="date" data-mtdate="' + at + '" value="' + date +
-            '" aria-label="만난 날"></div>' +
-          '<div class="mt-row"><span class="mt-key">참석</span>' +
-            '<input data-mt="people" data-at="' + at + '" value="' + esc(m.people) +
-            '" placeholder="김팀장, 박차장" aria-label="참석자"></div>' +
-
-          '<div class="mt-row"><span class="mt-key">내용</span>' +
-            '<textarea data-mt="notes" data-at="' + at +
-            '" placeholder="무엇을 이야기했나" aria-label="논의 내용">' + esc(m.notes) + "</textarea></div>" +
-
-          '<div class="mt-todos">' +
-            m.todos.map(function (t, ti) {
-              return '<label class="mt-td' + (t.done ? " done" : "") + '">' +
-                '<input type="checkbox" data-mttd="' + at + "|" + ti + '"' +
-                  (t.done ? " checked" : "") + ">" +
-                "<span>" + esc(t.text) + "</span>" +
-                '<button class="ghost" data-mttddel="' + at + "|" + ti + '">지우기</button></label>';
-            }).join("") +
-            '<div class="mt-add">' +
-              '<input data-mtnew="' + at + '" placeholder="여기서 나온 할 일" aria-label="할 일 추가">' +
-            "</div>" +
-          "</div>" +
-        "</div>";
-      }).join("");
-    }).join("");
-
-    if (!any) {
-      host.innerHTML = '<div class="wk-empty">' +
-        (findingM ? "찾는 미팅이 없습니다."
-                  : (mTotal ? "이 날에 적어 둔 미팅이 없습니다." : "아직 적어 둔 미팅이 없습니다.")) +
-        "</div>";
+    /* 펼친 칸은 하나, 나머지는 줄로 셋 — 다른 목록과 같다 */
+    var show = noteMore.meeting ? rows : rows.slice(0, RECENT_MAX);
+    if (meetOpen && !show.some(function (r) { return r.date + "|" + r.v.id === meetOpen; })) {
+      var got = rows.filter(function (r) { return r.date + "|" + r.v.id === meetOpen; })[0];
+      if (got) show = [got].concat(show.slice(0, RECENT_MAX - 1));
     }
+    var more = rows.length - show.length;
+    host.innerHTML = show.map(function (r) { return meetRow(r.date, r.v); }).join("") +
+      (more > 0
+        ? '<div class="pasttitle"><button type="button" class="more" ' +
+          'data-meetmore>그 밖에 ' + more + "건 — 모두 보기</button></div>"
+        : (noteMore.meeting && rows.length > RECENT_MAX
+            ? '<div class="pasttitle"><button type="button" class="more" ' +
+              "data-meetmore>줄여서 보기</button></div>"
+            : ""));
   }
 
   var meetHost = document.getElementById("meetList");
@@ -8342,11 +8388,9 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       if (!mv) return;
       state.days[q[0]].meetings = state.days[q[0]].meetings.filter(function (x) { return x.id !== q[1]; });
       day(to2).meetings.push(mv);
-      save();
-      /* 미팅 목록은 이번 주 것만 보여준다. 다른 주로 옮겼으면 그 주로 따라가야
-         옮긴 것이 눈앞에서 사라지지 않는다. */
-      if (weekDates().indexOf(to2) === -1) goToDate(to2);
-      else renderMeetings();
+      /* 펼쳐 둔 표시도 새 날짜로 따라가야 옮기자마자 접히지 않는다 */
+      if (meetOpen === q[0] + "|" + q[1]) meetOpen = to2 + "|" + q[1];
+      save(); renderMeetings();
       return;
     }
     var box = e.target.closest("input[data-mttd]");
@@ -8367,6 +8411,19 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
   });
 
   meetHost.addEventListener("click", function (e) {
+    /* 줄을 누르면 그것만 펼쳐진다. 한 번에 하나만 열리므로 목록이 길어지지 않는다 */
+    var row = e.target.closest("button[data-mrow]");
+    if (row) {
+      var rk = row.getAttribute("data-mrow");
+      meetOpen = (meetOpen === rk) ? null : rk;
+      renderMeetings();
+      return;
+    }
+    if (e.target.closest("[data-meetmore]")) {
+      noteMore.meeting = !noteMore.meeting;
+      renderMeetings();
+      return;
+    }
     var del = e.target.closest("button[data-mtdel]");
     if (del) {
       var k = del.getAttribute("data-mtdel").split("|");
@@ -8388,14 +8445,18 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
   });
 
   document.getElementById("meetAdd").addEventListener("click", function () {
-    var mf = document.querySelector('input[data-find="meeting"]');
-    if (mf) { mf.value = ""; findWord.meeting = ""; }
-    day(selected).meetings.push(newMeeting("", ""));
+    /* 걸어 둔 조건을 모두 푼다 — 새로 만든 것은 대개 조건에 안 걸려서,
+       넣기는 됐는데 "찾는 만남이 없습니다" 만 남는다 */
+    clearFind("meeting");
+    var m = newMeeting("", "");
+    day(selected).meetings.push(m);
+    meetOpen = selected + "|" + m.id;     /* 새로 만든 것은 펼쳐 둔다 */
+    noteMore.meeting = false;
     save();
     renderMeetings();
     /* 새로 생긴 칸에 바로 적을 수 있게 커서를 옮긴다 */
-    var boxes = meetHost.querySelectorAll('input[data-mt="title"]');
-    if (boxes.length) boxes[boxes.length - 1].focus();
+    var box = meetHost.querySelector('input[data-mt="title"]');
+    if (box) box.focus();
   });
 
   /* ---------- 오늘 (메인화면) ----------

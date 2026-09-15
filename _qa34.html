@@ -1,0 +1,96 @@
+<!doctype html><meta charset="utf-8"><title>만남 목록 시험</title>
+<div id="out" style="font:13px ui-monospace;white-space:pre">…</div>
+<iframe id="f" src="/_fix_mt2.html#/meeting" style="width:1180px;height:1000px;border:0"></iframe>
+<script>
+var pass=0,fail=0,L=[];
+function log(ok,n,got){ if(ok){pass++;L.push("통과  "+n);} else{fail++;L.push("X 실패  "+n+"   실제="+got);} }
+window.onerror=function(m){L.push("X 실패  시험 창이 터짐: "+m);fail++;};
+document.getElementById("f").onload=function(){var fr=this;
+ fr.contentWindow.onerror=function(m,s,l){L.push("X 실패  앱이 터짐: "+m+" @"+l);fail++;};
+ setTimeout(function(){
+ var d=fr.contentDocument,w=fr.contentWindow;
+ function done(){document.getElementById("out").textContent=
+   L.join("\n")+"\n"+(fail?"X ":"")+"통과 "+pass+" · 실패 "+fail;}
+ function rows(){return Array.prototype.map.call(d.querySelectorAll("#meetList [data-mrow]"),
+   function(r){return r.querySelector(".vp").textContent;});}
+ function ev(el,t){el.dispatchEvent(new w.Event(t,{bubbles:true}));}
+ try{
+  /* 줄로 보인다 */
+  log(rows().length===3,"줄로 보이고 처음엔 셋만 — 다른 목록과 같다",rows().length);
+  log(rows()[0]==="주간 회의","최근 것이 위로",rows().join(","));
+  log(!!d.querySelector("[data-meetmore]"),"나머지는 '모두 보기' 로 편다","없음");
+  log(!d.querySelector("#meetList .vopen"),"처음에는 펼친 칸이 없다","펼쳐짐");
+  var vs=d.querySelector("#meetList [data-mrow] .vs").textContent;
+  log(/예산 이야기/.test(vs) && /할 일 1/.test(vs),
+    "줄에 내용 첫 줄과 할 일 수가 보인다",vs);
+
+  /* 모두 보기 */
+  d.querySelector("[data-meetmore]").click();
+  log(rows().length===5,"'모두 보기' 를 누르면 다 나온다",rows().length);
+  d.querySelector("[data-meetmore]").click();
+  log(rows().length===3,"다시 누르면 줄어든다",rows().length);
+
+  /* 연도로 거르기 */
+  var ys=d.querySelector('select[data-findyear="meeting"]');
+  log(Array.prototype.map.call(ys.options,function(o){return o.value;}).join(",")===",2026,2025",
+    "연도 고르개가 적어 둔 해로 채워진다 — d.meetings 를 제대로 본다",
+    Array.prototype.map.call(ys.options,function(o){return o.value;}).join(","));
+  ys.value="2025"; ev(ys,"change");
+  log(rows().length===2 && rows().indexOf("작년 모임")>=0,
+    "연도로 거른다",rows().join(","));
+
+  /* 달로 거르기 */
+  ys.value=""; ev(ys,"change");
+  var ms=d.querySelector('select[data-findmonth="meeting"]');
+  ms.value="09"; ev(ms,"change");
+  log(rows().length===1 && rows()[0]==="주간 회의","달로 거른다",rows().join(","));
+  ms.value=""; ev(ms,"change");
+
+  /* 말로 찾기 — 참석자와 할 일까지 */
+  var q=d.querySelector('input[data-find="meeting"]');
+  q.value="박대표"; ev(q,"input");
+  setTimeout(function(){
+   try{
+    log(rows().length===1 && rows()[0]==="거래처 미팅","참석자로 찾힌다",rows().join(","));
+    q.value="자료"; ev(q,"input");
+    setTimeout(function(){
+     try{
+      log(rows().length===1 && rows()[0]==="주간 회의","거기서 나온 할 일로도 찾힌다",rows().join(","));
+      q.value=""; ev(q,"input");
+      setTimeout(function(){
+       try{
+        /* 펼치기 — 하나만 */
+        d.querySelectorAll("#meetList [data-mrow]")[0].click();
+        log(d.querySelectorAll("#meetList .vopen").length===1,"줄을 누르면 하나만 펼쳐진다",
+          d.querySelectorAll("#meetList .vopen").length);
+        var keys=Array.prototype.map.call(d.querySelectorAll("#meetList .vopen .mt-key"),
+          function(x){return x.textContent;});
+        log(keys.join("/")==="날짜/참석/내용","펼친 칸은 날짜·참석·내용",keys.join("/"));
+        log(!!d.querySelector("#meetList .vopen input[data-mtnew]"),
+          "여기서 나온 할 일을 적는 자리가 있다","없음");
+        d.querySelectorAll("#meetList [data-mrow]")[1].click();
+        log(d.querySelectorAll("#meetList .vopen").length===1,
+          "다른 줄을 누르면 앞의 것은 접힌다",d.querySelectorAll("#meetList .vopen").length);
+
+        /* 새로 적기 — 조건을 풀고 펼쳐 둔다 */
+        ms.value="09"; ev(ms,"change");
+        d.getElementById("meetAdd").click();
+        setTimeout(function(){
+         try{
+          log(d.querySelector('select[data-findmonth="meeting"]').value==="",
+            "새로 적으면 걸어 둔 조건이 풀린다",
+            d.querySelector('select[data-findmonth="meeting"]').value);
+          log(d.querySelectorAll("#meetList .vopen").length===1,
+            "새로 만든 것은 펼쳐진 채로 나온다",d.querySelectorAll("#meetList .vopen").length);
+         }catch(e){fail++;L.push("X 실패  "+e.message);}
+         done();
+        },400);
+       }catch(e){fail++;L.push("X 실패  "+e.message);done();}
+      },300);
+     }catch(e){fail++;L.push("X 실패  "+e.message);done();}
+    },300);
+   }catch(e){fail++;L.push("X 실패  "+e.message);done();}
+  },300);
+ }catch(e){fail++;L.push("X 실패  "+e.message);done();}
+},1600);};
+</script>
