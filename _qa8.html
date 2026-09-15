@@ -46,7 +46,8 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
   /* 나머지 넷 — 달력 없음, 찾기만 */
   ["movie","show","lecture","book"].forEach(function(k,i){
    var p=ps[i+1];
-   if(i===0) log(!p.querySelector('[data-cal]'),"영화에는 달력이 없다");
+   /* 이제 기록 목록은 모두 같은 모양이다 — 찾기줄 + 연·월 + 옆 달력 */
+   if(i===0) log(!!p.querySelector('[data-cal]'),"영화에도 옆 달력이 있다");
    if(i===0) log(!!p.querySelector('input[data-find="movie"]')&&
                  !!p.querySelector('input[data-findfrom="movie"]'),"찾기와 기간 칸이 있다");
   });

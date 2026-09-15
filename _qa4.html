@@ -12,13 +12,14 @@ f.onload=function(){var w=f.contentWindow,d=w.document;
   var cal=d.querySelector('[data-cal="faith"]');
   log(!!cal,"패널 옆 달력이 있다");
 
-  /* 두 달력이 같은 판단을 쓰는가 — 예전에는 판단이 두 곳에 나뉘어 있어서
-     한쪽에만 '오늘' 갈래가 있었고, 팝업에서 오늘이 안 먹었다. */
+  /* 달력의 판단은 한 곳에 있는가 — 예전에는 두 곳에 나뉘어 있어서
+     한쪽에만 '오늘' 갈래가 있었고, 팝업에서 오늘이 안 먹었다.
+     띄우는 달력을 걷어낸 지금은 부르는 곳도 하나다. */
   var src=w.__calSrc||"";
   log(/function calAct\(/.test(src),"판단이 calAct 한 곳에 있다");
   log(!/function calPick\(/.test(src),"옛 calPick 은 남아 있지 않다");
   var calls=(src.match(/calAct\(e, "/g)||[]).length;
-  log(calls===2,"두 달력이 그 한 곳을 함께 쓴다",calls+"곳에서 부름");
+  log(calls===1,"달력이 그 한 곳을 쓴다",calls+"곳에서 부름");
 
   /* 주 시작이 일요일인가 */
   var dows=[].map.call(cal.querySelectorAll(".dp-dow div"),function(x){return x.textContent;});
@@ -68,35 +69,15 @@ f.onload=function(){var w=f.contentWindow,d=w.document;
      var got=head.querySelector("small").textContent+"-"+head.querySelector("b").textContent;
      log(got===(parseInt(yr)-1)+"-3월","고른 연·월로 달력이 옮겨간다",got);
 
-     /* 팝업 달력도 같은 양식인가 */
-     w.location.hash="#/health";
+     /* 띄우는 달력은 걷어냈다 — 이제 달력은 패널 옆에 늘 펼쳐 둔 것 하나뿐이다.
+        두 가지를 두면 같은 일을 두 곳에서 하게 되고, 한쪽만 고치는 일이 생긴다. */
+     log(!d.querySelector("button[data-daypick]"),
+       "카드 안에 달력을 여는 단추가 없다",
+       d.querySelector("button[data-daypick]")?"남아 있음":"");
+     log(d.querySelectorAll("[data-cal]").length>0,
+       "달력은 패널 옆의 것 하나로 통일되었다",d.querySelectorAll("[data-cal]").length);
      setTimeout(function(){
-      var btn=d.querySelector("button[data-daypick]");
-      if(btn) btn.click();
       setTimeout(function(){
-       var pop=d.querySelector(".daypick");
-       log(!!pop&&!!pop.querySelector(".dp-when"),"팝업 달력도 같은 머리를 쓴다");
-       var pd=pop?[].map.call(pop.querySelectorAll(".dp-dow div"),
-         function(x){return x.textContent;}).join(""):"";
-       log(pd==="일월화수목금토","팝업 달력도 일요일 시작",pd);
-       /* 팝업 달력의 '오늘' — 이 갈래가 빠져 있어서 아무 일도 안 일어났었다 */
-       if(pop){
-        var pbox=d.querySelector('input[data-dayof]');
-        pop.querySelector('[data-dpmon="-1"]').click();
-        var cel=d.querySelector(".daypick").querySelectorAll(
-          '.dp-grid button[data-dpday]:not(.out)');
-        cel[9].click();
-        var moved=pbox.value;
-        d.querySelector("button[data-daypick]").click();
-        var p9=d.querySelector(".daypick");
-        if(p9) p9.querySelector(".dp-today").click();
-        var t9=new Date();
-        var today9=t9.getFullYear()+"-"+String(t9.getMonth()+1).padStart(2,"0")+
-                   "-"+String(t9.getDate()).padStart(2,"0");
-        log(moved!==today9,"팝업에서 다른 날로 옮겨진다",moved);
-        log(pbox.value===today9,"팝업의 '오늘' 을 누르면 오늘로 온다",pbox.value);
-        log(!d.querySelector(".daypick"),"'오늘' 을 누르면 창도 닫힌다");
-       }
        /* 바깥을 누르면 닫힌다 — 창이 격자를 덮고 있으니 닫을 길이 있어야 한다 */
        w.location.hash="#/faith";
        setTimeout(function(){
