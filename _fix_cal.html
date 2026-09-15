@@ -1532,14 +1532,20 @@
 
   /* 일곱 칸을 한 줄로. auto-fit 이면 폭에 따라 아랫줄로 넘어간다 —
      칸 수가 정해져 있으니 못 박는 편이 낫다. 좁으면 옆으로 밀어서 본다. */
+  /* 칸 너비는 칸 수에 맞춰 renderTrends 가 style 로 넣어 준다.
+     여기 값은 그려지기 전 한순간에만 쓰인다. */
   .chart-grid {
     display: grid;
-    grid-template-columns: repeat(7, minmax(132px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(124px, 1fr));
     overflow-x: auto;
   }
-  @media (max-width: 900px) {
-    .chart-grid { grid-template-columns: repeat(7, minmax(150px, 1fr)); }
+  /* 한 줄에 여러 칸이 서므로 안여백을 줄인다. 넓을 때의 여백을 그대로 두면
+     좁아진 칸에서는 여백이 내용보다 넓어진다. */
+  .chart-grid .chart-block { padding: 12px 10px 10px; }
+  .chart-grid .chart-head h3 {
+    font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  .chart-grid .chart-latest { font-size: 17px; }
   .chart-block {
     padding: 14px 16px 12px;
     border-bottom: 1px solid var(--hair);
@@ -4297,6 +4303,15 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
     var host = document.getElementById("charts");
     host.className = "chart-grid shape-" + trendShape;
     host.innerHTML = statCards() + chartDefs.map(chartBlock).join("");
+
+    /* 칸을 일곱씩 끊어 두었더니 갈래가 늘 때마다 두 줄, 세 줄이 되었다.
+       한 줄에 다 서도록 칸 수에 맞춰 격자를 짠다.
+       **첫 칸(전체평가)만 제 너비를 지키고** 나머지가 남은 자리를 나눈다 —
+       전체평가는 그날을 한마디로 말해 주는 칸이라 여기서 눈이 먼저 닿는다. */
+    var n = host.children.length;
+    host.style.gridTemplateColumns = n > 1
+      ? "minmax(124px, 1.3fr) repeat(" + (n - 1) + ", minmax(76px, 1fr))"
+      : "minmax(0, 1fr)";
     chartDefs.forEach(bindHover);
     renderTable(s);
   }
