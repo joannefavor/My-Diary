@@ -25,18 +25,19 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
   setTimeout(function(){
    log(!!card(),"새로 적으면 칸이 펼쳐진다");
    var keys=[].map.call(card().querySelectorAll(".mt-key"),function(x){return x.textContent;});
-   log(keys.join(",")==="언제,누구,주고받음,무엇을,무슨 일로,메모","칸이 다 있다",keys.join(","));
+   /* '무슨 일로' 를 없애고 메모만 남겼다 — 두 칸이 하는 말이 겹쳤다 */
+   log(keys.join(",")==="언제,누구,주고받음,무엇을,메모","칸이 다 있다",keys.join(","));
    var who=card().querySelector('input[data-gift="who"]');
    who.value="어머니"; ev(w,who,"change");
    var what=card().querySelector('input[data-gift="what"]');
    log(!!what,"물건이 처음 갈래다");
    what.value="목도리"; ev(w,what,"change");
-   var why=card().querySelector('input[data-gift="why"]');
-   why.value="생일"; ev(w,why,"change");
+   var memo=card().querySelector('textarea[data-gift="notes"]');
+   memo.value="생일"; ev(w,memo,"change");
    setTimeout(function(){
     var g=all()[0];
-    log(g&&g.dir==="in"&&g.who==="어머니"&&g.what==="목도리"&&g.why==="생일",
-      "받은 물건이 저장된다",g&&JSON.stringify([g.dir,g.who,g.what,g.why]));
+    log(g&&g.dir==="in"&&g.who==="어머니"&&g.what==="목도리"&&g.notes==="생일",
+      "받은 물건이 저장된다",g&&JSON.stringify([g.dir,g.who,g.what,g.notes]));
     var row=d.querySelector("#giftList [data-grow]");
     log(row.querySelector(".gdir").textContent==="받음","줄에 '받음' 이 보인다");
     log(row.querySelector(".vs").textContent.indexOf("목도리")!==-1,"무엇을 받았는지 보인다",
@@ -45,10 +46,11 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
     /* 돈으로 바꾸기 — 적어 둔 물건 이름은 남는다 */
     card().querySelector('button[data-giftkind="money"]').click();
     setTimeout(function(){
-     var amt=d.querySelector('#giftList input[data-gift="amount"]');
+     /* 금액 칸은 화폐 단위로 적는 칸이 되었다(data-giftwon) */
+     var amt=d.querySelector('#giftList input[data-giftwon]');
      log(!!amt,"돈으로 바꾸면 금액 칸이 나온다");
      log(all()[0].what==="목도리","갈래를 바꿔도 적어 둔 것은 남는다",all()[0].what);
-     amt.value="100000"; ev(w,amt,"change");
+     amt.value="100000"; ev(w,amt,"input"); ev(w,amt,"change");
      setTimeout(function(){
       log(all()[0].amount===100000,"금액이 숫자로 저장된다",all()[0].amount);
       var vs=d.querySelector("#giftList [data-grow] .vs").textContent;
@@ -82,7 +84,7 @@ f.onload=function(){var w=f.contentWindow,d=f.contentDocument;
             log(d.querySelectorAll("#giftList [data-grow]").length===1,"누구로 찾힌다");
             q.value="생일"; ev(w,q,"input");
             setTimeout(function(){
-             log(d.querySelectorAll("#giftList [data-grow]").length===1,"무슨 일로도 찾힌다");
+             log(d.querySelectorAll("#giftList [data-grow]").length===1,"메모로도 찾힌다");
              q.value=""; ev(w,q,"input");
              /* 연도 고르개가 채워지나 */
              var ys=d.querySelector('select[data-findyear="gift"]');

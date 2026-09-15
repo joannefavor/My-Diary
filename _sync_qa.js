@@ -112,6 +112,53 @@ var got2 = mergeNamedList(B, Lc, R, "symptoms").map(function (x) { return x.name
 t("양쪽에서 만든 증상 갈래가 둘 다 남는다", got2, ["속쓰림", "두통"]);
 t("이 기기 순서가 앞선다", got2[0], "속쓰림");
 
+/* ---------- 쓰는 중에는 다시 그리지 않는다 ----------
+   "내용을 적을때 쓰던내용에서 튕겨나가는 거 같은데" —
+   적을 때마다 3초 뒤 맞추기가 돌고, 그때마다 화면을 다시 그리면 그 사이에
+   다음 칸을 쓰고 있던 사람이 커서를 잃는다. */
+var rsSrc = cut("  function isTyping() {", "waitingRedraw = null;\n  function redrawSoon(fn) {\n    if (!isTyping()) return fn();\n    waitingRedraw = fn;\n  }");
+var focusOut = null;
+var fakeDoc = {
+  activeElement: null,
+  addEventListener: function (ev, fn) { if (ev === "focusout") focusOut = fn; }
+};
+var RS = new Function("document", "setTimeout",
+  cut("  function isTyping() {", "\n  }") + "\n" +
+  cut("  var waitingRedraw = null;", "waitingRedraw = f; }, 0);\n  });") +
+  "\nreturn { redrawSoon: redrawSoon, isTyping: isTyping };")(
+    fakeDoc, function (fn) { fn(); });
+
+var drew = 0;
+function draw() { drew++; }
+
+fakeDoc.activeElement = null;
+RS.redrawSoon(draw);
+t("아무 데도 안 쓰고 있으면 바로 그린다", drew, 1);
+
+drew = 0;
+fakeDoc.activeElement = { tagName: "TEXTAREA" };
+RS.redrawSoon(draw);
+t("글을 쓰는 중이면 그리지 않고 미룬다", drew, 0);
+fakeDoc.activeElement = null;
+focusOut();
+t("칸을 벗어나면 그때 그린다", drew, 1);
+
+drew = 0;
+fakeDoc.activeElement = { tagName: "INPUT", type: "text" };
+RS.redrawSoon(draw);
+t("한 줄 칸도 쓰는 중으로 본다", drew, 0);
+fakeDoc.activeElement = { tagName: "TEXTAREA" };
+focusOut();
+t("다음 칸으로 옮겨 갔으면 아직 미룬다 — 옮겨 다니는 내내 버틴다", drew, 0);
+fakeDoc.activeElement = null;
+focusOut();
+t("다 쓰고 나가면 그린다", drew, 1);
+
+fakeDoc.activeElement = { tagName: "INPUT", type: "checkbox" };
+t("체크상자는 쓰는 중이 아니다", RS.isTyping(), false);
+fakeDoc.activeElement = { tagName: "BUTTON" };
+t("단추도 쓰는 중이 아니다", RS.isTyping(), false);
+
 /* ---------- 어느 쪽이 예전 판인가 ----------
    PC 만 예전 판인 채로 화요일 혈당을 계속 버렸다. 브라우저가 화면을 사본으로
    갖고 있어서, 고친 줄 모르고 며칠 지날 수 있다. */

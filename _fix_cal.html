@@ -1937,6 +1937,12 @@
   .ics-msg[data-tone="bad"] { color: var(--critical); }
   .ics-msg[data-tone="warn"]{ color: var(--serious); }
 
+  /* 받음·줌 과 물건·돈 이 한 줄에 선다. 좁으면 접힌다 */
+  .mt-row.mt-pair { flex-wrap: wrap; }
+  .mt-row.mt-pair .mt-key:not(:first-child) { margin-left: 4px; }
+  .mt-row.mt-pair input { flex: 1 1 110px; min-width: 0; }
+  .gift-won { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
   .repeat-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
   .repeat-foot .repeat-msg { flex: 1 1 220px; margin: 0; font-size: 13px; color: var(--muted); }
   .repeat-list { margin-top: 10px; display: flex; flex-direction: column; gap: 5px; }
@@ -4842,6 +4848,31 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
   /* 입력 폼을 제외한 나머지 화면만 갱신한다.
      드롭다운처럼 여러 번에 나눠 고르는 입력은 폼을 다시 그리면
      고르던 중간 상태가 지워지므로, 그럴 때 이 함수를 쓴다. */
+  /* 지금 글을 쓰고 있는가. 서비스워커가 새로고침을 미룰 때 쓰려고 만든 것인데,
+     화면을 다시 그릴 때도 같은 물음이 필요해져 밖으로 꺼냈다. */
+  function isTyping() {
+    var el = document.activeElement;
+    if (!el) return false;
+    var tag = el.tagName;
+    return tag === "TEXTAREA" || (tag === "INPUT" && el.type !== "checkbox" && el.type !== "radio");
+  }
+
+  /* 쓰는 중에는 다시 그리지 않고, 칸을 벗어날 때까지 미룬다.
+     **다시 그리면 그 칸이 통째로 새로 만들어져 커서가 사라진다** —
+     "글이 쓰다보면 튕겨나가네" 가 이것이었다. */
+  var waitingRedraw = null;
+  function redrawSoon(fn) {
+    if (!isTyping()) return fn();
+    waitingRedraw = fn;
+  }
+  document.addEventListener("focusout", function () {
+    if (!waitingRedraw) return;
+    var f = waitingRedraw;
+    waitingRedraw = null;
+    /* 다음 칸으로 옮겨 가는 중일 수 있으니 한 박자 뒤에 본다 */
+    setTimeout(function () { if (!isTyping()) f(); else waitingRedraw = f; }, 0);
+  });
+
   function renderExceptForm() {
     /* 머리글에는 건강 요약이 어느 주 것인지 적는다 */
     var a = weekStart, b = addDays(weekStart, 6);
@@ -7516,8 +7547,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       '<span class="gdir ' + (isIn ? "in" : "out") + '">' +
         (isIn ? "받음" : "줌") + "</span>" +
       '<span class="vp">' + esc((v.who || "").trim() || "누구인지 안 적음") + "</span>" +
-      '<span class="vs">' + esc(giftWhat(v)) +
-        (v.why ? " · " + esc(v.why) : "") + "</span>" +
+      '<span class="vs">' + esc(giftWhat(v)) + "</span>" +
       "</button>";
     html = rowLine(html, "giftdel", at,
       (v.who || "누구인지 안 적음") + " · " + giftWhat(v));
@@ -7543,15 +7573,16 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
           '" placeholder="' + (v.dir === "out" ? "누구에게" : "누구에게서") +
           '" aria-label="누구">' +
       "</div>" +
-      '<div class="mt-row"><span class="mt-key">주고받음</span>' +
+      /* 받음·줌 과 물건·돈 은 한 줄에 둔다. 둘 다 둘 중 하나를 고르는 일이라
+         나란히 있어야 한 번에 읽힌다. 줄을 나누면 눈이 두 번 내려간다. */
+      '<div class="mt-row mt-pair"><span class="mt-key">주고받음</span>' +
         '<span class="viewtoggle inline">' +
           '<button type="button" data-giftdir="in" data-at="' + at + '"' +
             ' aria-pressed="' + (v.dir !== "out") + '">받음</button>' +
           '<button type="button" data-giftdir="out" data-at="' + at + '"' +
             ' aria-pressed="' + (v.dir === "out") + '">줌</button>' +
         "</span>" +
-      "</div>" +
-      '<div class="mt-row"><span class="mt-key">무엇을</span>' +
+        '<span class="mt-key">무엇을</span>' +
         '<span class="viewtoggle inline">' +
           '<button type="button" data-giftkind="item" data-at="' + at + '"' +
             ' aria-pressed="' + (!isMoney) + '">물건</button>' +
@@ -7559,15 +7590,14 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
             ' aria-pressed="' + isMoney + '">돈</button>' +
         "</span>" +
         (isMoney
-          ? '<input type="number" inputmode="numeric" data-gift="amount" data-at="' + at +
-            '" value="' + esc(v.amount == null ? "" : v.amount) +
-            '" placeholder="금액" aria-label="금액"><span class="gwon">원</span>'
+          /* 돈은 화폐 단위로 적는다. 숫자 칸에 200000 이라고만 두면 이십만인지
+             이백만인지 세어 봐야 한다. 세 자리마다 쉼표를 찍고 '원' 을 붙인다. */
+          ? '<input inputmode="numeric" class="gift-won" data-giftwon="' + at +
+            '" value="' + (v.amount == null ? "" : wonText(v.amount)) +
+            '" placeholder="0원" aria-label="얼마">'
           : '<input data-gift="what" data-at="' + at + '" value="' + esc(v.what || "") +
-            '" placeholder="무엇을 주고받았나" aria-label="무엇">') +
+            '" placeholder="무엇을" aria-label="무엇을">') +
       "</div>" +
-      '<div class="mt-row"><span class="mt-key">무슨 일로</span>' +
-        '<input data-gift="why" data-at="' + at + '" value="' + esc(v.why || "") +
-        '" placeholder="생일 · 결혼 · 명절 …" aria-label="무슨 일로"></div>' +
       '<div class="mt-row"><span class="mt-key">메모</span>' +
         '<textarea data-gift="notes" data-at="' + at +
         '" placeholder="더 적을 것이 있으면" aria-label="메모">' + esc(v.notes || "") +
@@ -7620,7 +7650,33 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
 
   var giftHost = document.getElementById("giftList");
 
+  /* 돈 칸 — 적는 동안 세 자리마다 쉼표를 찍어 준다.
+     다 적고 나서 한 번에 바꾸면 '이게 맞나' 를 세어 보는 동안은 그대로 두는 셈이라,
+     정작 헷갈리는 시점에 도움이 안 된다. */
+  giftHost.addEventListener("input", function (e) {
+    var w = e.target.closest("input[data-giftwon]");
+    if (!w) return;
+    var digits = w.value.replace(/[^\d]/g, "").slice(0, 12);
+    var pos = w.selectionStart, before = w.value.length;
+    w.value = digits ? wonText(Number(digits)) : "";
+    /* 쉼표가 늘어난 만큼 커서를 뒤로 민다 — 안 그러면 한 글자씩 앞으로 밀린다 */
+    var moved = w.value.length - before;
+    try { w.setSelectionRange(Math.max(0, pos + moved), Math.max(0, pos + moved)); } catch (err) { /* 못 옮겨도 값은 맞다 */ }
+  });
+
   giftHost.addEventListener("change", function (e) {
+    var won = e.target.closest("input[data-giftwon]");
+    if (won) {
+      var wk = won.getAttribute("data-giftwon").split("|");
+      var wv = giftAt(wk[0], wk[1]);
+      if (!wv) return;
+      var digits = won.value.replace(/[^\d]/g, "");
+      wv.amount = digits ? Number(digits) : null;
+      save();
+      var wrow = giftHost.querySelector('[data-grow="' + wk[0] + "|" + wk[1] + '"]');
+      if (wrow) wrow.querySelector(".vs").textContent = giftWhat(wv);
+      return;
+    }
     var f = e.target.closest("[data-gift]");
     if (f) {
       var k = f.getAttribute("data-at").split("|");
@@ -7634,8 +7690,7 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
       if (!row) return;
       if (fld === "who") row.querySelector(".vp").textContent =
         (v.who || "").trim() || "누구인지 안 적음";
-      else row.querySelector(".vs").textContent =
-        giftWhat(v) + (v.why ? " · " + v.why : "");
+      else row.querySelector(".vs").textContent = giftWhat(v);
       return;
     }
     var dbox = e.target.closest("input[data-giftdate]");
@@ -8230,13 +8285,16 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
             '<button class="ghost mt-del" data-mtdel="' + at + '">지우기</button>' +
           "</div>" +
 
+          /* 패널 머리에 이미 달력이 있다. 여기 또 두면 같은 자리를 두 번 말하는
+             셈이고, 칸이 좁아져 날짜가 잘린다. 날짜 칸 하나면 된다. */
           '<div class="mt-row"><span class="mt-key">날짜</span>' +
-            dayField('data-mtdate="' + at + '"', date, "미팅 날짜") + "</div>" +
+            '<input type="date" data-mtdate="' + at + '" value="' + date +
+            '" aria-label="만난 날"></div>' +
           '<div class="mt-row"><span class="mt-key">참석</span>' +
             '<input data-mt="people" data-at="' + at + '" value="' + esc(m.people) +
             '" placeholder="김팀장, 박차장" aria-label="참석자"></div>' +
 
-          '<div class="mt-row"><span class="mt-key">논의</span>' +
+          '<div class="mt-row"><span class="mt-key">내용</span>' +
             '<textarea data-mt="notes" data-at="' + at +
             '" placeholder="무엇을 이야기했나" aria-label="논의 내용">' + esc(m.notes) + "</textarea></div>" +
 
@@ -10572,7 +10630,11 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
         sync.merging = true;
         save();
         sync.merging = false;
-        if (shown) render(); else renderExceptForm();
+        /* **받은 것이 없으면 화면을 건드리지 않는다.**
+           적을 때마다 3초 뒤에 맞추기가 돌고, 그때마다 다시 그리면 그 사이에
+           다음 칸을 쓰고 있던 사람이 커서를 잃는다. 저쪽에서 온 것이 없으면
+           다시 그릴 까닭도 없다. */
+        if (res.changed) redrawSoon(shown ? render : renderExceptForm);
         return { conflicts: res.conflicts, got: res.changed, oldSide: oldSide };
       }, function () {
         throw new Error("코드가 다릅니다 — 올려둔 기록을 열지 못했습니다.");
@@ -10887,13 +10949,6 @@ localStorage.setItem("weekly-health-ledger-v3",JSON.stringify({days:{},meds:[],h
 
     /* 적는 중이면 다시 부르지 않는다. 새 판보다 지금 쓰던 글이 먼저다.
        다음에 앱을 다시 열 때 자연히 새 판으로 뜬다. */
-    function isTyping() {
-      var el = document.activeElement;
-      if (!el) return false;
-      var tag = el.tagName;
-      return (tag === "TEXTAREA" || tag === "INPUT") && String(el.value || "") !== "";
-    }
-
     navigator.serviceWorker.addEventListener("controllerchange", function () {
       /* 처음 설치할 때도 이 신호가 오는데 그때는 이미 최신이라 다시 부를 필요가 없다 */
       if (!hadWorker || swReloading || isTyping()) return;
