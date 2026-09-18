@@ -164,6 +164,15 @@
     --s1:          #3987e5;
     --s2:          #d95926;
     --s3:          #199e70;
+    /* 어두운 배경에서는 구름을 밝혀야 형태가 보인다 (시스템 다크와 같은 값).
+       색 변수는 :root · 시스템 다크 · 이 블록 세 곳 모두에 있어야 한다.
+       여기 빠지면 시스템은 밝은데 앱에서 다크를 켠 경우에만 조용히 깨진다. */
+    --wx-sun:   #f8ca57;
+    --wx-cloud: #f2f5f8;
+    --wx-cloud2:#c3ccd6;
+    --wx-edge:  #7c8894;
+    --wx-rain:  #6aa8f0;
+    --wx-snow:  #a8cdf0;
     --w1: #184f95; --w2: #256abf; --w3: #3987e5; --w4: #6da7ec; --w5: #9ec5f4;
     --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
   }
@@ -3479,7 +3488,7 @@
         return out;
       })(),
       weight:  C(function (x) { return x ? x.weight : null; }),
-      ex:      C(function (x) { return x && x.exercise ? (x.exercise.min || 0) : null; }),
+      ex:      C(function (x) { return x && x.exercise && x.exercise.min != null ? x.exercise.min : null; }),
       water:   C(function (x) { return x ? x.water : null; }),
       mood:    C(function (x) { return x ? x.mood : null; }),
       condition: C(function (x) { return x ? x.condition : null; }),
@@ -3535,7 +3544,8 @@
        셋 다 하루 기록하기에서 그날 것을 바로 보는 편이 낫다. */
     return card("hero", "전체평가",
         avgOv == null ? "—" : r1(avgOv).toFixed(1), avgOv == null ? "" : "/ 5",
-        '<div class="dots" role="img" aria-label="5점 중 ' + (avgOv == null ? 0 : r1(avgOv)) + '점">' +
+        '<div class="dots" role="img" aria-label="' +
+          (avgOv == null ? "전체평가 기록 없음" : "5점 중 " + r1(avgOv) + "점") + '">' +
           dots + "</div>" +
         '<span class="sub">' + n + "일 기록 · 일정 " + doneItems + "/" + totalItems + "건 완료</span>");
   }
@@ -4303,8 +4313,9 @@
         tipFmt: function (i) {
           var d = peek(s.dates[i]);
           if (!d || !d.exercise) return null;
+          var txt = d.exercise.min == null ? "시간 기록 없음" : d.exercise.min + "분";
           return [{ color: S1, name: "운동",
-                    text: (d.exercise.min || 0) + "분" + (d.exercise.kind ? " · " + d.exercise.kind : "") }];
+                    text: txt + (d.exercise.kind ? " · " + d.exercise.kind : "") }];
         } },
 
       { id: "mood", title: "기분 · 컨디션 · 전체평가", scale: "5점 척도",
@@ -4456,8 +4467,10 @@
     var bpVals = s.dates.map(function (d) { var x = peek(d); return x && x.bp ? x.bp.s + "/" + x.bp.d : null; });
     var exVals = s.dates.map(function (d) {
       var x = peek(d);
-      if (!x || !x.exercise || !x.exercise.min) return null;
-      return x.exercise.min + "분" + (x.exercise.kind ? " " + x.exercise.kind : "");
+      var e = x && x.exercise;
+      if (!e || (e.min == null && !e.kind)) return null;
+      if (e.min == null) return e.kind;          // 종류만 적은 날
+      return e.min + "분" + (e.kind ? " " + e.kind : "");
     });
     var mealVals = s.dates.map(function (d) {
       var x = peek(d);
@@ -4751,7 +4764,9 @@
     var exMin = host.querySelector("#exMin"), exKind = host.querySelector("#exKind");
     function commitEx() {
       var m = num(exMin), k = exKind.value.trim();
-      day(selected).exercise = (m == null && !k) ? null : { min: m == null ? 0 : m, kind: k };
+      // 분을 비워 둔 채 종류만 적을 수 있다. 그때 0 을 넣으면 "안 적음"이 "0분 운동"이 되어
+      // 주간 판정이 근거 없이 "부족"으로 떨어진다. 적지 않은 것은 null 로 남긴다.
+      day(selected).exercise = (m == null && !k) ? null : { min: m, kind: k };
       persist();
     }
     exMin.addEventListener("change", commitEx);
